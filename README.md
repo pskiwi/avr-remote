@@ -14,6 +14,7 @@ Denon and Marantz are registered trademarks of D&M Holdings, Inc.
 ## Required Tools
 
 * JDK 8
+* Android Studio
 
 ## Build
 
@@ -31,6 +32,5 @@ GPL V3
 ## Next steps
 - substitute icons
 - update [min|target]SdkVersion
-- update build system to gradle
 - make options menu accessible
 - release new version
