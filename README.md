@@ -21,7 +21,7 @@ Denon and Marantz are registered trademarks of D&M Holdings, Inc.
 
 `ant release`
 
-## Receiver Specs
+## Receiver specs
 Search for
 _denon 3312 DENON AVR control protocol_
 
