@@ -11,15 +11,26 @@ Denon and Marantz are registered trademarks of D&M Holdings, Inc.
 
 ## Required Tools
 
-* JDK 8
-* Ant
+* JDK 8 (1.8.0_262/AdoptOpenJDK)
+* Ant (1.10.5)
 * Android SDK
 
 ## Build
 
 `ant release`
 
+## Receiver Specs
+Search for
+_denon 3312 DENON AVR control protocol_
+
 ## Licenses
 
 ### App
 GPL V3
+
+## Next steps
+- substitute icons
+- update [min|target]SdkVersion
+- update build system to gradle
+- make options menu accessible
+- release new version

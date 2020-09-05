@@ -14,9 +14,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-/**
- * 
- */
 package de.pskiwi.avrremote.models;
 
 import de.pskiwi.avrremote.EnableManager.StatusFlag;
