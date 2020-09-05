@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<string-array name="modelNames">
+		<item>AVR-Generic</item>		
+		<item>AV-7005</item>
+		<item>AV-7701</item>
+		<item>AV-8801</item>
+		<item>AVC-A1HDA</item>
+		<item>AVP-A1HDCI</item>
+		<item>AVR-100</item>
+		<item>AVR-990</item>
+		<item>AVR-991</item>
+		<item>AVR-1613</item>
+		<item>AVR-1713</item>
+		<item>AVR-1912</item>
+		<item>AVR-1913</item>
+		<item>AVR-2112</item>
+		<item>AVR-2113</item>
+		<item>AVR-2312</item>
+		<item>AVR-2313</item>
+		<item>AVR-3310</item>
+		<item>AVR-3311</item>
+		<item>AVR-3312</item>
+		<item>AVR-3313</item>
+		<item>AVR-3805</item>
+		<item>AVR-3806</item>
+		<item>AVR-3808</item>
+		<item>AVR-4306</item>
+		<item>AVR-4308</item>
+		<item>AVR-4310</item>
+		<item>AVR-4311</item>
+		<item>AVR-4520</item>
+		<item>AVR-4806</item>
+		<item>AVR-4810</item>
+		<item>AVR-5308</item>
+		<item>AVR-5805</item>
+		<item>AVR-E300</item>
+		<item>AVR-E400</item>
+		<item>AVR-X1000</item>
+		<item>AVR-X2000</item>		
+		<item>AVR-X3000</item>
+		<item>AVR-X4000</item>
+		<item>DN-500AV</item>
+		<item>NR-1504</item>
+		<item>NR-1602</item>
+		<item>NR-1603</item>
+		<item>NR-1604</item>		
+		<item>SR-5006</item>
+		<item>SR-5007</item>
+		<item>SR-5008</item>
+		<item>SR-6005</item>
+		<item>SR-6006</item>
+		<item>SR-6007</item>
+		<item>SR-6008</item>		
+		<item>SR-7005</item>
+		<item>SR-7007</item>
+		<item>SR-7008</item>
+		<item>ASD-51 (experimental)</item>
+		<item>DNP-720AE</item>
+		<item>M-CR603 (experimental)</item>
+		<item>M-ER803 (experimental)</item>
+		<item>NA-7004 (experimental)</item>
+		<item>RCD-N7 (experimental)</item>
+	</string-array>
+
+	<string-array name="volumeDisplay">
+		<item>Relative</item>
+		<item>Absolute</item>
+	</string-array>
+
+	<string-array name="timeoutDisplay">
+		<item>10sec (default)</item>
+		<item>30sec</item>
+		<item>1min</item>
+		<item>5min</item>
+		<item>10min</item>
+		<item>30min</item>
+		<item>1h</item>
+		<item>2h</item>
+	</string-array>
+
+	<string-array name="timeoutValues">
+		<item>10</item>
+		<item>30</item>
+		<item>60</item>
+		<item>300</item>
+		<item>600</item>
+		<item>1800</item>
+		<item>3600</item>
+		<item>7200</item>
+	</string-array>
+
+
+	<string-array name="backgroundTheme">
+		<item>Default</item>
+		<item>Black</item>
+		<item>Gray</item>
+		<item>Red</item>
+		<item>Water</item>
+		<item>Custom</item>
+	</string-array>
+
+	<string-array name="tunerType">
+		<item>Analog</item>
+		<item>HD</item>
+		<item>Sirius</item>
+		<item>IRadio</item>
+	</string-array>
+
+	<string-array name="searchType">
+		<item>Artist</item>
+		<item>Album</item>
+		<item>Track</item>
+		<item>Keyword</item>
+	</string-array>
+
+	<string-array name="renameCategory">
+		<item>All</item>
+		<item>Source</item>
+		<item>Zone</item>
+		<!-- 		<item>Preset</item> -->
+		<item>Mode</item>
+		<item>Quick</item>
+	</string-array>
+
+	<string-array name="regions">
+		<item>Europe</item>
+		<item>North America</item>
+		<item>Japan</item>
+		<item>China</item>
+		<item>Other</item>
+	</string-array>
+
+	<string-array name="debugModeList">
+		<item>none</item>
+		<item>adb</item>
+		<item>file</item>
+	</string-array>
+
+	<string-array name="zoneCount">
+		<item>Default</item>
+		<item>1</item>
+		<item>2</item>
+		<item>3</item>
+		<item>4</item>
+	</string-array>
+
+	<string-array name="colorList">
+		<item>Default</item>
+		<item>White</item>
+		<item>Gray</item>
+		<item>Black</item>
+		<item>Red</item>
+		<item>Blue</item>
+		<item>Green</item>
+	</string-array>
+	
+	<string-array name="timerActionsKeys">
+	    <item>Nothing</item>
+		<item>On</item>
+		<item>Off</item>
+		<item>F1</item>
+		<item>F2</item>
+		<item>F3</item>		
+	</string-array>
+	
+	<string-array name="timerActionsValues">
+	    <item>Nothing</item>
+		<item>On</item>
+		<item>Off</item>
+		<item>Macro 1</item>
+		<item>Macro 2</item>
+		<item>Macro 3</item>		
+	</string-array>
+</resources>

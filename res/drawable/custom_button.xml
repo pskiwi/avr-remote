@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- http://www.anddev.org/view-layout-resource-problems-f27/custom-button-t47964.html 
+http://idunnolol.com/android/drawables.html-->
+<selector
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item android:state_pressed="true" > <!-- When your pressing the button -->
+        <shape>
+            <gradient
+                android:endColor="#d0777777"
+                android:startColor="#d0CCCCCC"
+                android:angle="270" />
+            <stroke
+                android:width="@dimen/button_stroke"
+             />
+            <corners
+                android:radius="@dimen/button_corners" />
+            <padding
+                android:left="@dimen/button_margin"
+                android:top="@dimen/button_margin"
+                android:right="@dimen/button_margin"
+                android:bottom="@dimen/button_margin" />
+        </shape>
+    </item>
+
+    <item android:state_focused="true" >  <!-- When the button is selected (like with a trackball) -->
+        <shape>
+            <gradient
+                android:endColor="#d0333333"
+                android:startColor="#d0AAAAAA"
+                android:angle="270" />
+            <stroke
+                android:width="@dimen/button_stroke"
+            />
+            <corners
+                android:radius="@dimen/button_corners" />
+            <padding
+                android:left="@dimen/button_margin"
+                android:top="@dimen/button_margin"
+                android:right="@dimen/button_margin"
+                android:bottom="@dimen/button_margin" />
+        </shape>
+    </item>
+    
+    
+
+     <item android:state_enabled="false"> <!-- disabled -->
+         <shape>
+            <gradient
+                android:endColor="#d0333333"
+                android:startColor="#d0333333"
+                android:angle="270" />
+            <stroke
+                android:width="@dimen/button_stroke"
+            />
+            <corners
+                android:radius="@dimen/button_corners" />
+            <padding
+                android:left="@dimen/button_margin"
+                android:top="@dimen/button_margin"
+                android:right="@dimen/button_margin"
+                android:bottom="@dimen/button_margin" />
+        </shape>
+        
+    </item>
+    <item>         <!-- Normal button -->
+        <shape>
+            <gradient
+                android:endColor="#d0000000"
+                android:startColor="#d0555555"
+                android:angle="270" />
+            <stroke
+                android:width="@dimen/button_stroke"
+                />
+            <corners
+                android:radius="@dimen/button_corners" />
+            <padding
+                android:left="@dimen/button_margin"
+                android:top="@dimen/button_margin_small"
+                android:right="@dimen/button_margin"
+                android:bottom="@dimen/button_margin_small" />
+        </shape>
+    </item>
+</selector>

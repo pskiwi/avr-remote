@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+        <color name="disconnected">#F78181</color>
+        <color name="disconnectedReachable">#FFCC33</color>
+        <color name="connected">#F2F5A9</color>
+        <color name="poweron">#D0F5A9</color>
+</resources>

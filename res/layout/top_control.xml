@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="fill_parent" android:orientation="horizontal"
+	android:layout_height="wrap_content">
+	<ImageButton android:src="@drawable/home"
+		android:layout_width="wrap_content" android:layout_height="wrap_content"
+		android:id="@+id/btnHome" android:text="Home" />
+	<ImageButton android:src="@drawable/arrow_left"
+		android:layout_width="fill_parent" android:layout_height="wrap_content"
+		android:id="@+id/btnBack" android:text="Back" android:layout_weight="1" />
+	<ImageButton android:id="@+id/btnVolDown" android:src="@drawable/minus"
+		android:layout_width="wrap_content" android:layout_height="wrap_content"
+		style="@style/VolumeButtons" />
+	<TextView android:layout_width="40dip" android:layout_height="fill_parent"
+		android:id="@+id/textVolume" android:gravity="center" />
+	<ImageButton android:id="@+id/btnVolUp" android:src="@drawable/plus"
+		android:layout_width="wrap_content" android:layout_height="wrap_content"
+		style="@style/VolumeButtons" />
+</LinearLayout>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--  ACHTUNG KOPIE - NICHT ÄNDERN -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:orientation="horizontal" android:paddingBottom="2dip" 
+	android:layout_width="fill_parent" android:layout_height="wrap_content">
+	<Button android:id="@+id/btnMacro1" android:layout_width="wrap_content"
+		android:layout_height="wrap_content" android:text="F1"
+		android:layout_weight="1" android:width="0dip" />
+	<Button android:id="@+id/btnMacro2" android:layout_width="wrap_content"
+		android:layout_height="wrap_content" android:text="F2"
+		android:layout_weight="1" android:width="0dip" />
+	<Button android:id="@+id/btnMacro3" android:layout_width="wrap_content"
+		android:layout_height="wrap_content" android:text="F3"
+		android:layout_weight="1" android:width="0dip" />
+</LinearLayout>

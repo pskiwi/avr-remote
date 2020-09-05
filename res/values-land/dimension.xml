@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="remote_bottom_margin" >60dp</dimen>
+    <dimen name="neg_remote_bottom_margin" >-60dp</dimen>
+    
+    <dimen name="remote_padding_small">5dip</dimen>
+    <dimen name="remote_padding_normal">10dip</dimen>
+    <dimen name="remote_padding_big">40dip</dimen>
+    
+    <dimen name="remote_volume_btn_size">100dip</dimen>
+</resources>

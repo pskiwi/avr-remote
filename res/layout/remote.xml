@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:orientation="vertical" android:layout_width="fill_parent"
+	android:layout_height="fill_parent">
+	<LinearLayout android:orientation="horizontal"
+		android:layout_width="fill_parent" android:layout_height="wrap_content"
+		android:paddingBottom="@dimen/remote_padding_normal"
+		android:paddingTop="@dimen/remote_padding_small">
+		<ImageButton android:id="@+id/btnZone"
+			android:layout_width="wrap_content" android:layout_height="wrap_content"
+			android:layout_weight="1" android:width="0dip" />
+		<TextView android:layout_width="wrap_content"
+			android:layout_height="wrap_content" android:layout_weight="1"
+			android:width="0dip" />
+		<ImageButton android:id="@+id/btnMute"
+			android:layout_width="wrap_content" android:layout_height="wrap_content"
+			android:layout_weight="1" android:width="0dip" />
+	</LinearLayout>
+	<LinearLayout android:orientation="horizontal"
+		android:layout_width="fill_parent" android:layout_height="fill_parent">
+		<LinearLayout android:orientation="vertical"
+			android:layout_width="wrap_content" android:layout_height="fill_parent"
+			android:layout_weight="1">
+			<Button android:id="@+id/btnInput" android:layout_width="fill_parent"
+				android:layout_height="wrap_content" />
+			<Button android:id="@+id/btnMode" android:layout_width="fill_parent"
+				android:layout_height="wrap_content" />
+			<Button android:id="@+id/btnDisplay" android:text="@string/OnScreenDisplay"
+				android:layout_width="fill_parent" android:layout_height="wrap_content" />
+		</LinearLayout>
+		<LinearLayout android:orientation="vertical"
+			android:layout_width="wrap_content" android:layout_height="fill_parent"
+			android:gravity="right" android:paddingLeft="@dimen/remote_padding_big">
+			<ImageButton android:id="@+id/btnVolUp" android:src="@drawable/plus"
+				android:layout_width="@dimen/remote_volume_btn_size"
+				android:layout_height="wrap_content" android:layout_weight="1"
+				style="@style/VolumeButtons" />
+			<TextView android:layout_width="wrap_content"
+				android:layout_height="wrap_content" android:id="@+id/textVolume"
+				android:gravity="center" android:paddingRight="10dip" />
+			<ImageButton android:id="@+id/btnVolDown" android:src="@drawable/minus"
+				android:layout_width="@dimen/remote_volume_btn_size"
+				android:layout_height="wrap_content" android:layout_weight="1"
+				style="@style/VolumeButtons" />
+		</LinearLayout>
+	</LinearLayout>
+	<LinearLayout android:orientation="horizontal"
+		android:paddingTop="@dimen/remote_padding_normal"
+		android:layout_width="fill_parent" android:layout_height="fill_parent" android:id="@+id/panelMenus">
+		<Button android:id="@+id/btnQuick" android:layout_width="wrap_content"
+			android:layout_height="wrap_content" android:text="@string/quickSelect"
+			android:layout_weight="1" android:width="0dip" />
+		<Button android:id="@+id/btnLevels" android:layout_width="wrap_content"
+			android:layout_height="wrap_content" android:text="@string/Level"
+			android:layout_weight="1" android:width="0dip" />
+		<Button android:id="@+id/btnExtras" android:layout_width="wrap_content"
+			android:layout_height="wrap_content" android:text="@string/optionsSelect"
+			android:layout_weight="1" android:width="0dip" />
+	</LinearLayout>
+</LinearLayout>

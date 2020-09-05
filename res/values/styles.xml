@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<style name="VolumeButtons">
+		<item name="android:textSize">30sp</item>
+		<item name="android:textStyle">bold</item>
+	</style>
+
+	<style name="AVRTheme" parent="@android:style/Theme.NoTitleBar">
+		<item name="android:buttonStyle">@style/MyButtonStyle</item>
+	</style>
+
+	<style name="AVRDialog" parent="@android:style/Theme.Light.NoTitleBar">
+	</style>
+
+	<style name="AVRActivity" parent="@android:style/Theme.NoTitleBar">
+<!--  		<item name="android:textStyle">bold</item>-->
+		<item name="android:buttonStyle">@style/MyButtonStyle</item>
+		<item name="android:imageButtonStyle">@style/MyImageButtonStyle</item>
+	</style>
+
+
+	<style name="MyButtonStyle" parent="@android:style/Widget.Button">
+		<item name="android:background">@drawable/custom_button</item>
+		<item name="android:textColor">@color/button_text</item>
+	</style>
+
+	<style name="MyImageButtonStyle" parent="@android:style/Widget.ImageButton">
+		<item name="android:background">@drawable/custom_button</item>
+	</style>
+
+
+
+</resources>

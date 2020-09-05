@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="button_margin" >12dp</dimen>
+    <dimen name="button_margin_small" >10dp</dimen>
+
+    <dimen name="remote_bottom_margin" >105dp</dimen>
+    <dimen name="neg_remote_bottom_margin" >-105dp</dimen>
+    
+    <dimen name="hd_bottom_margin" >150dp</dimen>
+    <dimen name="neg_hd_bottom_margin" >-150dp</dimen>
+    
+    <dimen name="remote_padding_small">10dip</dimen>
+    <dimen name="remote_padding_normal">15dip</dimen>
+    <dimen name="remote_padding_big">40dip</dimen>
+    
+    <dimen name="remote_land_padding_small">20dip</dimen>
+    <dimen name="remote_land_padding_big">20dip</dimen>
+    
+    <dimen name="remote_volume_btn_size">100dip</dimen>
+    
+    <dimen name="osd_bottom_margin">100dip</dimen>
+    <dimen name="neg_osd_bottom_margin">-100dip</dimen>
+    
+    <dimen name="button_corners">0dip</dimen>
+    <dimen name="button_stroke">5dip</dimen>
+    
+    <dimen name="widget_margin">4dip</dimen>
+    <dimen name="widget_button_width">45dip</dimen>
+    
+     <dimen name="donation_bottom_margin" >65dp</dimen>
+    <dimen name="neg_donation_bottom_margin" >-65dp</dimen>
+    
+    <dimen name="level_bottom_margin" >100dp</dimen>
+    <dimen name="neg_level_bottom_margin" >-100dp</dimen>
+    
+</resources>

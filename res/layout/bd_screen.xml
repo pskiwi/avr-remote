@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:orientation="vertical" android:layout_width="fill_parent"
+	android:layout_height="fill_parent" android:id="@+id/OSDView">
+
+	<LinearLayout android:layout_width="fill_parent"
+		android:orientation="vertical" android:layout_height="fill_parent"
+		android:layout_marginBottom="@dimen/osd_bottom_margin">
+
+		<include layout="@layout/top_control" />
+
+		<Button android:layout_width="fill_parent"
+			android:layout_height="wrap_content" android:id="@+id/btnUp"
+			android:ellipsize="marquee" android:singleLine="true" />
+
+		<ListView android:layout_width="fill_parent" android:id="@android:id/list"
+			android:layout_height="wrap_content" android:layout_weight="1" />
+	</LinearLayout>
+
+	<RelativeLayout android:layout_marginTop="@dimen/neg_osd_bottom_margin"
+		android:gravity="bottom" android:layout_height="wrap_content"
+		android:layout_width="fill_parent">
+		<LinearLayout android:orientation="vertical"
+			android:layout_width="fill_parent" android:layout_height="fill_parent">			
+			<Button android:layout_width="fill_parent"
+				android:layout_height="wrap_content" android:id="@+id/btnDown"
+				android:ellipsize="marquee" android:singleLine="true" />
+			<include layout="@layout/bd_control_buttons" />
+		</LinearLayout>
+	</RelativeLayout>
+
+</LinearLayout>

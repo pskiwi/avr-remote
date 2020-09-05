@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="button_margin" >7dp</dimen>
+    <dimen name="button_margin_small" >6dp</dimen>
+    
+    <dimen name="remote_bottom_margin" >95dp</dimen>
+    <dimen name="neg_remote_bottom_margin" >-95dp</dimen>
+    
+      <dimen name="osd_bottom_margin">90dip</dimen>
+    <dimen name="neg_osd_bottom_margin">-90dip</dimen>
+    
+    <dimen name="remote_padding_small">5dip</dimen>
+    <dimen name="remote_padding_normal">10dip</dimen>
+    <dimen name="remote_padding_big">40dip</dimen>
+    
+    <dimen name="remote_volume_btn_size">100dip</dimen>
+    
+</resources>

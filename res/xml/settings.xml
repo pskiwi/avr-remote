@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+	<PreferenceCategory android:title="@string/NetworkSettings">
+		<EditTextPreference android:title="@string/SettingIP"
+			android:key="avrip" android:summary="@string/SettingIPSummary" />
+
+		<EditTextPreference android:title="@string/SettingPDA"
+			android:key="pdaweb" android:summary="@string/SettingPDASummary"
+			android:defaultValue="/IPHONE/top.asp" />
+	</PreferenceCategory>
+
+	<PreferenceCategory android:title="@string/ModelSettings">
+		<ListPreference android:title="@string/Model"
+			android:entryValues="@array/modelNames" android:key="AVRModel"
+			android:entries="@array/modelNames" android:summary="@string/SettingModelSummary"></ListPreference>
+		<ListPreference android:entryValues="@array/regions"
+			android:entries="@array/regions" android:title="@string/Region"
+			android:key="AVRModelArea" android:summary="@string/SettingModelAreaSummary"></ListPreference>
+		<CheckBoxPreference android:key="AVRUseReceiverSettings"
+			android:title="@string/UseReceiverSettings" android:summary="@string/UseReceiverSettingsSummary"
+			android:defaultValue="true" />
+	</PreferenceCategory>
+
+	<PreferenceCategory android:title="@string/SecondReceiverSettings">
+		<EditTextPreference android:title="@string/SettingIP"
+			android:key="avrip_2" android:summary="@string/SettingIPSummary" />
+		<ListPreference android:title="@string/Model"
+			android:entryValues="@array/modelNames" android:key="AVRModel_2"
+			android:entries="@array/modelNames" android:summary="@string/SettingModelSummary"></ListPreference>
+	</PreferenceCategory>
+	
+	<PreferenceCategory android:title="@string/ThirdReceiverSettings">
+		<EditTextPreference android:title="@string/SettingIP"
+			android:key="avrip_3" android:summary="@string/SettingIPSummary" />
+		<ListPreference android:title="@string/Model"
+			android:entryValues="@array/modelNames" android:key="AVRModel_3"
+			android:entries="@array/modelNames" android:summary="@string/SettingModelSummary"></ListPreference>
+	</PreferenceCategory>
+
+
+	<PreferenceCategory android:title="@string/DisplaySettings">
+		<ListPreference android:entryValues="@array/zoneCount"
+			android:entries="@array/zoneCount" android:title="@string/ZoneCount"
+			android:key="AVRZoneCount" android:summary="@string/SettingZoneCountSummary"></ListPreference>
+		<ListPreference android:entryValues="@array/volumeDisplay"
+			android:entries="@array/volumeDisplay" android:title="@string/VolumeDisplay"
+			android:key="AVRVolumeDisplay" android:summary="@string/VolumeDisplaySummary"></ListPreference>
+		<ListPreference android:entryValues="@array/backgroundTheme"
+			android:entries="@array/backgroundTheme" android:title="@string/BackgroundTheme"
+			android:key="AVRBackgroundTheme" android:summary="@string/BackgroundThemeSummary"></ListPreference>
+		<Preference android:title="@string/CustomBackground"
+			android:summary="@string/CustomBackgroundSummary" android:key="customBackground" />
+		<ListPreference android:entryValues="@array/colorList"
+			android:entries="@array/colorList" android:title="@string/CustomTextColor"
+			android:key="AVRTextColor" android:summary="@string/CustomTextColorSummary"></ListPreference>
+	</PreferenceCategory>
+
+	<PreferenceCategory android:title="@string/ExtendedSettings">
+		<ListPreference android:title="@string/LoggingMode"
+			android:entryValues="@array/debugModeList" android:key="debugMode"
+			android:entries="@array/debugModeList" android:summary="@string/DebugModeSummary"></ListPreference>
+		<CheckBoxPreference android:key="AVRDevelop"
+			android:summary="@string/DeveloperModeHelp" android:title="@string/DeveloperMode"
+			android:defaultValue="false" />
+		<CheckBoxPreference android:key="AVRNotification"
+			android:title="@string/ShowNotification" android:summary="@string/ShowNotificationHelp"
+			android:defaultValue="false" />
+		<CheckBoxPreference android:key="AVRNapster"
+			android:title="@string/EnableNapster" android:summary="@string/EnableNapsterHelp"
+			android:defaultValue="false" />
+		<ListPreference android:title="@string/DisconnectTimeout"
+			android:entryValues="@array/timeoutValues" android:key="AVRDisconnectTimeout"
+			android:entries="@array/timeoutDisplay" android:summary="@string/DisconnectTimeoutHelp"></ListPreference>
+		<EditTextPreference android:title="@string/iPodInput"
+			android:key="AVRIpodInput" android:summary="@string/iPodInput" />
+	</PreferenceCategory>
+</PreferenceScreen>

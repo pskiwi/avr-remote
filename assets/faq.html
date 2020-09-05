@@ -1,0 +1,103 @@
+<html>
+<body>
+<small>
+<h2>AVR-Remote - FAQ</h2>
+<ul>
+	<li><a href="#NotFound">Receiver not found</a></li>
+	<li><a href="#NoResponse">Receiver does not respond anymore</a></li>
+	<li><a href="#Power">Power on is not working</a></li>
+	<li><a href="#Experimental">What is "experimental" device support</a></li>
+	<li><a href="#Streaming">Streaming from your Android device</a></li>
+	<li><a href="#Icon">Icon remains in status area</a></li>
+	<li><a href="#Quick">Predefine Quick-Settings</a></li>
+	<li><a href="#Level">Enable more level controls</a></li>
+	<li><a href="#Second">Control a second receiver</a></li>
+	<li><a href="#Proxy">Proxy support</a></li>
+	<li><a href="#Feature">Request a new feature</a></li>
+	<li><a href="#Help">Request additional help</a></li>
+</ul>
+
+<b><a id="NotFound">The application does not find your receiver</a></b>
+<ul>
+    <li>Make sure you own a supported receiver</li>
+	<li>To use this application, you have to enable "Manual Setup" /
+	"Network Setup" / "Other" / "Network Standby" on your receiver</li>
+	<li>Your receiver has to be connected to your wireless access
+	point (WLAN/WiFi)</li>
+	<li>Your phone must be connected as well</li>	
+	<li>Your router/access point must allow communication on TCP ports 23 and 80 between your phone and receiver</li>
+	<li>Try to connect to the receivers web-page, if this works, try
+	AVR-Remote</li>
+	<li>Try to pull the plug of your receiver and router for about a minute</li>	
+</ul>
+<b><a id="NoResponse">The receiver stops responding to commands</a></b>
+<ul>
+	<li>Your receiver maybe hung. Try to cold restart your receiver.
+	If this does not help, pull the plug for at least one minute. Try the same with your WiFi/WLAN router.</li>
+	<li>Try to update your receivers firmware. After the update you
+	should do cold restart again</li>
+	<li>Try to avoid WLAN-connection losses, this hangs your receiver
+	when AVR-remote is active</li>	
+</ul>
+<b><a id="Power">Power on does not work</a></b>
+<ul>
+	<li>Make sure network standby is enabled on your receiver.</li>
+</ul>
+<b><a id="Experimental">What is "experimental" device support</a></b>
+<ul>
+	<li>The used protocol is not officially supported/documented on these devices by Denon/Marantz.</li>
+	<li>The device does not support the complete command set.</li>
+</ul>
+<b><a id="Streaming">Streaming from Android device</a></b>
+<ul>
+	<li>AVR-Remote does not support DLNA/Airplay streaming from your Android device to your receiver.</li>
+	<li>There are many other Apps which support this functionality (Skifta, UPnPlay, DS audio, Fritz media,...)</li>
+</ul>
+<b><a id="Icon">Icon remains in status area</a></b>
+<ul>
+	<li>This is actually an optional feature. To disable it uncheck the "Permanent Status-Area Icon" setting </li>	
+</ul>
+<b><a id="Quick">Predefine Quick-Settings</a></b>
+<ul>
+	<li>You have to long press "Quick" and then select an option.</li>
+</ul>
+<b><a id="Level">Enable more level controls</a></b>
+<ul>
+	<li>The exact conditions for every control are unknown for me, but
+	"Options/Audio/[Tone Control=On|MultiEQ=Manual]" are good starting
+	points. Choosing a surround-mode like "Matrix" could help. Pressing
+	"Cancel" resets all levels to the state before modification.</li>
+	<li>Try Matrix/Rock-Arena Surround modes.</li>
+</ul>
+
+<b><a id="Second">Control a second receiver</a></b>
+<ul>
+	<li>Manually define the IP and model of your second receiver in
+	settings under "2. receiver".</li>
+	<li>You could also use "Menu/extended/Scan for 2. receiver" to do a scan.</li>
+	<li>To switch receivers press the status button on the main
+	screen.</li>
+</ul>
+
+<b><a id="Proxy">Proxy support</a></b>
+<ul>
+	<li>Control a receiver behind a proxy (Socks/OpenVPN)</li>
+	<li>Manually define the IP and Port addresses in the settings.</li>
+	<li>Format is IP[:ControlPort[:HTTP_Port[:HTTP_IP]]]. Default example '192.168.1.12:23:80:192.168.1.12'</li>
+</ul>
+
+<b><a id="Help">Request additional help</a></b>
+<ul>
+	<li>Set Logging to file. (Settings/Develop/Logging)</li>
+	<li>Try to reproduce the problem.</li>
+	<li>Please press Menu/Feedback and attach the log file.</li>
+</ul>
+<b><a id="Feature">Request a new feature</a></b>
+<ul>
+	<li>Please send me a feedback email, so I can ask for further details.</li>	
+	<li>Maybe I don't have the hardware or account to test, so I will need your help.</li>
+</ul>
+
+</small>
+</body>
+</html>

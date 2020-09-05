@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<!--  Normal nicht lokalisiert -->
+
+	<string name="app_name">AVR-Remote</string>
+
+	<string name="Zone1">Main Zone</string>
+	<string name="Zone2">Zone 2</string>
+	<string name="Zone3">Zone 3</string>
+	<string name="Zone4">Zone 4</string>
+
+	<string name="VolumeUp">+</string>
+	<string name="VolumeDown">-</string>
+
+	<!--  Ab hier lokalisiert -->
+
+	<string name="On">ein</string>
+	<string name="Off">aus</string>
+
+
+	<string name="NoIpDefined">Die definierte Netzwerkadresse ist ungültig. Wollen
+		Sie im lokale Netzwerk nach einem Receiver suchen lassen ?</string>
+	<string name="ConfigProblem">Konfigurationsproblem</string>
+	<string name="Undefined">undefiniert</string>
+
+	<string name="Status">Status</string>
+	<string name="Reconnect">Neu verbinden</string>
+	<string name="ConnectionEstablished">Verbindung hergestellt</string>
+	<string name="ConnectionLost">Verbindung verloren</string>
+
+	<string name="SeemsNotValid">ist kein gültiger Receiver</string>
+	<string name="CouldNotResolve">kann nicht aufgelöst werden</string>
+	<string name="AVRIPInvalid">Receiver IP ist ungültig</string>
+
+	<string name="ManualSettings">Manuelle Einstellungen</string>
+	<string name="AutoScan">Automatisch suchen</string>
+
+	<string name="DisconnectedReachable">nicht verbunden - erreichbar</string>
+	<string name="DisconnectedUnreachable">nicht verbunden - unerreichbar</string>
+	<string name="ConnectedPowerOn">verbunden - eingeschaltet</string>
+	<string name="ConnectedPowerOff">verbunden - ausgeschaltet</string>
+
+	<string name="OnScreenDisplay">Anzeige</string>
+
+	<string name="eula_title">License</string>
+	<string name="eula_accept">Accept</string>
+	<string name="eula_refuse">Refuse</string>
+
+	<string name="WLANNotAvtive">WLAN ist nicht aktiviert. Bitte schalten Sie es
+		ein.</string>
+	<string name="ConnectivityProblem">Verbindungsproblem</string>
+
+	<string name="AVRReset">
+		<b>Der Receiver reagiert nicht.</b>
+	
+		\n
+		Dies kann behoben werden, indem der Receiver kurzzeitig in den
+		Standby-Modus
+		versetzt wird.\n
+
+		Sie können dies manuell oder automatisch
+		durchführen.\n
+		(Falls dies nicht funktioniert, sollten Sie den Receiver
+		komplette aus- und einschalten.)
+	</string>
+	<string name="TryAutoRestart">Automatisch</string>
+	<string name="TryToConnect">Manuell</string>
+
+	<string name="TryingToConnect">Versuche zu verbinden &#8230;</string>
+
+	<!-- ++++ -->
+	<!-- Menu -->
+	<!-- ++++ -->
+
+	<string name="About">Info</string>
+	<string name="Settings">Einstellungen</string>
+	<string name="Quick">Quick Select</string>
+	<string name="Power">Power</string>
+	<string name="PDAMenu">Receiver Website</string>
+
+	<string name="about_title">AVR-Remote</string>
+
+	<!-- +++++ -->
+	<!-- Setup -->
+	<!-- +++++ -->
+
+	<string name="SetupTitle">Einrichtung</string>
+
+	<string name="SetupMessageModel">
+		Modell-Auswahl
+	</string>
+
+	<string name="SetupMessageIP">
+		Um diese Anwendung zu verwenden, müssen Sie
+		Telefon
+		und Receiver mit
+		Ihrem WLAN-Router verbinden und die
+		Receiver-Option
+		\'Netzwerk-Standby\' aktivieren.\n
+		Um Ihren Receiver anzusprechen,
+		benötigt die Anwendung die IP-Adresse.
+	</string>
+
+
+	<string name="SelectAVRIP">Wählen Sie eine IP aus</string>
+	<string name="ScanFailed">Ermittlung fehlgeschlagen</string>
+
+	<string name="PleaseWait">Bitte warten &#8230;</string>
+	<string name="ResettingReceiver">Setze Receiver zurück &#8230;</string>
+	<string name="WiFiSettings">WLAN-Einstellungen</string>
+	<string name="ScanningNetwork">Receiver wird gesucht &#8230;</string>
+	<string name="NoIpFound">Es konnte kein Receiver gefunden werden.\n
+		Entweder
+		ist er nicht mit Ihrem WLAN verbunden oder die Option Network Standby
+		ist deaktiviert.
+	</string>
+
+
+	<string name="ScanForReceiver">Receiver suchen</string>
+	<string name="ScanForReceiver2">2. Receiver suchen</string>
+	<string name="ResetReceiver">Receiver ein/ausschalten (zurücksetzen)</string>
+	<string name="ResetSettings">Lokale Einstellungen zurücksetzen</string>
+	<string name="ExitApplication">Programm beenden</string>
+
+	<!-- ++++++++ -->
+	<!-- Menus -->
+	<!-- ++++++++ -->
+	<string name="Define">Definiere</string>
+	<string name="Preset">Preset</string>
+	<string name="QuickSelect">Quick select</string>
+	<string name="Options">Options</string>
+
+	<!-- ++++++++ -->
+	<!-- Settings -->
+	<!-- ++++++++ -->
+
+	<string name="NetworkSettings">Netzwerk Einstellungen</string>
+	<string name="ModelSettings">Modell Einstellungen</string>
+	<string name="SecondReceiverSettings">Einstellungen für 2. Receiver (siehe FAQ)</string>
+	<string name="ThirdReceiverSettings">Einstellungen für 3. Receiver (siehe FAQ)</string>
+	<string name="DisplaySettings">Anzeige Einstellungen</string>
+	<string name="ExtendedSettings">Erweiterte Einstellungen</string>
+	<string name="SettingIP">Receiver IP Adresse</string>
+	<string name="SettingIPSummary">Receiver IP Adresse ($value$)</string>
+	<string name="SettingPDA">Receiver Website</string>
+	<string name="SettingPDASummary">Receiver Website (http://avraddress/$value$)</string>
+
+	<string name="SettingModelSummary">Receiver Modell : $value$</string>
+	<string name="SettingModelAreaSummary">Receiver Region : $value$</string>
+	<string name="SettingZoneCountSummary">Anzahl angezeigte Zonen (benötigt Neustart) :
+		$value$
+	</string>
+	<string name="VolumeDisplaySummary">Lautstärke relativ (-80..18 dB) oder absolut
+		(0..99) : $value$</string>
+
+	<string name="SettingTuner">Tunertyp</string>
+	<string name="SettingTunerSummary">Tunertyp für "Preset": $value$</string>
+
+	<string name="BackgroundTheme">Hintergrundthema</string>
+	<string name="BackgroundThemeSummary">Hintergrundthema : $value$</string>
+
+	<string name="CustomTextColor">Textfarbe für Anzeige</string>
+	<string name="CustomTextColorSummary">Textfarbe für Anzeige : $value$</string>
+
+	<string name="CustomBackground">Hintergrundbild</string>
+	<string name="CustomBackgroundSummary">Auswahl des zu vewendenden Hintergrundbild</string>
+
+
+	<string name="DebugModeSummary">Protokollierung : $value$</string>
+
+
+	<string name="UseReceiverSettings">Receiver-Einstellungen</string>
+	<string name="UseReceiverSettingsSummary">Receiver-Einstellungen falls möglich verwenden.
+		Dies kann die angezeigten Eingänge reduzieren.</string>
+
+
+	<string name="SettingShowHelp">Hilfe anzeigen</string>
+	<string name="SettingShowHelpSummary">Hilfe-Einblendungen anzeigen</string>
+
+	<string name="Model">Model</string>
+	<string name="Region">Region</string>
+	<string name="ZoneCount">Angezeigte Zonen</string>
+	<string name="VolumeDisplay">Lautstärke Anzeige</string>
+	<string name="LoggingMode">Protokollierung</string>
+	<string name="Rename">Umbenennen</string>
+
+	<string name="WhatsNew">Versionshistorie</string>
+	<string name="ResetAllSettings">Alle Einstellungen zurücksetzen</string>
+	<string name="Confirm">Bestätigen</string>
+
+	<string name="DeveloperMode">Entwicklermodus</string>
+	<string name="DeveloperModeHelp">Nur für Entwicklerzwecke</string>
+
+	<string name="ShowNotification">Permanentes Symbol</string>
+	<string name="ShowNotificationHelp">Symbol für schnellen Zugriff in der Statuszeile permanent anzeigen.
+	</string>
+
+	<string name="EnableNapster">Napster einschalten</string>
+	<string name="EnableNapsterHelp">Verwenden Sie dies nur, wenn Sie einen Account
+		haben (benötigt Neustart).</string>
+
+	<string name="DisconnectTimeout">Verbindungstrennzeit</string>
+	<string name="DisconnectTimeoutHelp">Zeit bis zum Trennen der Verbindung im Hintergrund
+	</string>
+
+	<string name="iPodInput">iPod Eingang</string>
+	<string name="iPodInputHelp">Name des umbenannten iPod Eingangs (AVR-4306)
+	</string>
+
+	<!-- ++++++++ -->
+	<!-- States -->
+	<!-- ++++++++ -->
+
+	<string name="AudioMode">Audio Mode</string>
+	<string name="MultiEQMode">MultiEQ Mode</string>
+	<string name="AudioRestorer">Audio Restorer</string>
+	<string name="CinemaEQMode">Cinema EQ Mode</string>
+	<string name="SurroundBackSPMode">Surround Back SP Mode</string>
+	<string name="DynamicVolume">Dynamic Volume</string>
+	<string name="DynamicVolumeSetting">Dynamic Volume Setting</string>
+	<string name="SleepSetting">Sleep Setting</string>
+	<string name="Input">Eingang</string>
+	<string name="SurroundMode">Modus</string>
+	<string name="Mute">Stumm</string>
+	<string name="Zone">Zone</string>
+	<string name="Volume">Lautstärke</string>
+	<string name="Display">Anzeige</string>
+
+	<string name="Select">Auswahl</string>
+	<string name="Query">Abfrage</string>
+	<string name="QueryValue">Wert wird abgefragt &#8230;</string>
+	<string name="QueryResult">Abfrageergebnis</string>
+	<string name="QueryFailed">Kein Ergebnis. Der Receiver unterstützt die Abfrage
+		nicht.</string>
+	<string name="OK">OK</string>
+	<string name="No">Nein</string>
+	<string name="Cancel">Abbruch</string>
+
+	<!--  Rename -->
+	<string name="categorySelect">Kategrorie auswählen</string>
+	<string name="categoryDelete">Nicht anzeigen</string>
+	<string name="renameItem">Umbenennen von</string>
+	<string name="renameHelp">Hinweis: Änderungen an den Zonen-Namen erfordern
+		einen App-Neustart.</string>
+	<string name="levelHelp">
+		<i>Hinweis: Nicht jeder Regler funktioniert in jedem Modus (siehe
+			FAQ).</i>
+	</string>
+
+	<string name="longPressHelp">Knopf lange drücken, um die Einstellungen zu
+		definieren.</string>
+
+	<string name="Search">Suche</string>
+	<string name="RadioSearch">Stations-Suche</string>
+	<string name="NapsterSearch">Napster Suche</string>
+	<string name="JumpTo">Springe zu</string>
+
+	<string name="FeedbackText">Bitte senden Sie mir Fragen, Probleme und
+		Anregungen. Vielen Dank.</string>
+
+	<string name="FeedbackQuestion">Möchten Sie eine Feedback-Email senden ?"</string>
+	<string name="FeedbackAttachLogs">Log-Datei anhängen</string>
+
+	<string name="LinkChannels">Linken und rechten Kanal verbinden</string>
+	<string name="LongPressToPreset">Lange drücken, um den Preset vorzubesetzen.
+	</string>
+	<string name="PresetSaved">Preset %d gespeichert</string>
+	<string name="LinkValueOutOfRange">Verbundener Kanal außerhalb Bereich</string>
+	<string name="PresetRestored">Preset %d wiederhergestellt</string>
+
+	<!--  Macros -->
+	<string name="RecordMacroTitle">Knopf belegen</string>
+	<string name="RecordMacro">Um diesen Knopf zu belegen, führen
+		Sie eine Reihe
+		von Funktionen aus und drücken Sie den Knopf nochmals
+		um die Aufnahme
+		zu stoppen.\n
+		(Anzeige Operationen werden nicht unterstützt.)</string>
+	<string name="StopRecording">Aufnahme beenden</string>
+	<string name="EnterMacroName">Knopfnamen eingeben</string>
+	<string name="MacroName">Knopfname</string>
+	<string name="NoMacroRecorded">Keine Befehle aufgezeichnet</string>
+	<string name="LongPressToDefine">Lange drücken um den Knopf zu belegen</string>
+
+	<string name="ReceiverHangDetected">Ihr Receiver reagiert nicht mehr korrekt.\nBitte
+		ziehen sie den Stecker für etwa eine Minute.</string>
+	<string name="UseSearchButton">Bitte benutzen Sie den \'Suchen\'-Knopf</string>
+	<string name="CloseView">Schließen</string>
+	
+	<string name="DonationInfo">Falls Sie das Projekt unterstützen wollen, suchen Sie sich bitte eine angemessene Option aus. Vielen Dank.</string>
+	<string name="Donate">Spenden</string>
+	<string name="DonateThanks">Vielen Dank !</string>
+	<string name="DonateFailed">Die Spende ist leider fehlgeschlagen.</string>
+	<string name="PlayConnected">Verbindung mit Google Play hergestellt.</string>
+	<string name="PlayFailed">Problem beim Zugriff auf Google Play.</string>
+	<string name="DonateAgain">Sie haben diesen Betrag bereits gespendet. Wollen Sie ihn erneut spenden ?</string>	
+</resources>
