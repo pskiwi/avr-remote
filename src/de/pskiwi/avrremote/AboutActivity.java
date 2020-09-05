@@ -45,15 +45,7 @@ public final class AboutActivity extends TabActivity {
 			public void onClick(View v) {
 				finish();
 			}
-		});
-
-		final Button btnDonate = (Button) findViewById(R.id.btnDonation);
-		btnDonate.setOnClickListener(new OnClickListener() {
-			public void onClick(View v) {
-				AboutActivity.this.startActivity(new Intent(AboutActivity.this,
-						null));
-			}
-		});
+		});	
 
 		// Whatsnew nach vorne
 		final Bundle extras = getIntent().getExtras();
