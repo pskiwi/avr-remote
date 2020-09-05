@@ -8,18 +8,16 @@ This application is not affiliated with Denon or Marantz.
 Denon and Marantz are registered trademarks of D&M Holdings, Inc. 
 
 ## Differences to published App
-* Donation-Activitiy is missing
+* Donation-Activitiy is removed
 * Icons removed because of open licensing questions
 
 ## Required Tools
 
-* JDK 8 (1.8.0_262/AdoptOpenJDK)
-* Ant (1.10.5)
-* Android SDK
+* JDK 8
 
 ## Build
 
-`ant release`
+`./gradlew build`
 
 ## Receiver specs
 Search for

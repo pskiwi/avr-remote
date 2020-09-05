@@ -12,10 +12,6 @@
         android:normalScreens="true"
         android:smallScreens="true" />
 
-    <!-- 3=1.5 8=2.2,10=2.3.3 -->
-    <uses-sdk
-        android:minSdkVersion="8"
-        android:targetSdkVersion="10" />
 
     <uses-permission android:name="android.permission.INTERNET" >
     </uses-permission>

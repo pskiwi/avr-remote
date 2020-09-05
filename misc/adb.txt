@@ -1,0 +1,9 @@
+phone dev options usb-debugging enable
+
+https://developer.android.com/studio/releases/platform-tools
+
+sudo usermod -aG plugdev $LOGNAME
+apt-get install android-sdk-platform-tools-common
+
+
+ ~/android/platform-tools/adb install bin/AVRRemote-release.apk 
