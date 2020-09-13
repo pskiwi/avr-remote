@@ -9,7 +9,7 @@ Denon and Marantz are registered trademarks of D&M Holdings, Inc.
 
 ## Differences to published App
 * Donation-Activitiy is removed
-* Icons removed because of open licensing questions
+* Icons replaced with material icons.
 
 ## Required Tools
 
@@ -22,6 +22,7 @@ Denon and Marantz are registered trademarks of D&M Holdings, Inc.
 
 ## Receiver specs
 Search for
+
 _denon 3312 DENON AVR control protocol_
 
 ## Licenses
@@ -30,7 +31,6 @@ _denon 3312 DENON AVR control protocol_
 GPL V3
 
 ## Next steps
-- substitute icons
 - update [min|target]SdkVersion
 - make options menu accessible
 - release new version
