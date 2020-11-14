@@ -1,13 +1,14 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 10
+    compileSdkVersion 30
     buildToolsVersion "30.0.2"
 
     defaultConfig {
         applicationId "de.pskiwi.avrremote"
         minSdkVersion 8
-        targetSdkVersion 10
+        targetSdkVersion 30
+        useLibrary 'org.apache.http.legacy'
     }
 
     buildTypes {
