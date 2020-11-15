@@ -3,6 +3,9 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	android:orientation="horizontal" android:paddingBottom="2dip" 
 	android:layout_width="fill_parent" android:layout_height="wrap_content">
+	<Button android:id="@+id/btnMenu" android:layout_width="wrap_content"
+		android:layout_height="wrap_content" android:text="Menu"
+		android:layout_weight="1" android:width="0dip" />
 	<Button android:id="@+id/btnMacro1" android:layout_width="wrap_content"
 		android:layout_height="wrap_content" android:text="F1"
 		android:layout_weight="1" android:width="0dip" />

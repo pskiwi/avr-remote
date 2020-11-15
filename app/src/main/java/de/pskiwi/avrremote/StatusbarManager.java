@@ -48,8 +48,8 @@ public final class StatusbarManager {
 		PendingIntent contentIntent = PendingIntent.getActivity(app, 0,
 				notificationIntent, 0);
 
-		notification.setLatestEventInfo(context, contentTitle, contentText,
-				contentIntent);
+//		notification.setLatestEventInfo(context, contentTitle, contentText,
+//				contentIntent);
 	}
 
 	public void update() {

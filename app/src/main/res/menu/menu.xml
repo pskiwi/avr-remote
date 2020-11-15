@@ -2,8 +2,6 @@
 	<item android:title="@string/Settings" android:id="@+id/itemSettings"
 		android:icon="@android:drawable/ic_menu_preferences"></item>
 	
-	<item android:title="@string/Donate" android:id="@+id/itemDonation"
-		android:icon="@android:drawable/ic_menu_share"></item>
 	<item android:title="@string/Rename" android:id="@+id/itemRename"
 		android:icon="@android:drawable/ic_menu_sort_alphabetically"></item>
     <item android:id="@+id/itemInfo" android:title="@string/Info"

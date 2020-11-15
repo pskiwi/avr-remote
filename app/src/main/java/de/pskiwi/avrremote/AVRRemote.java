@@ -35,6 +35,7 @@ import android.view.View.OnLongClickListener;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.TabHost;
 import android.widget.TabHost.OnTabChangeListener;
 import android.widget.TextView;
@@ -137,6 +138,15 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 		getApp().getMacroGUI().clearButtons();
 		getApp().getMacroGUI().initButtons(this, null, viewList,
 				R.id.btnMacro1, R.id.btnMacro2, R.id.btnMacro3);
+
+		final Button menuButton = (Button) findViewById(R.id.btnMenu);
+		menuButton.setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View view) {
+				openOptionsMenu();
+			}
+		});
+
 
 		final RenameService renameService = getApp().getRenameService();
 		zoneStates = new ZoneState[zoneCount];
