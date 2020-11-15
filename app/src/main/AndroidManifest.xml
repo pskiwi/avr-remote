@@ -59,7 +59,8 @@
         <activity
             android:name=".OptionActivity"
             android:label="Options"
-            android:theme="@android:style/Theme.Dialog" />    
+            android:theme="@android:style/Theme.Dialog" />
+        <uses-library android:name="org.apache.http.legacy" android:required="false"/>
     </application>
 
 </manifest>
