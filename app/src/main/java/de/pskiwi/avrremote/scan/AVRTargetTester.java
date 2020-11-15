@@ -49,7 +49,14 @@ public final class AVRTargetTester {
 			// UPNP
 			if (!testPort(address, 5000)) {
 				Logger.debug("port 5000 failed " + address);
-				return false;
+				if (testPort(address, 8080) && testPort(address, 111)) {
+					Logger.debug("Newer amp detected on port 111 and 8080");
+					// Newer amps - 2016+
+					return true;
+				}
+				else {
+					return false;
+				}
 			}
 			// UPNP
 			if (!testPort(address, 6666)) {
