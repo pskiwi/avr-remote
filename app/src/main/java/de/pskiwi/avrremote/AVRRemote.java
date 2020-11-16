@@ -140,12 +140,14 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 				R.id.btnMacro1, R.id.btnMacro2, R.id.btnMacro3);
 
 		final Button menuButton = (Button) findViewById(R.id.btnMenu);
-		menuButton.setOnClickListener(new OnClickListener() {
-			@Override
-			public void onClick(View view) {
-				openOptionsMenu();
-			}
-		});
+		if (menuButton!=null) {
+            menuButton.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    openOptionsMenu();
+                }
+            });
+        }
 
 
 		final RenameService renameService = getApp().getRenameService();
