@@ -31,6 +31,4 @@ _denon 3312 DENON AVR control protocol_
 GPL V3
 
 ## Next steps
-- update [min|target]SdkVersion
-- make options menu accessible
 - release new version
