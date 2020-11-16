@@ -144,7 +144,8 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
             menuButton.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    openOptionsMenu();
+                	optionsMenu.showPopup(view);
+                    //openOptionsMenu();
                 }
             });
         }

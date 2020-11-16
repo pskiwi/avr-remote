@@ -25,7 +25,10 @@ import android.net.Uri;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.CheckBox;
+import android.widget.PopupMenu;
+
 import de.pskiwi.avrremote.AVRApplication;
 import de.pskiwi.avrremote.AVRSettings;
 import de.pskiwi.avrremote.AboutActivity;
@@ -34,13 +37,13 @@ import de.pskiwi.avrremote.R;
 import de.pskiwi.avrremote.RenameActivity;
 import de.pskiwi.avrremote.core.ConnectionConfiguration;
 import de.pskiwi.avrremote.core.Zone;
-import de.pskiwi.avrremote.core.ZoneState.PowerState;
+import de.pskiwi.avrremote.core.ZoneState;
 import de.pskiwi.avrremote.log.FeedbackReporter;
 import de.pskiwi.avrremote.log.Logger;
 import de.pskiwi.avrremote.models.ModelConfigurator;
 import de.pskiwi.avrremote.scan.AVRScanner;
 
-public final class OptionsMenu {
+public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 
 	public OptionsMenu(Activity activity, ModelConfigurator configurator,
 			IActivityShowing showing) {
@@ -57,6 +60,18 @@ public final class OptionsMenu {
 		final MenuInflater inflater = activity.getMenuInflater();
 		inflater.inflate(R.menu.menu, menu);
 		return true;
+	}
+
+	public void showPopup(View v) {
+		PopupMenu popup = new PopupMenu(activity, v);
+		popup.setOnMenuItemClickListener(this);
+		MenuInflater inflater = popup.getMenuInflater();
+		inflater.inflate(R.menu.menu, popup.getMenu());
+		popup.show();
+	}
+
+	public boolean onMenuItemClick(MenuItem item) {
+		return onOptionsItemSelected(item);
 	}
 
 	public boolean onOptionsItemSelected(MenuItem item) {
@@ -192,8 +207,8 @@ public final class OptionsMenu {
 	}
 
 	private void switchPower() {
-		PowerState state = getApp().getAvrState().getZone(Zone.Main)
-				.getState(PowerState.class);
+		ZoneState.PowerState state = getApp().getAvrState().getZone(Zone.Main)
+				.getState(ZoneState.PowerState.class);
 		state.switchState();
 	}
 
