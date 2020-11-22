@@ -1,13 +1,14 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 	<item android:title="@string/Settings" android:id="@+id/itemSettings"
 		android:icon="@android:drawable/ic_menu_preferences"></item>
-	
-	<item android:title="@string/Rename" android:id="@+id/itemRename"
-		android:icon="@android:drawable/ic_menu_sort_alphabetically"></item>
-    <item android:id="@+id/itemInfo" android:title="@string/Info"
+	<item android:title="AVR-Remote on GitHub" android:id="@+id/itemProjectPage"></item>
+	<item android:id="@+id/itemInfo" android:title="@string/Info"
 		android:icon="@android:drawable/ic_menu_info_details"></item>
 	<item android:title="@string/Feedback" android:id="@+id/itemFeedback"
 		android:icon="@android:drawable/ic_menu_send"></item>
+	<item android:title="@string/Rename" android:id="@+id/itemRename"
+		android:icon="@android:drawable/ic_menu_sort_alphabetically"></item>
+
 	<item android:title="@string/Power" android:id="@+id/itemPower"
 		android:icon="@android:drawable/ic_lock_power_off"></item>
 	<item android:title="@string/PDAMenu" android:id="@+id/itemPDAMenu"
@@ -19,5 +20,4 @@
 		android:icon="@android:drawable/ic_menu_manage"></item>
 	<item android:title="@string/ResetSettings" android:id="@+id/itemResetSettings"></item>
 	<item android:title="@string/ExitApplication" android:id="@+id/itemExit"></item>
-	<!--  <item android:title="iTach" android:id="@+id/itemiTach"></item>  -->
 </menu>

@@ -19,7 +19,10 @@ package de.pskiwi.avrremote.scan;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
+import java.net.InterfaceAddress;
+import java.net.NetworkInterface;
 import java.net.UnknownHostException;
+import java.util.Enumeration;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -30,9 +33,32 @@ import de.pskiwi.avrremote.log.Logger;
 @SuppressLint("DefaultLocale")
 public final class IFConfig {
 	public IFConfig(Context ctx) {
-		tryIfconfig("eth0");
-		if (!isDefined()) {
-			tryIfconfig("wlan0");
+		iterateAll();
+		if (ip==null) {
+			tryIfconfig("eth0");
+			if (!isDefined()) {
+				tryIfconfig("wlan0");
+			}
+		}
+	}
+
+	private void iterateAll() {
+		try {
+			Enumeration<NetworkInterface> en=NetworkInterface.getNetworkInterfaces();
+			while (en.hasMoreElements()) {
+				NetworkInterface ni=en.nextElement();
+				Logger.info(ni.getName()+"/"+ni.getDisplayName());
+				for (InterfaceAddress in:ni.getInterfaceAddresses()) {
+					Logger.info("    "+in.getAddress()+"/"+in.getBroadcast()+"/"+in.getNetworkPrefixLength()+" "+in.getClass().getName());
+					if ("wlan0".equals(ni.getName()) && in.getNetworkPrefixLength()==24) {
+						ip=in.getAddress().getHostAddress();
+						mask="255.255.255.0";
+						Logger.info("match ["+ip+"]/["+mask+"]");
+					}
+				}
+			}
+		} catch (Exception x) {
+			Logger.error("failed to scan if",x);
 		}
 	}
 

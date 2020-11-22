@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -30,6 +31,8 @@ import android.content.DialogInterface;
 import android.content.DialogInterface.OnCancelListener;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.widget.Toast;
+
 import de.pskiwi.avrremote.AVRApplication;
 import de.pskiwi.avrremote.AVRSettings;
 import de.pskiwi.avrremote.EmulationDetector;
@@ -104,9 +107,13 @@ public final class AVRScanner {
 		this.showing = showing;
 	}
 
+	private interface  IPProvider {
+		InetAddress getIP() throws Exception;
+	}
+
 	public void scan(final IScanResultHandler handler) throws Exception {
 		Logger.info("Scan: start");
-		WiFiInfo wiFiInfo = new WiFiInfo(ctx);
+		final WiFiInfo wiFiInfo = new WiFiInfo(ctx);
 		if (!EmulationDetector.isEmulator() && !wiFiInfo.isConnected()) {
 			String errorCause = wiFiInfo.getErrorCause();
 			Logger.info("Scan: " + errorCause);
@@ -114,37 +121,58 @@ public final class AVRScanner {
 			return;
 		}
 
-		final InetAddress toScan;
-		final String netmask;
+		final AtomicReference<IPProvider> provider=new AtomicReference<>();
 		// emulator
 		Logger.info(Build.PRODUCT + "/" + Build.DEVICE);
 
+		String netmask="";
 		if (wiFiInfo.getNetmask() == 0) {
 			if (EmulationDetector.isEmulator()) {
-				toScan = InetAddress.getByName("192.168.10.1");
-				netmask = CLASS_C_MASK;
+				provider.set(new IPProvider() {
+					@Override
+					public InetAddress getIP() throws  Exception{
+						return InetAddress.getByName("192.168.10.1");
+					}
+				});
+				netmask=CLASS_C_MASK;
 			} else {
 				// no wifi/dhcp
-				IFConfig ifConfig = new IFConfig(ctx);
+				final  IFConfig ifConfig = new IFConfig(ctx);
 				if (ifConfig.isDefined()) {
-					toScan = ifConfig.getIP();
-					netmask = ifConfig.getMask();
-				} else {
-					toScan = null;
-					netmask = "";
+					provider.set(new IPProvider() {
+						@Override
+						public InetAddress getIP() throws Exception {
+							return ifConfig.getIP();
+						}
+					});
+					netmask=ifConfig.getMask();
 				}
 			}
 		} else {
 			// WiFi/DHCP
-			toScan = wiFiInfo.getAddress();
+			provider.set(new IPProvider() {
+				@Override
+				public InetAddress getIP() throws Exception {
+					return wiFiInfo.getAddress();
+				}
+
+				});
 			if (wiFiInfo.getNetmask() == 0xffffff) {
-				netmask = CLASS_C_MASK;
-			} else {
-				netmask = "";
+				netmask=CLASS_C_MASK;
 			}
+
 		}
 
-		Logger.info("scan: ip:" + toScan.getHostAddress());
+		if (provider.get()==null) {
+			Logger.info("no ip found");
+			CharSequence text = "Scan not possible!";
+			int duration = Toast.LENGTH_SHORT;
+
+			Toast toast = Toast.makeText(ctx, text, duration);
+			toast.show();
+			return;
+		}
+
 
 		// 255.255.255.0 / 24
 		if (CLASS_C_MASK.equals(netmask)) {
@@ -156,10 +184,18 @@ public final class AVRScanner {
 
 				@Override
 				protected List<ScanResult> doInBackground(InetAddress... params) {
+					IPProvider p=provider.get();
+					Logger.setLocation("scan-1a");
 
 					try {
+						Logger.info("1:"+p);
+						Logger.info("2:"+p.getIP());
+						InetAddress toScan=provider.get().getIP();
+						Logger.info("scan: ip:" + toScan.getHostAddress());
+
 						return scanNetwork(toScan);
-					} catch (InterruptedException e) {
+					} catch (Exception e) {
+						e.printStackTrace();
 						Logger.error("Scan failed", e);
 					}
 					return Collections.emptyList();

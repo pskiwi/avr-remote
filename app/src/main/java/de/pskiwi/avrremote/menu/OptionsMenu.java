@@ -82,6 +82,9 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 		case R.id.itemInfo:
 			showAbout();
 			break;
+		case R.id.itemProjectPage:
+			openProjectPage();
+			break;
 		case R.id.itemPDAMenu:
 			openPDAMenu();
 			break;
@@ -179,6 +182,13 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 			public void run() {
 			}
 		});
+	}
+
+	public void openProjectPage() {
+			final Intent i = new Intent(Intent.ACTION_VIEW);
+			final Uri uri = Uri.parse("https://github.com/pskiwi/avr-remote/wiki");
+			i.setData(uri);
+			activity.startActivity(i);
 	}
 
 	public void openPDAMenu() {
