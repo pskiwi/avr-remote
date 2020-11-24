@@ -7,6 +7,8 @@ Android remote control for Denon and Marantz receivers.
 This application is not affiliated with Denon or Marantz. 
 Denon and Marantz are registered trademarks of D&M Holdings, Inc. 
 
+![Java CI with Gradle](https://github.com/pskiwi/avr-remote/workflows/Java%20CI%20with%20Gradle/badge.svg)
+
 ## Required Tools
 
 * JDK 8
