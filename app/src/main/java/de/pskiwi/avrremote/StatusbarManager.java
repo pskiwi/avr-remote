@@ -33,22 +33,15 @@ public final class StatusbarManager {
 		notificationManager = (NotificationManager) app
 				.getSystemService(NOTIFICATION_SERVICE);
 
-		int icon = R.drawable.icon;
-		CharSequence tickerText = "AVR-Remote";
-		long when = System.currentTimeMillis();
-
-		notification = new Notification(icon, tickerText, when);
-		notification.flags |= Notification.FLAG_ONGOING_EVENT;
-
-		updateNotification(app, AVRRemote.class);
+		update();
 	}
 
-	private void updateNotification(AVRApplication app, Class<?> cl) {
+	private void updateNotification() {
 		Context context = app.getApplicationContext();
 		CharSequence contentTitle = "AVR-Remote";
 		CharSequence contentText = "Switch to AVR-Remote !";
-		Intent notificationIntent = new Intent(app, cl);
-		notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+		Intent notificationIntent = new Intent(app, appClass);
+		notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 		PendingIntent contentIntent = PendingIntent.getActivity(app, 0,
 				notificationIntent, 0);
 
@@ -61,10 +54,9 @@ public final class StatusbarManager {
 			builder.setContentIntent(contentIntent);
 			builder.setContentTitle(contentTitle);
 			builder.setContentText(contentText);
-			builder.setSmallIcon(R.drawable.icon_small);
+			builder.setSmallIcon(R.drawable.icon);
 			builder.setOngoing(true);
 
-			NotificationManager manager = (NotificationManager) app.getSystemService(NOTIFICATION_SERVICE);
 			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
 			{
 				String channelId = "avr_remote_channel";
@@ -72,33 +64,36 @@ public final class StatusbarManager {
 						channelId,
 						"AVR-Remote",
 						NotificationManager.IMPORTANCE_DEFAULT);
-				manager.createNotificationChannel(channel);
+				channel.setSound(null, null);
+				notificationManager.createNotificationChannel(channel);
 				builder.setChannelId(channelId);
 			}
 
 			Notification notification=builder.build();
 
-			manager.notify(0,notification);
+			notificationManager.notify(NOTIFICATION_ID,notification);
 		}
 	}
 
 	public void update() {
 		if (AVRSettings.isShowNotification(app)) {
-			notificationManager.notify(HELLO_ID, notification);
+			updateNotification();
 		} else {
-			notificationManager.cancel(HELLO_ID);
+			notificationManager.cancel(NOTIFICATION_ID);
 		}
 	}
 
 	public void setCurrentIntent(Class<?> class1) {
-		updateNotification(app, class1);
+		appClass=class1;
 		update();
 	}
 
+
+	private Class<?> appClass=AVRRemote.class;
 	private NotificationManager notificationManager;
 	private Notification notification;
 
 	private final AVRApplication app;
-	private static final int HELLO_ID = 1;
+	private static final int NOTIFICATION_ID = 1;
 
 }

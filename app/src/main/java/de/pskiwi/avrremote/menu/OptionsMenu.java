@@ -186,7 +186,7 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 
 	public void openProjectPage() {
 			final Intent i = new Intent(Intent.ACTION_VIEW);
-			final Uri uri = Uri.parse("https://github.com/pskiwi/avr-remote/wiki");
+			final Uri uri = Uri.parse("https://pskiwi.github.io/avr-remote/");
 			i.setData(uri);
 			activity.startActivity(i);
 	}
