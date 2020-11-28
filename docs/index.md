@@ -1,4 +1,5 @@
- # ![alt text](avr-icon.png "AVR-Remote") Welcome to AVR-Remote
+ # Welcome to AVR-Remote
+ ![alt text](avr-icon.png "AVR-Remote") 
 
 Android remote control for Denon and Marantz receivers.
 [Google Play Store Link](https://play.google.com/store/apps/details?id=de.pskiwi.avrremote)
