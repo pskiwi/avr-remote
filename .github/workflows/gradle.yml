@@ -28,7 +28,7 @@ jobs:
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-        STORE_FILE: ${{ env.GITHUB_WORKSPACE }}/key.jks
+        STORE_FILE: ${{ env.PWD }}/key.jks
       run: echo $KEY_JKS | base64 -d > $STORE_FILE &&./gradlew build; rm $STORE_FILE
     - name: Upload apks
       uses: actions/upload-artifact@v2
