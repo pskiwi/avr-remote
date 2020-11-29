@@ -29,7 +29,7 @@ jobs:
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
         STORE_FILE: ./key.jks
-      run: echo $KEY_JKS | base64 -d > $STORE_FILE &&./gradlew build; rm $STORE_FILE
+      run: echo "$KEY_JKS" | base64 -d > $STORE_FILE &&./gradlew build; rm $STORE_FILE
     - name: Upload apks
       uses: actions/upload-artifact@v2
       with:
