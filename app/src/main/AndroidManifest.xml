@@ -27,7 +27,9 @@
         android:allowBackup="true"
         android:icon="@drawable/icon"
         android:label="@string/app_name"
-        android:theme="@style/AVRTheme" >
+        android:theme="@style/AVRTheme"
+        android:usesCleartextTraffic="true"
+        >
         <activity
             android:name=".AVRRemote"
             android:label="@string/app_name"
