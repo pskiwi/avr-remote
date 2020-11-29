@@ -35,8 +35,8 @@ android {
                 } else {
                     keyAlias System.getenv("KEY_ALIAS")
                     keyPassword System.getenv("KEY_PASSWORD")
-                    storeFile file(keystoreProperties['STORE_FILE'])
-                    storePassword keystoreProperties['STORE_PASSWORD']
+                    storeFile file(System.getenv("STORE_FILE"))
+                    storePassword System.getenv("STORE_PASSWORD")
                 }
             }
         }
