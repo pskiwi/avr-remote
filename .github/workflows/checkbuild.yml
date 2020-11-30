@@ -1,7 +1,7 @@
 # This workflow will build a Java project with Gradle
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-gradle
 
-name: Java CI with Gradle
+name: Check build
 
 on:
   push:
@@ -11,9 +11,7 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
     - name: Set up JDK 1.8
@@ -23,15 +21,9 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Build with Gradle
-      env:
-        KEY_JKS: ${{ secrets.KEY_JKS }}
-        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-        STORE_FILE: ../key.jks
-      run: echo "$KEY_JKS" | base64 -d > key.jks &&./gradlew build; rm key.jks
+      run: ./gradlew build
     - name: Upload apks
       uses: actions/upload-artifact@v2
       with:
         name: apks
-        path: app/build/outputs/apk/release/apk-release.apk
+        path: app/build/outputs/apk/apk/debug

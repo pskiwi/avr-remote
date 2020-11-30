@@ -23,20 +23,21 @@ android {
         abortOnError false
     }
 
-
-    if (keystorePropertiesFile.canRead() || System.getenv("KEY_JKS")!=null) {
+    def fromEnv=System.getenv("KEY_PASSWORD")!=null && !System.getenv("KEY_PASSWORD").trim().isEmpty()
+    if (keystorePropertiesFile.canRead() || fromEnv) {
         signingConfigs {
             release {
-                if (keystorePropertiesFile.canRead()) {
-                    keyAlias keystoreProperties['keyAlias']
-                    keyPassword keystoreProperties['keyPassword']
-                    storeFile file(keystoreProperties['storeFile'])
-                    storePassword keystoreProperties['storePassword']
-                } else {
+                if (fromEnv) {
                     keyAlias System.getenv("KEY_ALIAS")
                     keyPassword System.getenv("KEY_PASSWORD")
                     storeFile file(System.getenv("STORE_FILE"))
                     storePassword System.getenv("STORE_PASSWORD")
+                } else {
+                    keyAlias keystoreProperties['keyAlias']
+                    keyPassword keystoreProperties['keyPassword']
+                    storeFile file(keystoreProperties['storeFile'])
+                    storePassword keystoreProperties['storePassword']
+
                 }
             }
         }
