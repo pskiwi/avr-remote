@@ -22,12 +22,12 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Build with Gradle
-          env:
-            KEY_JKS: ${{ secrets.KEY_JKS }}
-            KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-            KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-            STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-            STORE_FILE: ../key.jks
+        env:
+          KEY_JKS: ${{ secrets.KEY_JKS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          STORE_FILE: ../key.jks
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
