@@ -3,7 +3,7 @@
     package="de.pskiwi.avrremote"
     android:installLocation="auto"
     android:label="AVR-Remote"
-    android:versionCode="123"
+    android:versionCode="124"
     android:versionName="1.5.1" >
 
     <supports-screens
