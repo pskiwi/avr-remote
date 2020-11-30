@@ -28,6 +28,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           STORE_FILE: ../key.jks
+        run: echo "$KEY_JKS" | base64 -d > key.jks; ./gradlew build; rm key.jks
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
