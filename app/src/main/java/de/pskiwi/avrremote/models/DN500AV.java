@@ -20,6 +20,8 @@ package de.pskiwi.avrremote.models;
 import java.util.Set;
 
 import de.pskiwi.avrremote.core.IParameterConverter;
+import de.pskiwi.avrremote.core.OptionType;
+import de.pskiwi.avrremote.core.OptionTypeBuilder;
 import de.pskiwi.avrremote.core.Selection;
 import de.pskiwi.avrremote.core.SelectionBuilder;
 import de.pskiwi.avrremote.core.ZoneState.LevelType;
@@ -76,6 +78,18 @@ public class DN500AV extends AbstractModel {
 	@Override
 	public Set<LevelType> getSupportedLevels() {
 		return TYPE_9CH;
+	}
+
+	@Override
+	protected Set<OptionType> createSupportedOptions(OptionTypeBuilder builder) {
+		builder.clear()
+				.add(OptionType.AudioMode).add(OptionType.AudioRestorer)
+				.add(OptionType.CinemaEQMode).add(OptionType.DCOSetting)
+				.add(OptionType.DRCSetting).add(OptionType.FrontSpeakerSetting)
+				.add(OptionType.SurroundBackSPMode).add(OptionType.ToneControl)
+				.add(OptionType.HDMIAudioOutputMode).add(OptionType.VideoMode)
+				.add(OptionType.VideoSelect).add(OptionType.SleepSetting);
+		return super.createSupportedOptions(builder);
 	}
 
 }
