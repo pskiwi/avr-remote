@@ -19,6 +19,7 @@ package de.pskiwi.avrremote.core;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import android.content.Context;
 import de.pskiwi.avrremote.EnableManager;
@@ -64,10 +65,25 @@ public final class ResilentConnector implements ISender {
 
 	private class Reconnector implements Runnable {
 
+		Reconnector(int epoch) {
+			this.epoch = epoch;
+		}
+
+		// Ein Thread, der z.B. in einem blockierenden Connect/Ping haengt,
+		// reagiert nicht auf interrupt(). Damit so ein "Zombie"-Thread nach
+		// einem stop()/reconfigure() nicht spaeter doch noch den geteilten
+		// "connector" Status ueberschreibt, darf er nur publizieren, solange
+		// seine Generation noch aktuell ist.
+		private boolean isCurrent() {
+			return generation.get() == epoch;
+		}
+
 		public void run() {
-			while (!Thread.currentThread().isInterrupted()) {
+			while (!Thread.currentThread().isInterrupted() && isCurrent()) {
 				try {
-					connector = IConnector.NULL_CONNECTOR;
+					if (isCurrent()) {
+						connector = IConnector.NULL_CONNECTOR;
+					}
 					Logger.info("Reconnector:build new connection to ["
 							+ connectionConfig + "]");
 					boolean reachable = connectionConfig.checkAddress(false);
@@ -76,11 +92,16 @@ public final class ResilentConnector implements ISender {
 					// reachable nicht direkt in Status setzen, um mehrfache
 					// Updates zu vermeiden
 
+					if (!isCurrent()) {
+						return;
+					}
+
 					// Auf jeden Fall versuchen, u.U. ist der Test auf manchen
 					// Modellen nicht eindeutig.
+					IConnector newConnector;
 					try {
-						connector = new Connector(connectionConfig, SEND_DELAY,
-								eventListener);
+						newConnector = new Connector(connectionConfig,
+								SEND_DELAY, eventListener);
 					} catch (Throwable x) {
 						// Bei Fehler Reachable setzen, sonst wird Reachable
 						// über "Connected" mit gesetzt
@@ -88,6 +109,17 @@ public final class ResilentConnector implements ISender {
 								.setStatus(StatusFlag.Reachable, reachable);
 						throw x;
 					}
+
+					if (!isCurrent()) {
+						// wurde waehrend des (nicht unterbrechbaren) Connects
+						// bereits gestoppt/neu gestartet -> verwerfen
+						Logger.info("Reconnector:superseded while connecting -> discard ["
+								+ connectionConfig + "]");
+						newConnector.close();
+						return;
+					}
+
+					connector = newConnector;
 					reconnectDelayIndex = 0;
 					Logger.info("Reconnector:connection to ["
 							+ connectionConfig + "] established");
@@ -95,6 +127,11 @@ public final class ResilentConnector implements ISender {
 					connector.waitUntilClosed();
 					Logger.info("Reconnector:Reconnector:connection to ["
 							+ connectionConfig + "] closed");
+
+					if (!isCurrent()) {
+						return;
+					}
+
 					// Reachable-Status direkt aktualisieren, nicht erst 15sec
 					// warten (schnelleres Feedback)
 					reachable = connectionConfig.checkAddress(true);
@@ -112,9 +149,14 @@ public final class ResilentConnector implements ISender {
 				} catch (IOException x) {
 					Logger.error("Reconnector:IOException [" + connectionConfig
 							+ "]", x);
-					enableManager.setStatus(StatusFlag.Connected, false);
+					if (isCurrent()) {
+						enableManager.setStatus(StatusFlag.Connected, false);
+					}
 				} catch (Throwable x) {
 					Logger.error("Reconnector:connection failed", x);
+				}
+				if (!isCurrent()) {
+					return;
 				}
 				try {
 					if (reconnectDelayIndex < RECONNECT_DELAY.length - 1) {
@@ -132,6 +174,7 @@ public final class ResilentConnector implements ISender {
 		}
 
 		private int reconnectDelayIndex = 0;
+		private final int epoch;
 
 	}
 
@@ -159,16 +202,41 @@ public final class ResilentConnector implements ISender {
 
 	}
 
+	/**
+	 * Wie {@link #reconfigure(Context)}, aber ohne die "laeuft schon /
+	 * Config unveraendert" Kurzschluss-Pruefung. Wird beim Resume einer
+	 * Activity benutzt: dort ist "isRunning()" nicht vertrauenswuerdig, da
+	 * Android den Socket/Timer waehrend des Hintergrundbetriebs (Doze,
+	 * Netzwechsel) einfrieren oder stillschweigend kappen kann, ohne dass
+	 * unser Code das mitbekommt.
+	 */
+	public void forceReconnect() {
+		final ConnectionConfiguration newConfig = modelConfigurator
+				.getConnectionConfig();
+		Logger.info("Connector forceReconnect ip: [" + newConfig + "]");
+		clearState();
+		connectionConfig = newConfig;
+		stopConnector();
+		if (newConfig.isDefined()) {
+			startConnector();
+		}
+	}
+
 	private void startConnector() {
 		Logger.info("Reconnector:start new connector " + connectionConfig);
 		if (connectionConfig.isDefined()) {
-			threadHandler.start(new Reconnector());
+			threadHandler.start(new Reconnector(generation.incrementAndGet()));
 		} else {
 			Logger.info("startConnector ignored: " + connectionConfig);
 		}
 	}
 
 	private void stopConnector() {
+		// invalidiert einen evtl. noch laufenden "Zombie"-Thread (z.B. in
+		// einem nicht unterbrechbaren Connect/Ping haengend), so dass dieser
+		// keine Werte mehr publizieren darf, selbst wenn threadHandler.join()
+		// unten in den Timeout laeuft.
+		generation.incrementAndGet();
 		try {
 			threadHandler.join();
 		} finally {
@@ -273,6 +341,7 @@ public final class ResilentConnector implements ISender {
 	private volatile IConnector connector = IConnector.NULL_CONNECTOR;
 	private ConnectionConfiguration connectionConfig = ConnectionConfiguration.UNDEFINED;
 	private final ThreadHandler threadHandler = new ThreadHandler();
+	private final AtomicInteger generation = new AtomicInteger();
 	private static int[] RECONNECT_DELAY = { 1, 2, 4, 8, 16 };
 	// totale Wartezeit für einen Connect-Test
 	public final static int RECONNECT_WAIT_TIME;

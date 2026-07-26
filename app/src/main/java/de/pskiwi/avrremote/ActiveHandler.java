@@ -41,9 +41,21 @@ public final class ActiveHandler {
 	public void contextResumed(Context context) {
 		Logger.info("ActiveHandler.activity resumed " + context);
 		activeContext = context;
+		// Solange der geplante "StopConnectorTask" noch nicht gefeuert hat,
+		// war die Pause kurz (< disconnectTimeout) -> die Verbindung gilt
+		// noch als frisch und vertrauenswuerdig.
+		final boolean quickReturn = task != null;
 		cancelCurrentTask();
-		if (!connector.isRunning()) {
-			connector.reconfigure(context);
+		if (quickReturn) {
+			if (!connector.isRunning()) {
+				connector.reconfigure(context);
+			}
+		} else {
+			// Laenger im Hintergrund (oder der Task konnte durch Doze/App-
+			// Standby verzoegert werden) -> "isRunning()" beruht evtl. auf
+			// einem Socket, den Android stillschweigend gekappt hat. Statt
+			// dem zu vertrauen, Verbindung immer frisch aufbauen.
+			connector.forceReconnect();
 		}
 	}
 
