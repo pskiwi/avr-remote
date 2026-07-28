@@ -23,28 +23,29 @@ import android.view.View;
 import android.view.WindowInsets;
 
 /**
- * Ab targetSdk 36 erzwingt Android edge-to-edge ohne Opt-Out. Da alle Themes
- * dieser App von Theme.NoTitleBar erben, gibt es keine ActionBar, welche die
- * System-Leisten abfangen würde - der Inhalt würde darunter zeichnen.
+ * Ab targetSdk 36 erzwingt Android edge-to-edge ohne Opt-Out. Keines der hier
+ * verwendeten Themes hat eine ActionBar, welche die System-Leisten abfangen
+ * würde - der Inhalt würde sonst darunter zeichnen.
  */
 public final class EdgeToEdge {
 
 	/**
-	 * Legt System-Leisten, Display-Cutout und Tastatur als Padding auf den
-	 * Content-View, damit der Inhalt nicht darunter zeichnet.
+	 * Legt System-Leisten und Display-Cutout als Padding auf den Content-View.
+	 * Nach setContentView aufrufen. Dialog-Themes brauchen das nicht, sie werden
+	 * ohnehin nicht bis an den Bildschirmrand gezeichnet.
 	 */
 	public static void apply(Activity activity) {
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
 			return;
 		}
 		final View content = activity.findViewById(android.R.id.content);
+		if (content == null) {
+			return;
+		}
 		content.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
 			public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
-				// ime() mit einbeziehen, damit Eingabefelder nicht von der
-				// Tastatur verdeckt werden.
 				Insets bars = insets.getInsets(WindowInsets.Type.systemBars()
-						| WindowInsets.Type.displayCutout()
-						| WindowInsets.Type.ime());
+						| WindowInsets.Type.displayCutout());
 				v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
 				return WindowInsets.CONSUMED;
 			}

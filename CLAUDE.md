@@ -9,7 +9,7 @@ Talks to receivers on the local network — there is no backend and no account.
 
 ## Build and run
 
-The README still says JDK 8; that is outdated. The build needs **JDK 17** and **Android SDK 36**:
+The build needs **JDK 17** and **Android SDK Platform 36**:
 
 ```sh
 export JAVA_HOME=/opt/homebrew/opt/openjdk@17          # keg-only formula, not on PATH by default
@@ -95,7 +95,8 @@ Consequences:
   all. Everything is raw framework API. Keep it that way unless explicitly asked — adding AndroidX
   would pull the whole legacy UI stack into a migration.
 - The UI is built on deprecated bases: `TabActivity`, `ListActivity`, `ExpandableListActivity`,
-  `PreferenceActivity`, `TabHost`/`TabWidget` layouts, and pre-Holo `Theme.NoTitleBar` themes.
+  `PreferenceActivity`, `TabHost`/`TabWidget` layouts, and pre-Holo platform themes
+  (`Theme.NoTitleBar`, plus `Theme.Light` and `Theme.Dialog` used directly from the manifest).
   They still compile; match the surrounding style rather than modernising piecemeal.
 - Indentation is tabs. Comments are a mix of German and English.
 - `android.nonFinalResIds=false` in `gradle.properties` is load-bearing: it keeps `R` fields final so
@@ -106,11 +107,14 @@ Consequences:
 
 Two things are easy to forget and both are required at `targetSdk 36`:
 
-1. `android:exported="false"` in the manifest — missing it is a **build error**, not a warning.
+1. `android:exported` in the manifest. For a component **with** an intent filter, omitting it is a
+   build error; without a filter it is optional but set explicitly here for consistency.
 2. `EdgeToEdge.apply(this)` right after `setContentView(...)`. Edge-to-edge is enforced with no
    opt-out; without it the content draws under the status and navigation bars, because none of the
    themes have an ActionBar to absorb the insets. Dialog-themed activities (`OptionActivity`) do not
    need it.
+3. If the activity requests a runtime permission, gate the request on
+   `savedInstanceState == null` — these activities are recreated on every rotation.
 
 ## Known-broken, pre-existing
 
