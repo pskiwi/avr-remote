@@ -22,7 +22,9 @@ import android.app.Activity;
 import android.app.TabActivity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.Display;
 import android.view.KeyEvent;
@@ -103,6 +105,8 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 
 		Logger.info("start AVR-Remote " + FeedbackReporter.getVersionInfo(this));
 		setContentView(R.layout.tabhost);
+		EdgeToEdge.apply(this);
+		requestNotificationPermission();
 
 		Logger.setLocation("AVRRemote-onCreate-2");
 
@@ -206,6 +210,35 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 		}
 		Logger.info("init Timer.");
 		Logger.info("AVRRemote:init ok.");
+	}
+
+	/**
+	 * Ab targetSdk 33 wird die Dauerbenachrichtigung ohne diese Runtime-Permission
+	 * kommentarlos verworfen.
+	 */
+	private void requestNotificationPermission() {
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+			return;
+		}
+		if (!AVRSettings.isShowNotification(this)) {
+			return;
+		}
+		if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+			requestPermissions(
+					new String[] { android.Manifest.permission.POST_NOTIFICATIONS },
+					REQUEST_POST_NOTIFICATIONS);
+		}
+	}
+
+	@Override
+	public void onRequestPermissionsResult(int requestCode, String[] permissions,
+			int[] grantResults) {
+		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+		if (requestCode == REQUEST_POST_NOTIFICATIONS && grantResults.length > 0
+				&& grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+			// Benachrichtigung nachziehen, die beim Start noch verworfen wurde
+			getApp().getStatusbarManager().update();
+		}
 	}
 
 	private ZoneState getCurrentFrontState() {
@@ -575,5 +608,6 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 	// Achtung, kann "null" sein
 	private ZoneState currentZoneState;
 	private static final String CURRENT_TAB = "CURRENT_TAB";
+	private static final int REQUEST_POST_NOTIFICATIONS = 1;
 
 }
