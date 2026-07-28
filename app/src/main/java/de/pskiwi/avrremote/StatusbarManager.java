@@ -43,7 +43,7 @@ public final class StatusbarManager {
 		Intent notificationIntent = new Intent(app, appClass);
 		notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 		PendingIntent contentIntent = PendingIntent.getActivity(app, 0,
-				notificationIntent, 0);
+				notificationIntent, PendingIntent.FLAG_IMMUTABLE);
 
         // https://stackoverflow.com/questions/32345768/cannot-resolve-method-setlatesteventinfo
 		// https://developer.android.com/guide/topics/ui/notifiers/notifications.html

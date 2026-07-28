@@ -7,16 +7,32 @@ Android remote control for Denon and Marantz receivers.
 This application is not affiliated with Denon or Marantz. 
 Denon and Marantz are registered trademarks of D&M Holdings, Inc. 
 
-![Java CI with Gradle](https://github.com/pskiwi/avr-remote/workflows/Java%20CI%20with%20Gradle/badge.svg)
+![Check build](https://github.com/pskiwi/avr-remote/workflows/Check%20build/badge.svg)
+
+Runs on Android 7.0 (API 24) and newer.
 
 ## Required Tools
 
-* JDK 8
-* Android Studio
+* JDK 17
+* Android SDK Platform 36
+* Android Studio (optional, the Gradle wrapper is enough)
 
 ## Build
 
-`./gradlew build`
+```sh
+export JAVA_HOME=/path/to/jdk-17
+export ANDROID_HOME=/path/to/android-sdk
+
+./gradlew build
+```
+
+The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
+
+`local.properties` is not checked in; the SDK location is taken from `ANDROID_HOME`.
+
+Release builds are signed only if `~/keystore.properties` exists or the `KEY_ALIAS`,
+`KEY_PASSWORD`, `STORE_FILE` and `STORE_PASSWORD` environment variables are set.
+Without those, `./gradlew build` produces an unsigned release APK.
 
 ## Receiver specs
 Search for

@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="de.pskiwi.avrremote"
     android:installLocation="auto"
     android:label="AVR-Remote"
     android:versionCode="124"
@@ -20,7 +19,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" >
     </uses-permission>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" >
-    </uses-permission>  
+    </uses-permission>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name="AVRApplication"
@@ -32,6 +32,7 @@
         >
         <activity
             android:name=".AVRRemote"
+            android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/AVRActivity" >
             <intent-filter>
@@ -42,24 +43,30 @@
         </activity>
         <activity
             android:name=".AVRSettings"
+            android:exported="false"
             android:label="Settings" />
         <activity
             android:name=".LevelActivity"
+            android:exported="false"
             android:label="Level"
             android:theme="@android:style/Theme.Light" />
         <activity
             android:name=".OnScreenDisplayActivity"
+            android:exported="false"
             android:label="OSD"
             android:theme="@style/AVRActivity" />
         <activity
             android:name=".RenameActivity"
+            android:exported="false"
             android:label="Rename"
             android:theme="@style/AVRActivity" />
         <activity
             android:name=".AboutActivity"
+            android:exported="false"
             android:label="@string/about_title" />
         <activity
             android:name=".OptionActivity"
+            android:exported="false"
             android:label="Options"
             android:theme="@android:style/Theme.Dialog" />
         <uses-library android:name="org.apache.http.legacy" android:required="false"/>

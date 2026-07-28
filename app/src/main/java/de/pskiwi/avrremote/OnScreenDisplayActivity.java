@@ -125,6 +125,7 @@ public final class OnScreenDisplayActivity extends ListActivity implements
 		Logger.info("start screen" + screen);
 		screen.setActiveZoneState(zoneState);
 		setContentView(screen.getLayoutResource());
+		EdgeToEdge.apply(this);
 
 		screen.extendView(this, new IStatusComponentHandler() {
 			public void addView(View v, AtomicBoolean enable) {

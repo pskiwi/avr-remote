@@ -9,17 +9,22 @@ if (keystorePropertiesFile.canRead()) {
 }
 
 android {
-    compileSdkVersion 30
-    buildToolsVersion "30.0.2"
+    namespace "de.pskiwi.avrremote"
+    compileSdk 36
+    useLibrary 'org.apache.http.legacy'
 
     defaultConfig {
         applicationId "de.pskiwi.avrremote"
-        minSdkVersion 8
-        targetSdkVersion 30
-        useLibrary 'org.apache.http.legacy'
+        minSdk 24
+        targetSdk 36
     }
 
-    lintOptions {
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    lint {
         abortOnError false
     }
 
