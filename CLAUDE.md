@@ -7,6 +7,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Android remote control for Denon and Marantz AV receivers (`de.pskiwi.avrremote`, GPL v3).
 Talks to receivers on the local network — there is no backend and no account.
 
+**[TODO.md](TODO.md) is the backlog** — known-broken behaviour, the next platform deadline, and the
+housekeeping items, each with file and line. Read it before proposing work of your own; what looks
+like an oversight is usually already listed there with the reason it was left alone. When you finish
+one of the items, tick its checkbox in the same commit.
+
 ## Build and run
 
 The build needs **JDK 17** and **Android SDK Platform 36**:
@@ -39,8 +44,11 @@ Release builds are signed only when `~/keystore.properties` exists or the `KEY_A
    commands terminated with `\r`, and parses incoming lines into `InData`.
 2. **HTTP** — `http/AVRHTTPClient` scrapes the receiver's own web UI (`*.asp`, XML endpoints) for
    things the telnet protocol does not expose: input/zone names, quick-select presets, NET audio
-   search. `http/Series08*` parse the 2008-series variant. This is the only Apache-HTTP code left
-   (`useLibrary 'org.apache.http.legacy'`).
+   search. `http/Series08*` parse the 2008-series variant. Apache HTTP
+   (`useLibrary 'org.apache.http.legacy'`) survives in exactly three files: `http/AVRHTTPClient`,
+   `http/Series08Reader` and — easy to miss — `core/display/NetDisplay`. Receivers speak plain HTTP, so
+   `android:usesCleartextTraffic="true"` in the manifest is load-bearing — removing it kills the
+   whole scraping path.
 
 ### State flow
 
@@ -57,23 +65,28 @@ ResilentConnector (daemon thread, reconnect loop)  ->  Connector (socket)
 `getModelConfigurator()`, `getDisplayManager()`, `getRenameService()`, `getMacroManager()` and more.
 Activities reach everything through `(AVRApplication) getApplication()`.
 
-`EnableManager` drives view enablement from a small set of `StatusFlag`s (`WLAN`, `Reachable`,
-`Connected`, `Power`, `Zone1`–`Zone4`). This is why most buttons are greyed out until a receiver is
-actually connected — worth knowing when testing without hardware.
+`EnableManager` drives view enablement from a small set of `StatusFlag`s (`Logging`, `WLAN`,
+`Reachable`, `Connected`, `Power`, `Zone1`–`Zone4`). This is why most buttons are greyed out until a
+receiver is actually connected — worth knowing when testing without hardware.
 
 `IStateFilter` decides which screen currently receives state updates, so background activities do not
 fight over the display listener.
 
-`core/display/` parses the receiver's on-screen display into `DisplayLine`s. `NetDisplay`,
-`TunerDisplay` and `BDDisplay` are three separate, large parsers for different input types.
+`core/display/` parses the receiver's on-screen display into `DisplayLine`s. `NetDisplay` (1182
+lines), `TunerDisplay` (1059) and `BDDisplay` (393) are three separate parsers for different input
+types.
 
 Up to 4 zones and up to 3 receivers are supported; the receiver index threads through
 `AVRSettings.getAVRModel(ctx, receiverNr)` and the `receiverSuffix()` preference-key convention.
 
 ### Receiver models — reflection registry
 
-`models/` holds 67 classes, one per receiver family, all extending `AbstractModel` and overriding
-capability predicates (`hasZones()`, `hasQuick()`, `getSupportedLevels()`, `supportsDAB()`, …).
+`models/` holds **60 receiver classes**, one per receiver family, each overriding capability
+predicates (`hasZones()`, `hasQuick()`, `getSupportedLevels()`, `supportsDAB()`, …). The directory
+has 67 `.java` files — the other seven are infrastructure: `AbstractModel`, `AbstractMarantzAV`,
+`IAVRModel`, `ModelArea`, `ModelConfigurator` and the two `DynamicEQ*` enums. All 60 reach
+`AbstractModel`, but only 33 extend it directly; the rest go through `AbstractMarantzAV` or another
+model class (`AVR990 extends AVR3310`, `AVCA1HDA extends AVR5308`, …).
 
 `ModelConfigurator.update()` resolves the model **by reflection** from the user's preference string:
 
@@ -81,11 +94,15 @@ capability predicates (`hasZones()`, `hasQuick()`, `getSupportedLevels()`, `supp
 "AVR-3310"  --strip "-"--> "AVR3310"  -->  Class.forName("de.pskiwi.avrremote.models.AVR3310")
 ```
 
-A trailing `(experimental)` is stripped too, and any failure silently falls back to `AVRGeneric`.
+A trailing `(experimental)` is stripped too, and any failure logs via `Logger.error` and falls back
+to `AVRGeneric` — silent to the user, but visible in the log.
 
 Consequences:
 - Adding a receiver needs **two** changes: a class in `models/` *and* an entry in
   `@array/modelNames` in `res/values/lists.xml`. The names must correspond after dash-stripping.
+  Both sides currently hold exactly 60 entries and resolve 1:1 — if they drift apart, the orphaned
+  name falls back to `AVRGeneric` and the user just silently misses features. (Note `lists.xml` holds
+  130 `<item>`s across 14 arrays; only the 60 in `modelNames` are receivers.)
 - The model classes have no static references. Never enable R8/ProGuard shrinking without a
   keep rule for `de.pskiwi.avrremote.models.**`.
 
@@ -98,6 +115,11 @@ Consequences:
   `PreferenceActivity`, `TabHost`/`TabWidget` layouts, and pre-Holo platform themes
   (`Theme.NoTitleBar`, plus `Theme.Light` and `Theme.Dialog` used directly from the manifest).
   They still compile; match the surrounding style rather than modernising piecemeal.
+- **JDK 17 builds the project, but the source level is Java 11** (`sourceCompatibility`/
+  `targetCompatibility VERSION_11`). No records (16), no switch expressions (14), no text blocks (15)
+  — Java 11 syntax only.
+- `minSdk 24`. Anything newer needs a `Build.VERSION.SDK_INT` guard. Lint reports this as `NewApi`,
+  but `abortOnError false` means the build still succeeds — it will only fail on the device.
 - Indentation is tabs. Comments are a mix of German and English.
 - `android.nonFinalResIds=false` in `gradle.properties` is load-bearing: it keeps `R` fields final so
   the `switch`/`case R.id.*` in `menu/OptionsMenu.java` compiles. Do not remove it without rewriting
@@ -105,7 +127,7 @@ Consequences:
 
 ### When adding an Activity
 
-Two things are easy to forget and both are required at `targetSdk 36`:
+Three things are easy to forget and all are required at `targetSdk 36`:
 
 1. `android:exported` in the manifest. For a component **with** an intent filter, omitting it is a
    build error; without a filter it is optional but set explicitly here for consistency.
@@ -118,7 +140,8 @@ Two things are easy to forget and both are required at `targetSdk 36`:
 
 ## Known-broken, pre-existing
 
-Do not treat these as regressions; they predate the SDK 36 upgrade:
+Do not treat these as regressions; they predate the SDK 36 upgrade. Fixes are tracked in
+[TODO.md](TODO.md) → *Broken today*:
 
 - `log/SDLogger` writes to `Environment.getExternalStorageDirectory()` — fails under scoped storage
   since Android 10. `WRITE_EXTERNAL_STORAGE` in the manifest has been a no-op since Android 11.
@@ -132,4 +155,5 @@ Do not treat these as regressions; they predate the SDK 36 upgrade:
 Local Network Protection becomes mandatory for apps targeting **Android 17 (SDK 37)**. That directly
 hits `scan/AVRScanner` (subnet sweep) and the raw receiver sockets — i.e. the core of the app. At
 `targetSdk 36` it does not apply yet, but plan for a runtime local-network permission before raising
-the target further.
+the target further. See [TODO.md](TODO.md) → *Next platform deadline: targetSdk 37* for the deprecated
+`WifiManager` calls to replace in the same pass.
