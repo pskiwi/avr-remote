@@ -40,7 +40,9 @@ Release builds are signed only when `~/keystore.properties` exists or the `KEY_A
 2. **HTTP** — `http/AVRHTTPClient` scrapes the receiver's own web UI (`*.asp`, XML endpoints) for
    things the telnet protocol does not expose: input/zone names, quick-select presets, NET audio
    search. `http/Series08*` parse the 2008-series variant. This is the only Apache-HTTP code left
-   (`useLibrary 'org.apache.http.legacy'`).
+   (`useLibrary 'org.apache.http.legacy'`). Receivers speak plain HTTP, so
+   `android:usesCleartextTraffic="true"` in the manifest is load-bearing — removing it kills the
+   whole scraping path.
 
 ### State flow
 
@@ -81,7 +83,8 @@ capability predicates (`hasZones()`, `hasQuick()`, `getSupportedLevels()`, `supp
 "AVR-3310"  --strip "-"--> "AVR3310"  -->  Class.forName("de.pskiwi.avrremote.models.AVR3310")
 ```
 
-A trailing `(experimental)` is stripped too, and any failure silently falls back to `AVRGeneric`.
+A trailing `(experimental)` is stripped too, and any failure logs via `Logger.error` and falls back
+to `AVRGeneric` — silent to the user, but visible in the log.
 
 Consequences:
 - Adding a receiver needs **two** changes: a class in `models/` *and* an entry in
@@ -98,6 +101,11 @@ Consequences:
   `PreferenceActivity`, `TabHost`/`TabWidget` layouts, and pre-Holo platform themes
   (`Theme.NoTitleBar`, plus `Theme.Light` and `Theme.Dialog` used directly from the manifest).
   They still compile; match the surrounding style rather than modernising piecemeal.
+- **JDK 17 builds the project, but the source level is Java 11** (`sourceCompatibility`/
+  `targetCompatibility VERSION_11`). No records (16), no switch expressions (14), no text blocks (15)
+  — Java 11 syntax only.
+- `minSdk 24`. Anything newer needs a `Build.VERSION.SDK_INT` guard. Lint reports this as `NewApi`,
+  but `abortOnError false` means the build still succeeds — it will only fail on the device.
 - Indentation is tabs. Comments are a mix of German and English.
 - `android.nonFinalResIds=false` in `gradle.properties` is load-bearing: it keeps `R` fields final so
   the `switch`/`case R.id.*` in `menu/OptionsMenu.java` compiles. Do not remove it without rewriting
@@ -105,7 +113,7 @@ Consequences:
 
 ### When adding an Activity
 
-Two things are easy to forget and both are required at `targetSdk 36`:
+Three things are easy to forget and all are required at `targetSdk 36`:
 
 1. `android:exported` in the manifest. For a component **with** an intent filter, omitting it is a
    build error; without a filter it is optional but set explicitly here for consistency.
