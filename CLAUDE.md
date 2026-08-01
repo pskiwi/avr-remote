@@ -28,14 +28,21 @@ $ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/app-debu
 `local.properties` is deliberately untracked — the SDK path comes from `ANDROID_HOME`.
 
 **There is almost no test coverage.** `src/test` holds two JVM test classes —
-`http/HTTPSupportTest` (6 cases) and `http/AVRXMLInfoParserTest` (1 case), JUnit 4 being the only
+`http/HTTPSupportTest` (7 cases) and `http/AVRXMLInfoParserTest` (1 case), JUnit 4 being the only
 dependency in the project — and there is no `src/androidTest` at all. `./gradlew test` runs those
-seven cases and nothing else, so do not report a change as verified because the build passed; verify
-on a device or emulator instead. Note that `http/AVRXMLInfoParser` cannot be exercised from a JVM
-test at all: it reads only SAX `localName`, which stays empty on a standard non-namespace-aware
-`SAXParserFactory`. Android's Expat-based parser fills it anyway, which is the only reason the
-scraping path works. Lint runs with
-`abortOnError false`, so lint *errors* do not fail the build — check
+eight cases and nothing else (twice, in fact: once per build variant), so do not report a change as
+verified because the build passed; verify on a device or emulator instead. Two limits are worth
+knowing before writing more tests:
+
+- These run on the desktop JVM, not on Android's OkHttp-backed stack. Anything Android-specific —
+  the implicit `Accept-Encoding: gzip`, chunked request bodies — cannot be pinned here, only
+  documented. `HTTPSupportTest` says so at the assertions concerned.
+- `http/AVRXMLInfoParser` cannot be driven from a JVM test without changing the class: it reads only
+  SAX `localName`, which stays empty on a standard non-namespace-aware `SAXParserFactory`. Android's
+  Expat-based parser fills it anyway, which is the only reason the scraping path works. Same pattern
+  in `core/RenameService`.
+
+Lint runs with `abortOnError false`, so lint *errors* do not fail the build — check
 `app/build/reports/lint-results-debug.html` explicitly when it matters.
 
 Release builds are signed only when `~/keystore.properties` exists or the `KEY_ALIAS` /

@@ -177,6 +177,12 @@ public final class AVRHTTPClient {
 		final byte[] content = HTTPSupport.get(baseURL
 				+ "goform/formMainZone_MainZoneXml.xml?ZoneName=ZONE"
 				+ (z.getZoneNumber() + 1));
+		// Die Längenprüfung tritt an die Stelle des früheren "entity != null":
+		// AVRXMLInfoParser.parse wirft bei leerem Body. Sie ist nicht exakt
+		// gleichbedeutend - Apache lieferte auch für 200 ohne Inhalt eine
+		// Entity, so dass eine leere Antwort die gesamte XML-Abfrage aller
+		// Zonen per Exception verwarf. Jetzt gilt die Zone als undefiniert und
+		// die bereits gelesenen Zonen bleiben erhalten.
 		AVRXMLInfo info = new AVRXMLInfo();
 		if (content.length > 0) {
 			info = new AVRXMLInfoParser().parse(new ByteArrayInputStream(

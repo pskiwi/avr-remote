@@ -28,8 +28,9 @@ blocks the current build, which is green.
 
 ## Structural
 
-- [ ] **Test coverage is one file.** `http/HTTPSupportTest` (added with the Apache removal) set up
-      `src/test` and the JUnit dependency; everything else is still uncovered. Highest-value next
+- [ ] **Test coverage is two files.** `http/HTTPSupportTest` and `http/AVRXMLInfoParserTest` (added
+      with the Apache removal) set up `src/test` and the JUnit dependency; everything else is still
+      uncovered. Highest-value next
       test, because it covers a failure mode the
       compiler cannot see: `models/ModelConfigurator` resolves the 60 receiver classes **by
       reflection** from a preference string (`"AVR-3310"` → `AVR3310`). Rename a class or let an
@@ -43,8 +44,9 @@ blocks the current build, which is green.
       `endElement` read `localName`, which a standard `SAXParserFactory` leaves empty because it is
       not namespace-aware by default — on a JVM the parser silently collects nothing. Android's
       Expat-based SAX fills `localName` regardless, which is the only reason the scraping path works.
-      Falling back to `qName` when `localName` is empty would make the parser portable and testable;
-      the same pattern is in `Series08*Parser`'s siblings worth checking.
+      Falling back to `qName` when `localName` is empty would make the parser portable and testable.
+      `core/RenameService.java:107` has the same pattern and would need the same fix; the
+      `Series08*Parser` classes are unaffected, they read with `BufferedReader` and regexes.
 - [ ] **`NetDisplay.doHTTPMove()` and `doHTTPSeries08Move()` are unreachable.**
       `AbstractModel:135` returns `DisplayMoveMode.Classic` and not one of the 60 model classes
       overrides `getDisplayMoveMode()`, so the `switch` in `ScreenMover` always takes the `default`

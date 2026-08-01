@@ -46,6 +46,10 @@ public final class HTTPSupport {
 	}
 
 	private static byte[] execute(String url, byte[] body) throws IOException {
+		final String method = body != null ? "POST" : "GET";
+		// vor dem Request loggen: bei Timeout oder Exception taucht die URL
+		// sonst nirgends im Log auf, das FeedbackReporter verschickt
+		Logger.debug(method + " [" + url + "] ...");
 		final HttpURLConnection connection = (HttpURLConnection) new URL(url)
 				.openConnection();
 		try {
@@ -59,7 +63,10 @@ public final class HTTPSupport {
 				connection.setDoOutput(true);
 				connection.setRequestProperty("Content-Type", FORM_CONTENT_TYPE);
 				// ohne feste Länge wird chunked gesendet, das versteht der
-				// Receiver nicht
+				// Receiver nicht. Nebeneffekt: mit gestreamtem Body kann
+				// getResponseCode() den Request nicht wiederholen und wirft bei
+				// 3xx/401 eine HttpRetryException. Apache lieferte den Status
+				// einfach zurück. Bisher an keinem Receiver beobachtet.
 				connection.setFixedLengthStreamingMode(body.length);
 				final OutputStream out = connection.getOutputStream();
 				try {
@@ -71,8 +78,8 @@ public final class HTTPSupport {
 			final int code = connection.getResponseCode();
 			final byte[] content = readAll(code >= HttpURLConnection.HTTP_BAD_REQUEST ? connection
 					.getErrorStream() : connection.getInputStream());
-			Logger.debug((body != null ? "POST" : "GET") + " [" + url
-					+ "] code:" + code + " bytes:" + content.length);
+			Logger.debug(method + " [" + url + "] code:" + code + " bytes:"
+					+ content.length);
 			return content;
 		} finally {
 			connection.disconnect();

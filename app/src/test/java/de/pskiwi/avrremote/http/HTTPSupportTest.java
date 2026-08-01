@@ -35,14 +35,17 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * Prüft die Eigenschaften, in denen sich HttpURLConnection vom früher benutzten
- * Apache-HttpClient unterscheidet und in denen die Receiver-Webserver (GoAhead,
- * HTTP/1.0) empfindlich sind: Content-Length statt chunked, kein gzip,
- * Content-Type und Kodierung des Formular-Bodys.
+ * Prüft das Drahtformat, das die Receiver-Webserver (GoAhead, HTTP/1.0) sehen:
+ * Request-Zeile, Content-Type und Kodierung des Formular-Bodys.
  *
  * Der Testserver ist ein roher ServerSocket, damit die Zusicherungen auf den
  * tatsächlich gesendeten Bytes sitzen und nicht auf einer geparsten Sicht
  * darauf. Es wird kein Receiver benötigt.
+ *
+ * Grenze der Aussagekraft: das hier ist die Desktop-JVM, nicht Androids
+ * OkHttp-basierte HttpURLConnection. Zwei der abgesicherten Entscheidungen
+ * lassen sich deshalb hier nicht nachweisen, nur dokumentieren - siehe die
+ * Kommentare an den betroffenen Zusicherungen.
  */
 public final class HTTPSupportTest {
 
@@ -61,8 +64,11 @@ public final class HTTPSupportTest {
 
 	@After
 	public void stopServer() throws Exception {
-		serverThread.join(5000);
+		// erst schließen, dann warten: scheitert ein Test vor dem Request,
+		// hängt der Server-Thread sonst bis zum Timeout in accept()
+		stopping = true;
 		server.close();
+		serverThread.join(5000);
 		if (failure != null) {
 			throw failure;
 		}
@@ -90,15 +96,16 @@ public final class HTTPSupportTest {
 	}
 
 	/**
-	 * HttpURLConnection fragt von sich aus gzip an, der Apache-Client tat das
-	 * nie.
+	 * Androids HttpURLConnection hängt von sich aus "Accept-Encoding: gzip" an,
+	 * der Apache-Client tat das nie. Nachweisbar ist hier nur, dass der Header
+	 * gesetzt wird - der Default, gegen den er sich richtet, existiert auf der
+	 * Desktop-JVM gar nicht.
 	 */
 	@Test
 	public void getDoesNotAskForGzip() throws Exception {
 		HTTPSupport.get(baseURL + "/NETAUDIO/SendPat7.asp");
 
 		assertTrue(request, hasHeader("Accept-Encoding: identity"));
-		assertFalse(request, request.toLowerCase().contains("gzip"));
 	}
 
 	@Test
@@ -113,7 +120,11 @@ public final class HTTPSupportTest {
 				hasHeader("Content-Type: application/x-www-form-urlencoded"));
 		final String expected = "cmd0=PutSystem_OnStandby%2FSTANDBY";
 		assertEquals(expected, requestBody());
-		// Der Receiver kann kein chunked - die Länge muss vorab feststehen.
+		// Der Receiver kann kein chunked. Achtung: diese beiden Zusicherungen
+		// halten setFixedLengthStreamingMode NICHT fest - die Desktop-JVM
+		// puffert kleine Bodies und setzt Content-Length auch ohne den Aufruf.
+		// Sie dokumentieren die Anforderung; nachgewiesen wurde sie auf dem
+		// Gerät. Ein echter Schutz bräuchte einen Instrumentation-Test.
 		assertTrue(request,
 				hasHeader("Content-Length: " + expected.length()));
 		assertFalse(request, request.toLowerCase().contains(
@@ -148,6 +159,27 @@ public final class HTTPSupportTest {
 		assertEquals("not found", new String(content, "UTF-8"));
 	}
 
+	/**
+	 * So antwortet der echte Receiver: HTTP/1.0, kein Content-Length, das Ende
+	 * des Bodys ist der Verbindungsschluss. Nachgemessen an einem AVR-3310
+	 * (GoAhead-Webs). Das ist die Antwortform, an der ein Austausch des
+	 * HTTP-Stacks am ehesten scheitert.
+	 */
+	@Test
+	public void getReadsBodyDelimitedByConnectionClose() throws Exception {
+		sendContentLength = false;
+		responseBody = "<?xml version=\"1.0\"?><item><Power>ON</Power></item>";
+
+		final byte[] content = HTTPSupport.get(baseURL
+				+ "/goform/formMainZone_MainZoneXml.xml?ZoneName=ZONE1");
+
+		// ohne diese Zusicherung wäre der Test auch dann grün, wenn der
+		// Testserver doch ein Content-Length geschickt hätte
+		assertFalse(responseHead, responseHead.toLowerCase().contains(
+				"content-length"));
+		assertEquals(responseBody, new String(content, "UTF-8"));
+	}
+
 	private String requestLine() {
 		return request.substring(0, request.indexOf("\r\n"));
 	}
@@ -162,7 +194,8 @@ public final class HTTPSupportTest {
 
 	/**
 	 * Antwortet wie der Receiver mit HTTP/1.0 und schließt danach die
-	 * Verbindung.
+	 * Verbindung. Bedient genau einen Request - ein Test, der zwei absetzt,
+	 * läuft in den Lese-Timeout statt klar zu scheitern.
 	 */
 	private void serveOneRequest() {
 		try {
@@ -170,18 +203,28 @@ public final class HTTPSupportTest {
 			try {
 				request = readRequest(socket.getInputStream());
 				final byte[] body = responseBody.getBytes("UTF-8");
+				final StringBuilder head = new StringBuilder("HTTP/1.0 ");
+				head.append(responseStatus).append("\r\n");
+				head.append("Content-Type: text/xml; charset=utf-8\r\n");
+				if (sendContentLength) {
+					head.append("Content-Length: ").append(body.length)
+							.append("\r\n");
+				}
+				head.append("\r\n");
+				responseHead = head.toString();
 				final OutputStream out = socket.getOutputStream();
-				out.write(("HTTP/1.0 " + responseStatus + "\r\n"
-						+ "Content-Type: text/xml; charset=utf-8\r\n"
-						+ "Content-Length: " + body.length + "\r\n\r\n")
-						.getBytes("US-ASCII"));
+				out.write(responseHead.getBytes("US-ASCII"));
 				out.write(body);
 				out.flush();
 			} finally {
 				socket.close();
 			}
 		} catch (IOException x) {
-			failure = x;
+			// beim Abbau ist die Exception aus accept() erwartet und darf den
+			// eigentlichen Testfehler nicht überdecken
+			if (!stopping) {
+				failure = x;
+			}
 		}
 	}
 
@@ -223,8 +266,13 @@ public final class HTTPSupportTest {
 	private String baseURL;
 
 	private volatile String request;
+	private volatile String responseHead;
 	private volatile IOException failure;
+	private volatile boolean stopping;
 
-	private String responseStatus = "200 OK";
-	private String responseBody = "ok";
+	// vom Server-Thread gelesen, von der Testmethode gesetzt - der Thread läuft
+	// schon, wenn zugewiesen wird, also volatile
+	private volatile String responseStatus = "200 OK";
+	private volatile String responseBody = "ok";
+	private volatile boolean sendContentLength = true;
 }
