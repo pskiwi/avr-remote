@@ -21,7 +21,7 @@ import de.pskiwi.avrremote.EnableManager.StatusFlag;
 import de.pskiwi.avrremote.core.Selection;
 import de.pskiwi.avrremote.core.SelectionBuilder;
 
-/** MARANTZ Media Player */
+/** DENON Media Player */
 public class DNP720AE extends AbstractModel {
 
 	public Selection getInputSelection(ModelArea area) {
