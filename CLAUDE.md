@@ -7,6 +7,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Android remote control for Denon and Marantz AV receivers (`de.pskiwi.avrremote`, GPL v3).
 Talks to receivers on the local network — there is no backend and no account.
 
+**[TODO.md](TODO.md) is the backlog** — known-broken behaviour, the next platform deadline, and the
+housekeeping items, each with file and line. Read it before proposing work of your own; what looks
+like an oversight is usually already listed there with the reason it was left alone. When you finish
+one of the items, tick its checkbox in the same commit.
+
 ## Build and run
 
 The build needs **JDK 17** and **Android SDK Platform 36**:
@@ -126,7 +131,8 @@ Three things are easy to forget and all are required at `targetSdk 36`:
 
 ## Known-broken, pre-existing
 
-Do not treat these as regressions; they predate the SDK 36 upgrade:
+Do not treat these as regressions; they predate the SDK 36 upgrade. Fixes are tracked in
+[TODO.md](TODO.md) → *Broken today*:
 
 - `log/SDLogger` writes to `Environment.getExternalStorageDirectory()` — fails under scoped storage
   since Android 10. `WRITE_EXTERNAL_STORAGE` in the manifest has been a no-op since Android 11.
@@ -140,4 +146,5 @@ Do not treat these as regressions; they predate the SDK 36 upgrade:
 Local Network Protection becomes mandatory for apps targeting **Android 17 (SDK 37)**. That directly
 hits `scan/AVRScanner` (subnet sweep) and the raw receiver sockets — i.e. the core of the app. At
 `targetSdk 36` it does not apply yet, but plan for a runtime local-network permission before raising
-the target further.
+the target further. See [TODO.md](TODO.md) → *Next platform deadline: targetSdk 37* for the deprecated
+`WifiManager` calls to replace in the same pass.
