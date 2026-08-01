@@ -22,6 +22,7 @@ import android.app.Activity;
 import android.app.TabActivity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.Display;
@@ -103,6 +104,11 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 
 		Logger.info("start AVR-Remote " + FeedbackReporter.getVersionInfo(this));
 		setContentView(R.layout.tabhost);
+		EdgeToEdge.apply(this);
+		if (savedInstanceState == null) {
+			// nicht bei jeder Drehung erneut anfragen
+			AVRSettings.requestNotificationPermission(this);
+		}
 
 		Logger.setLocation("AVRRemote-onCreate-2");
 
@@ -206,6 +212,18 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 		}
 		Logger.info("init Timer.");
 		Logger.info("AVRRemote:init ok.");
+	}
+
+	@Override
+	public void onRequestPermissionsResult(int requestCode, String[] permissions,
+			int[] grantResults) {
+		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+		if (requestCode == AVRSettings.REQUEST_POST_NOTIFICATIONS
+				&& grantResults.length > 0
+				&& grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+			// Benachrichtigung nachziehen, die beim Start noch verworfen wurde
+			getApp().getStatusbarManager().update();
+		}
 	}
 
 	private ZoneState getCurrentFrontState() {

@@ -27,9 +27,11 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
+import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceClickListener;
@@ -46,6 +48,7 @@ public final class AVRSettings extends PreferenceActivity implements
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		addPreferencesFromResource(R.xml.settings);
+		EdgeToEdge.apply(this);
 
 		getPreferenceScreen().getSharedPreferences()
 				.registerOnSharedPreferenceChangeListener(this);
@@ -96,6 +99,31 @@ public final class AVRSettings extends PreferenceActivity implements
 		summaryUpdater.updateSummaryForKey(key);
 		checkIPSetting();
 		getApp().getAvrTheme().update();
+		if (NOTIFICATION_KEY.equals(key)) {
+			// Der Nutzer hat die Benachrichtigung gerade eingeschaltet - die
+			// Permission genau hier anfragen. Beim Verlassen der Settings postet
+			// reconfigure() die Benachrichtigung, das braucht sie bis dahin.
+			requestNotificationPermission(this);
+		}
+	}
+
+	/**
+	 * Fragt POST_NOTIFICATIONS an, wenn die Benachrichtigung aktiviert ist und
+	 * die Permission noch fehlt. Ohne sie verwirft Android ab targetSdk 33 die
+	 * Benachrichtigung kommentarlos.
+	 */
+	public static void requestNotificationPermission(Activity activity) {
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+			return;
+		}
+		if (!isShowNotification(activity)) {
+			return;
+		}
+		if (activity.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+			activity.requestPermissions(
+					new String[] { android.Manifest.permission.POST_NOTIFICATIONS },
+					REQUEST_POST_NOTIFICATIONS);
+		}
 	}
 
 	@Override
@@ -282,7 +310,7 @@ public final class AVRSettings extends PreferenceActivity implements
 
 	public static boolean isShowNotification(Context ctx) {
 		return PreferenceManager.getDefaultSharedPreferences(ctx).getBoolean(
-				"AVRNotification", false);
+				NOTIFICATION_KEY, false);
 	}
 
 	public static int getAVRIndex(Context ctx) {
@@ -415,7 +443,9 @@ public final class AVRSettings extends PreferenceActivity implements
 	private static final String LEVEL_PRESET = "LevelPreset";
 	private final static String AVRIP = "avrip";
 	private final static String AVRMACRO = "avrmacro_";
+	private final static String NOTIFICATION_KEY = "AVRNotification";
 	protected static final int SELECT_IMAGE = 6789;
+	public static final int REQUEST_POST_NOTIFICATIONS = 1;
 	
 	public static final int MAX_RECEIVERS = 3;
 

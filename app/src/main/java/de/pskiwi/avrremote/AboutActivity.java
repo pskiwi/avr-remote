@@ -33,6 +33,7 @@ public final class AboutActivity extends TabActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.infotabhost);
+		EdgeToEdge.apply(this);
 
 		initTab(R.id.panel_about, R.id.info_about, "about",
 				getString(R.string.About));

@@ -44,6 +44,7 @@ public final class RenameActivity extends ListActivity {
 		super.onCreate(savedInstanceState);
 		renameService = getApp().getRenameService();
 		setContentView(R.layout.rename);
+		EdgeToEdge.apply(this);
 		updateModel();
 		Spinner spinner = (Spinner) findViewById(R.id.categorySpinner);
 		spinner.setOnItemSelectedListener(new OnItemSelectedListener() {

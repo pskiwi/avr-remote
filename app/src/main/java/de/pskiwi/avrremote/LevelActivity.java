@@ -173,6 +173,7 @@ public final class LevelActivity extends Activity {
 		zone = Zone.Main;
 
 		setContentView(R.layout.level);
+		EdgeToEdge.apply(this);
 
 		absoluteMode = AVRSettings.getVolumeDisplay(this) == VolumeDisplay.Absolute;
 		checkBoxLink = (CheckBox) findViewById(R.id.checkLinkChannels);
