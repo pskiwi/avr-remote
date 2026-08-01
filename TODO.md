@@ -28,7 +28,9 @@ blocks the current build, which is green.
 
 ## Structural
 
-- [ ] **There are no tests at all.** Highest-value first test, because it covers a failure mode the
+- [ ] **Test coverage is one file.** `http/HTTPSupportTest` (added with the Apache removal) set up
+      `src/test` and the JUnit dependency; everything else is still uncovered. Highest-value next
+      test, because it covers a failure mode the
       compiler cannot see: `models/ModelConfigurator` resolves the 60 receiver classes **by
       reflection** from a preference string (`"AVR-3310"` → `AVR3310`). Rename a class or let an
       entry in `res/values/lists.xml` drift and there is no build error — the app silently falls
@@ -37,6 +39,17 @@ blocks the current build, which is green.
       exactly that. Both sides hold 60 entries today, so the test starts green.
 - [ ] After that, `models/` (pure capability logic) and `core/ZoneState.java` (1237 lines) are the
       cheapest places to add coverage.
+- [ ] **`http/AVRXMLInfoParser` only works on Android and cannot be unit-tested.** `startElement` and
+      `endElement` read `localName`, which a standard `SAXParserFactory` leaves empty because it is
+      not namespace-aware by default — on a JVM the parser silently collects nothing. Android's
+      Expat-based SAX fills `localName` regardless, which is the only reason the scraping path works.
+      Falling back to `qName` when `localName` is empty would make the parser portable and testable;
+      the same pattern is in `Series08*Parser`'s siblings worth checking.
+- [ ] **`NetDisplay.doHTTPMove()` and `doHTTPSeries08Move()` are unreachable.**
+      `AbstractModel:135` returns `DisplayMoveMode.Classic` and not one of the 60 model classes
+      overrides `getDisplayMoveMode()`, so the `switch` in `ScreenMover` always takes the `default`
+      branch. Both methods (and `DisplayMoveMode`'s other two constants) are dead. Left in place
+      during the Apache removal — decide whether the feature was meant to be wired up or should go.
 - [ ] **The receiver connection lives on a daemon thread owned by `AVRApplication`, not a Service.**
       A design decision from 2010. Under modern background restrictions the process can be reclaimed
       and the connection dies with it. This is the most likely cause of "the app just stops
@@ -53,12 +66,10 @@ blocks the current build, which is green.
 
 ## Time bomb, no fuse length known
 
-- [ ] **Apache HTTP** in `http/AVRHTTPClient`, `http/Series08Reader` and `core/display/NetDisplay`
-      (26 `org.apache.http` imports across the three). Works today: `org.apache.http.legacy.jar` still ships with the android-36
-      platform, and since only cleartext HTTP on the LAN is spoken, the ancient TLS stack does not
-      matter. The risk is purely that Google drops the optional library from some future platform,
-      turning this into unplanned work. It is only GET/POST with form bodies — `HttpURLConnection`
-      would do.
+- [x] **Apache HTTP** in `http/AVRHTTPClient`, `http/Series08Reader` and `core/display/NetDisplay`
+      (26 `org.apache.http` imports across the three). Replaced by `http/HTTPSupport` on
+      `HttpURLConnection`; `useLibrary` and the manifest `<uses-library>` are gone, so the app no
+      longer depends on Google keeping the optional platform library around.
 
 ## Housekeeping
 

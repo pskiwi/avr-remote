@@ -16,22 +16,10 @@
  */
 package de.pskiwi.avrremote.http;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpConnectionParams;
-import org.apache.http.params.HttpParams;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import de.pskiwi.avrremote.core.Zone;
 import de.pskiwi.avrremote.log.Logger;
@@ -41,29 +29,6 @@ public final class AVRHTTPClient {
 
 	public AVRHTTPClient(ModelConfigurator cfg) {
 		this.baseURL = cfg.getConnectionConfig().getBaseURL();
-
-		configureHTTPClient(httpclient);
-	}
-
-	// Workaround für OOM
-	// http://stackoverflow.com/questions/5358014/android-httpclient-oom-on-4g-lte-htc-thunderbolt
-	public static void configureHTTPClient(DefaultHttpClient httpclient) {
-		// Set the timeout in milliseconds until a connection is established.
-		int timeoutConnection = 5000;
-
-		// Set the default socket timeout (SO_TIMEOUT)
-		// in milliseconds which is the timeout for waiting for data.
-		int timeoutSocket = 4000;
-
-		// set timeout parameters for HttpClient
-		HttpParams httpParameters = new BasicHttpParams();
-		HttpConnectionParams.setConnectionTimeout(httpParameters,
-				timeoutConnection);
-		HttpConnectionParams.setSoTimeout(httpParameters, timeoutSocket);
-		HttpConnectionParams.setSocketBufferSize(httpParameters, 8192);// setting
-																		// setSocketBufferSize
-
-		httpclient.setParams(httpParameters);
 	}
 
 	public void doBackgroundReset(final Runnable runnable) {
@@ -96,16 +61,10 @@ public final class AVRHTTPClient {
 	}
 
 	private void postValue(String value) throws Exception {
-		List<NameValuePair> formparams = new ArrayList<NameValuePair>();
-		formparams.add(new BasicNameValuePair("cmd0", value));
-		// formparams.add(new BasicNameValuePair("param2", "value2"));
-		UrlEncodedFormEntity form = new UrlEncodedFormEntity(formparams,
-				"UTF-8");
-		HttpPost httppost = new HttpPost(baseURL + "MainZone/index.put.asp");
-		httppost.setEntity(form);
-
-		HttpResponse response = httpclient.execute(httppost);
-		System.out.println("Code:" + response.getStatusLine().getStatusCode());
+		Map<String, String> formparams = new LinkedHashMap<String, String>();
+		formparams.put("cmd0", value);
+		// formparams.put("param2", "value2");
+		HTTPSupport.postForm(baseURL + "MainZone/index.put.asp", formparams);
 	}
 
 	public enum SearchInputType {
@@ -180,23 +139,13 @@ public final class AVRHTTPClient {
 			String toSearch) throws Exception {
 		Logger.info("doSearch input:" + inputType + " type:" + type + " text["
 				+ toSearch + "]");
-		List<NameValuePair> formparams = new ArrayList<NameValuePair>();
-		formparams.add(new BasicNameValuePair("cmd0", "PutNetFuncSearch"
-				+ inputType.getKeyword() + "/" + toSearch));
+		Map<String, String> formparams = new LinkedHashMap<String, String>();
+		formparams.put("cmd0", "PutNetFuncSearch" + inputType.getKeyword() + "/"
+				+ toSearch);
 		if (type != SearchType.None) {
-			formparams.add(new BasicNameValuePair("Key", type.getToken()));
+			formparams.put("Key", type.getToken());
 		}
-		UrlEncodedFormEntity form = new UrlEncodedFormEntity(formparams,
-				"UTF-8");
-		HttpPost httppost = new HttpPost(baseURL + "NetAudio/index.put.asp");
-		httppost.setEntity(form);
-
-		HttpResponse response = httpclient.execute(httppost);
-		final HttpEntity entity = response.getEntity();
-		if (entity != null) {
-			entity.consumeContent();
-		}
-		System.out.println("Code:" + response.getStatusLine().getStatusCode());
+		HTTPSupport.postForm(baseURL + "NetAudio/index.put.asp", formparams);
 	}
 
 	// Zonen-Namen stehen in den verschiedenen Zonen-Infos (Merge)
@@ -204,7 +153,7 @@ public final class AVRHTTPClient {
 			throws Exception {
 		Logger.info("read XML state");
 		if (configurator.getModel().useSeries08Parser()) {
-			return new Series08Reader(httpclient, baseURL).readSeries08Info();
+			return new Series08Reader(baseURL).readSeries08Info();
 		} else {
 			final AVRXMLInfo ret = new AVRXMLInfo();
 			for (Zone z : Zone.values()) {
@@ -225,14 +174,13 @@ public final class AVRHTTPClient {
 
 	// Status für Zone lesen
 	private AVRXMLInfo readState(Zone z) throws Exception {
-		final HttpGet httpGet = new HttpGet(baseURL
+		final byte[] content = HTTPSupport.get(baseURL
 				+ "goform/formMainZone_MainZoneXml.xml?ZoneName=ZONE"
 				+ (z.getZoneNumber() + 1));
-		final HttpResponse response = httpclient.execute(httpGet);
-		final HttpEntity entity = response.getEntity();
 		AVRXMLInfo info = new AVRXMLInfo();
-		if (entity != null) {
-			info = new AVRXMLInfoParser().parse(entity.getContent());
+		if (content.length > 0) {
+			info = new AVRXMLInfoParser().parse(new ByteArrayInputStream(
+					content));
 		}
 
 		readQuickInfo(z, info);
@@ -244,16 +192,13 @@ public final class AVRHTTPClient {
 		}
 	}
 
-	private void readQuickInfo(Zone z, AVRXMLInfo info) throws IOException,
-			ClientProtocolException {
-		final HttpGet quickHttpGet = new HttpGet(baseURL
+	private void readQuickInfo(Zone z, AVRXMLInfo info) throws IOException {
+		final byte[] content = HTTPSupport.get(baseURL
 				+ "goform/formMainZone_QuickSelectXml.xml?ZoneName=ZONE"
 				+ (z.getZoneNumber() + 1));
-		final HttpResponse quickResponse = httpclient.execute(quickHttpGet);
-		final HttpEntity quickEntity = quickResponse.getEntity();
-		if (quickEntity != null) {
+		if (content.length > 0) {
 			final AVRXMLInfo quickInfo = new AVRXMLInfoParser()
-					.parse(quickEntity.getContent());
+					.parse(new ByteArrayInputStream(content));
 			if (quickInfo.isDefined()) {
 				info.mergeQuickSelect(z, quickInfo);
 			}
@@ -261,5 +206,4 @@ public final class AVRHTTPClient {
 	}
 
 	private final String baseURL;
-	private final DefaultHttpClient httpclient = new DefaultHttpClient();
 }

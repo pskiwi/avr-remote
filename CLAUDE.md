@@ -27,10 +27,16 @@ $ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/app-debu
 
 `local.properties` is deliberately untracked — the SDK path comes from `ANDROID_HOME`.
 
-**There are no tests.** No `src/test`, no `src/androidTest`, no test dependencies. `./gradlew test`
-succeeds but runs nothing. Do not report a change as verified because the build passed; verify on a
-device or emulator instead. Lint runs with `abortOnError false`, so lint *errors* do not fail the
-build — check `app/build/reports/lint-results-debug.html` explicitly when it matters.
+**There is almost no test coverage.** `src/test` holds two JVM test classes —
+`http/HTTPSupportTest` (6 cases) and `http/AVRXMLInfoParserTest` (1 case), JUnit 4 being the only
+dependency in the project — and there is no `src/androidTest` at all. `./gradlew test` runs those
+seven cases and nothing else, so do not report a change as verified because the build passed; verify
+on a device or emulator instead. Note that `http/AVRXMLInfoParser` cannot be exercised from a JVM
+test at all: it reads only SAX `localName`, which stays empty on a standard non-namespace-aware
+`SAXParserFactory`. Android's Expat-based parser fills it anyway, which is the only reason the
+scraping path works. Lint runs with
+`abortOnError false`, so lint *errors* do not fail the build — check
+`app/build/reports/lint-results-debug.html` explicitly when it matters.
 
 Release builds are signed only when `~/keystore.properties` exists or the `KEY_ALIAS` /
 `KEY_PASSWORD` / `STORE_FILE` / `STORE_PASSWORD` env vars are set; otherwise
@@ -44,10 +50,13 @@ Release builds are signed only when `~/keystore.properties` exists or the `KEY_A
    commands terminated with `\r`, and parses incoming lines into `InData`.
 2. **HTTP** — `http/AVRHTTPClient` scrapes the receiver's own web UI (`*.asp`, XML endpoints) for
    things the telnet protocol does not expose: input/zone names, quick-select presets, NET audio
-   search. `http/Series08*` parse the 2008-series variant. Apache HTTP
-   (`useLibrary 'org.apache.http.legacy'`) survives in exactly three files: `http/AVRHTTPClient`,
-   `http/Series08Reader` and — easy to miss — `core/display/NetDisplay`. Receivers speak plain HTTP, so
-   `android:usesCleartextTraffic="true"` in the manifest is load-bearing — removing it kills the
+   search. `http/Series08*` parse the 2008-series variant. Every request goes through
+   `http/HTTPSupport` (`HttpURLConnection`, GET and form POST, nothing else); its three callers are
+   `http/AVRHTTPClient`, `http/Series08Reader` and — easy to miss — `core/display/NetDisplay`.
+   Two settings there are deliberate and load-bearing against the receivers' 2008-era GoAhead
+   webservers: `Accept-Encoding: identity` (the old Apache client never asked for gzip) and
+   `setFixedLengthStreamingMode` (so the body is never sent chunked). Receivers speak plain HTTP, so
+   `android:usesCleartextTraffic="true"` in the manifest is load-bearing too — removing it kills the
    whole scraping path.
 
 ### State flow

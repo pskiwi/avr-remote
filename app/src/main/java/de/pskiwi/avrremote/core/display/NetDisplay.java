@@ -20,22 +20,14 @@ package de.pskiwi.avrremote.core.display;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.message.BasicNameValuePair;
 
 import android.app.Activity;
 import android.app.SearchManager;
@@ -55,7 +47,7 @@ import de.pskiwi.avrremote.core.Zone;
 import de.pskiwi.avrremote.core.ZoneState;
 import de.pskiwi.avrremote.core.ZoneState.InputSelect;
 import de.pskiwi.avrremote.core.display.DisplayManager.DisplayType;
-import de.pskiwi.avrremote.http.AVRHTTPClient;
+import de.pskiwi.avrremote.http.HTTPSupport;
 import de.pskiwi.avrremote.log.Logger;
 import de.pskiwi.avrremote.models.ModelConfigurator;
 
@@ -174,26 +166,25 @@ public final class NetDisplay implements IAVRState, IDisplay {
 
 	private final static class CommandBuilder {
 		public void add(String cmd, String param) {
-			formparams
-					.add(new BasicNameValuePair("cmd" + nr, cmd + "/" + param));
+			formparams.put("cmd" + nr, cmd + "/" + param);
 			nr++;
 		}
 
-		public List<NameValuePair> getFormParams() {
+		public Map<String, String> getFormParams() {
 			return formparams;
 		}
 
 		@Override
 		public String toString() {
 			final StringBuilder ret = new StringBuilder("HTTPCommand ");
-			for (NameValuePair nvp : formparams) {
-				ret.append(nvp.getName() + "=" + nvp.getValue() + "&");
+			for (Map.Entry<String, String> nvp : formparams.entrySet()) {
+				ret.append(nvp.getKey() + "=" + nvp.getValue() + "&");
 			}
 			return ret.toString();
 		}
 
 		private int nr = 0;
-		private final List<NameValuePair> formparams = new ArrayList<NameValuePair>();
+		private final Map<String, String> formparams = new LinkedHashMap<String, String>();
 	}
 
 	private final class ScreenMover implements IScreenListener {
@@ -242,20 +233,10 @@ public final class NetDisplay implements IAVRState, IDisplay {
 			});
 		}
 
-		private void doGet(final String toget) throws IOException,
-				ClientProtocolException {
+		private void doGet(final String toget) throws IOException {
 			final String baseURL = modelConfigurator.getConnectionConfig()
 					.getBaseURL();
-			final String url = baseURL + toget;
-			Logger.debug("doGet: [" + url + "] ...");
-			final HttpGet getRequest = new HttpGet(url);
-			final HttpResponse response = httpclient.execute(getRequest);
-			final HttpEntity entity = response.getEntity();
-			if (entity != null) {
-				entity.consumeContent();
-			}
-			Logger.debug("doGet [" + url + "] code:"
-					+ response.getStatusLine().getStatusCode());
+			HTTPSupport.get(baseURL + toget);
 		}
 
 		private void doHTTPMove() {
@@ -281,20 +262,9 @@ public final class NetDisplay implements IAVRState, IDisplay {
 							cb.add("osThreadSleep", "50");
 						}
 						cb.add("PutNetAudioCommand", "CurRight");
-						UrlEncodedFormEntity form = new UrlEncodedFormEntity(cb
-								.getFormParams(), "UTF-8");
 						Logger.info("do HTTP POST Move : " + cb.toString());
-						HttpPost httppost = new HttpPost(baseURL
-								+ "NetAudio/index.put.asp");
-						httppost.setEntity(form);
-
-						HttpResponse response = httpclient.execute(httppost);
-						Logger.debug("doHTTPMove Code:"
-								+ response.getStatusLine().getStatusCode());
-						final HttpEntity entity = response.getEntity();
-						if (entity != null) {
-							entity.consumeContent();
-						}
+						HTTPSupport.postForm(baseURL
+								+ "NetAudio/index.put.asp", cb.getFormParams());
 					} catch (Exception x) {
 						Logger.error("HTTP Move failed", x);
 					}
@@ -685,7 +655,6 @@ public final class NetDisplay implements IAVRState, IDisplay {
 	 */
 	public NetDisplay(ISender sender, ModelConfigurator modelConfigurator,
 			DisplayType type) {
-		AVRHTTPClient.configureHTTPClient(httpclient);
 		this.sender = sender;
 		this.modelConfigurator = modelConfigurator;
 		switch (type) {
@@ -1177,7 +1146,6 @@ public final class NetDisplay implements IAVRState, IDisplay {
 
 	private static final int MAX_MOVE_TIME = 20000;
 
-	private final DefaultHttpClient httpclient = new DefaultHttpClient();
 	private final Executor moveExecutor = Executors.newSingleThreadExecutor();
 
 }
