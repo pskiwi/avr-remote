@@ -28,9 +28,9 @@ blocks the current build, which is green.
 
 ## Structural
 
-- [ ] **Test coverage is two files.** `http/HTTPSupportTest` and `http/AVRXMLInfoParserTest` (added
-      with the Apache removal) set up `src/test` and the JUnit dependency; everything else is still
-      uncovered. The highest-value test to add next is one for `models/ModelConfigurator`, because it
+- [ ] **Test coverage is three files.** `http/HTTPSupportTest`, `http/Series08ParserTest` and
+      `http/AVRXMLInfoParserTest` (added with the Apache removal) set up `src/test` and the JUnit
+      dependency; everything else is still uncovered. The highest-value test to add next is one for `models/ModelConfigurator`, because it
       covers a failure mode the compiler cannot see: it resolves the 60 receiver classes **by
       reflection** from a preference string (`"AVR-3310"` → `AVR3310`). Rename a class or let an
       entry in `res/values/lists.xml` drift and there is no build error — the app silently falls

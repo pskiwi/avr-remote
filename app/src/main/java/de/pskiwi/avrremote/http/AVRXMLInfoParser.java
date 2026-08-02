@@ -66,17 +66,36 @@ public final class AVRXMLInfoParser extends DefaultHandler {
 
 	public AVRXMLInfo parse(InputStream in) {
 
+		// Das XML kommt unauthentifiziert per Klartext-HTTP aus dem LAN. Ohne
+		// die folgenden Sperren könnte ein vorgetäuschter Receiver über externe
+		// Entities lokale Dateien auslesen (XXE).
+		//
+		// Welche Sperre greift, hängt von der Plattform ab - auf einem Pixel 8
+		// durchprobiert: Androids SAXParserFactoryImpl unterstützt nur die
+		// beiden external-*-Features und wirft bei den anderen beiden
+		// SAXNotRecognizedException. Deshalb einzeln absichern statt in einem
+		// Block: sonst verhindert die erste nicht unterstützte Sperre alle
+		// folgenden - und das war getestet der Fall.
 		final SAXParserFactory factory = SAXParserFactory.newInstance();
 		try {
-			// Das XML kommt unauthentifiziert per Klartext-HTTP aus dem LAN.
-			// Ohne dies könnte ein vorgetäuschter Receiver über externe
-			// Entities lokale Dateien auslesen (XXE).
-			// Achtung: "disallow-doctype-decl" wäre die naheliegende Sperre,
-			// Androids SAXParserFactoryImpl kennt sie aber nicht und wirft
-			// SAXNotRecognizedException - auf einem Pixel 8 nachgemessen.
-			// Diese beiden Features werden dort unterstützt.
+			// auf Android der eigentliche Schutz
 			factory.setFeature(EXTERNAL_GENERAL_ENTITIES, false);
 			factory.setFeature(EXTERNAL_PARAMETER_ENTITIES, false);
+		} catch (Exception x) {
+			Logger.error("externe Entities nicht abschaltbar", x);
+		}
+		try {
+			// auf der JVM zusätzlich, auf Android nicht vorhanden
+			factory.setFeature(DISALLOW_DOCTYPE, true);
+		} catch (Exception x) {
+			Logger.debug("XML-Feature nicht unterstützt: " + DISALLOW_DOCTYPE);
+		}
+		try {
+			factory.setFeature(LOAD_EXTERNAL_DTD, false);
+		} catch (Exception x) {
+			Logger.debug("XML-Feature nicht unterstützt: " + LOAD_EXTERNAL_DTD);
+		}
+		try {
 			SAXParser parser = factory.newSAXParser();
 			parser.parse(in, this);
 		} catch (Exception e) {
@@ -92,6 +111,8 @@ public final class AVRXMLInfoParser extends DefaultHandler {
 
 	private static final String EXTERNAL_GENERAL_ENTITIES = "http://xml.org/sax/features/external-general-entities";
 	private static final String EXTERNAL_PARAMETER_ENTITIES = "http://xml.org/sax/features/external-parameter-entities";
+	private static final String DISALLOW_DOCTYPE = "http://apache.org/xml/features/disallow-doctype-decl";
+	private static final String LOAD_EXTERNAL_DTD = "http://apache.org/xml/features/nonvalidating/load-external-dtd";
 	private static final String VALUE_TAG = "value";
 	private static final String ROOT_TAG = "item";
 }
