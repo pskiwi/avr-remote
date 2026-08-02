@@ -67,6 +67,11 @@ public final class HTTPSupportTest {
 		// erst schließen, dann warten: scheitert ein Test vor dem Request,
 		// hängt der Server-Thread sonst bis zum Timeout in accept()
 		stopping = true;
+		if (server == null) {
+			// startServer ist gescheitert - dessen Fehler nicht mit einer NPE
+			// von hier überdecken
+			return;
+		}
 		server.close();
 		serverThread.join(5000);
 		if (failure != null) {

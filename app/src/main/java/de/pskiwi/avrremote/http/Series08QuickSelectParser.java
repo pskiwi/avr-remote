@@ -52,7 +52,7 @@ public final class Series08QuickSelectParser {
 		Logger.debug("Series08QuickSelectRename [" + line + "]");
 		final Matcher matcher = OPTION_PATTERN.matcher(line);
 		String value = null;
-		// group(2)->selected
+		// group(2) ist der Anzeigename
 		String display = null;
 		// Der letzte Treffer gewinnt: das frühere matches() mit führendem
 		// gierigem ".*" wählte ebenfalls das rechteste Vorkommen. find() in

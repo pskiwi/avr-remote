@@ -34,7 +34,8 @@ import org.junit.Test;
  * Entscheidend ist die Auswahl bei mehreren Treffern in einer Zeile: das
  * frühere führende gierige ".*" nahm das rechteste Vorkommen, nicht das erste.
  * Genau das muss die Schleife weiterhin tun - sonst liest die App auf
- * 2008er-Geräten stillschweigend die falschen Namen aus.
+ * 2008er-Geräten stillschweigend die falschen Namen aus. Beide Parser haben
+ * dafür einen eigenen Fall, weil sie die Schleife getrennt implementieren.
  *
  * Diese Klassen laufen nur gegen Receiver der 2008er-Serie, die zum Zeitpunkt
  * der Änderung nicht zum Testen zur Verfügung standen.
@@ -98,13 +99,29 @@ public final class Series08ParserTest {
 		assertEquals("Film", names.get(1));
 	}
 
+	/** Auch hier gewinnt der letzte Treffer je Zeile. */
+	@Test
+	public void quickSelectTakesRightmostMatchPerLine() throws Exception {
+		final Series08QuickSelectParser p = new Series08QuickSelectParser(
+				stream("<td name='textQuickSelectNameSelect1'"
+						+ " value=\"Falsch\"></td>"
+						+ "<td name='textQuickSelectNameSelect1'"
+						+ " value=\"Richtig\"></td>\n"));
+		p.parse();
+
+		assertEquals(1, p.get().size());
+		assertEquals("Richtig", p.get().get(0));
+	}
+
 	/**
-	 * Das von CodeQL genannte Angriffsmuster darf nicht in eine spürbare
-	 * Laufzeit laufen. Grosszügige Schranke - es geht um Polynomialverhalten,
-	 * nicht um Millisekunden.
+	 * Grosse Zeilen bleiben in linearer Zeit. Ausdrücklich KEIN Nachweis gegen
+	 * das von CodeQL gemeldete ReDoS: das alte Muster besteht diesen Test
+	 * ebenfalls in wenigen Millisekunden - ein Eingabestring, bei dem es
+	 * tatsächlich explodiert, liess sich nicht konstruieren, weil Java das
+	 * führende ".*" per Literalsuche abkürzt.
 	 */
 	@Test
-	public void pathologicalLineDoesNotBlowUp() throws Exception {
+	public void largeLineStaysFast() throws Exception {
 		final StringBuilder evil = new StringBuilder();
 		for (int i = 0; i < 5000; i++) {
 			evil.append("name='&' value=\"!");

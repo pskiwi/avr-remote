@@ -42,7 +42,12 @@ public final class Series08ZoneRenameParser {
 		try {
 			String line;
 			while ((line = r.readLine()) != null) {
-				Logger.debug(line);
+				// Hier stand ein System.out.println(line). Nicht nach
+				// Logger.debug übernommen: das schreibt in den
+				// RoundRobinLogger mit 25 Einträgen, den der FeedbackReporter
+				// bei Abstürzen verschickt - eine HTML-Seite zeilenweise
+				// hineinzukippen macht ihn wertlos. Jeder Treffer wird unten
+				// ohnehin geloggt.
 				final Matcher matcher = OPTION_PATTERN.matcher(line);
 				String key = null;
 				String value = null;

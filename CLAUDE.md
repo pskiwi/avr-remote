@@ -153,7 +153,8 @@ Consequences:
   pattern is still in 13 places (`core/Connector`, `core/MacroManager`, `log/FeedbackReporter`,
   `log/SDLogger`, the three `http/Series08*Parser`, `core/RenameService`, `scan/AVRTargetTester`);
   converting one is welcome when you are editing that code anyway, but do not sweep the tree as a
-  side errand. The one reason to keep the manual form is when
+  side errand — and note `core/Connector.java:168` is not convertible at all, it closes the socket
+  only on the failure path (`if (!ok)`). The other reason to keep the manual form is when
   an exception from `close()` must be swallowed deliberately — see
   `HTTPSupportTest.serveOneRequest`, where letting it propagate would fake a test failure.
   This does **not** extend to the UI bases above: those are a migration, not a style choice.
