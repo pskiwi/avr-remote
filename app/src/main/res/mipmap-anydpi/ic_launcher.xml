@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fallback for API 24/25, which have no adaptive icons. Same artwork as
+     drawable/ic_launcher_foreground.xml - change both - but no mask is applied here, so no safe
+     zone is needed and the motif fills the viewport (r=47 instead of 32.5). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Chassis, with the grey rim of the original -->
+    <path
+        android:pathData="M54,7 a47,47 0 1,0 0,94 a47,47 0 1,0 0,-94 Z"
+        android:fillColor="#000000"
+        android:strokeColor="#666666"
+        android:strokeWidth="2.9" />
+
+    <!-- Surround: annulus between r=35.05 and r=26.3. The hole is a touch smaller than the dome
+         that covers it - see ic_launcher_foreground.xml. -->
+    <path
+        android:fillType="evenOdd"
+        android:fillColor="#FF0000"
+        android:pathData="M54,18.95 a35.05,35.05 0 1,0 0,70.1 a35.05,35.05 0 1,0 0,-70.1 Z
+                          M54,27.7 a26.3,26.3 0 1,0 0,52.6 a26.3,26.3 0 1,0 0,-52.6 Z" />
+
+    <!-- Dome -->
+    <path android:pathData="M54,27.25 a26.75,26.75 0 1,0 0,53.5 a26.75,26.75 0 1,0 0,-53.5 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="47"
+                android:centerY="47"
+                android:gradientRadius="35"
+                android:startColor="#3A3A3A"
+                android:endColor="#000000" />
+        </aapt:attr>
+    </path>
+
+</vector>

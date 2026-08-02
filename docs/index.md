@@ -1,4 +1,4 @@
-# ![Alt text](avr-icon.png "AVR-Remote") Welcome to AVR-Remote 
+# <img src="avr-icon.svg" width="64" height="64" alt="" align="absmiddle"> Welcome to AVR-Remote 
 
 
 ## Supported receivers

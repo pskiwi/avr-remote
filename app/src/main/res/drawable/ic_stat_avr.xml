@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notification small icon. Since API 21 the status bar uses only the alpha channel and tints it
+     white, so this has to be a silhouette on transparent - the old icon.png was almost fully
+     opaque and therefore showed up as a solid white block. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Chassis rim -->
+    <path
+        android:pathData="M12,1.8 a10.2,10.2 0 1,0 0,20.4 a10.2,10.2 0 1,0 0,-20.4 Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.6" />
+
+    <!-- Surround -->
+    <path
+        android:pathData="M12,4.7 a7.3,7.3 0 1,0 0,14.6 a7.3,7.3 0 1,0 0,-14.6 Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.4" />
+
+    <!-- Dome -->
+    <path
+        android:pathData="M12,7.8 a4.2,4.2 0 1,0 0,8.4 a4.2,4.2 0 1,0 0,-8.4 Z"
+        android:fillColor="#FFFFFF" />
+
+</vector>

@@ -1,4 +1,4 @@
-# ![Alt text](app/src/main/assets/icon.png "AVR-Remote") AVR-Remote 
+# <img src="app/src/main/assets/icon.svg" width="64" height="64" alt="" align="absmiddle"> AVR-Remote 
 
 Android remote control for Denon and Marantz receivers.
 [Google Play Store Link](https://play.google.com/store/apps/details?id=de.pskiwi.avrremote)
