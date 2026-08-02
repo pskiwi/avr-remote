@@ -50,17 +50,23 @@ public final class Series08QuickSelectParser {
 
 	private Input parseLine(String line) {
 		Logger.debug("Series08QuickSelectRename [" + line + "]");
-		Matcher matcher = OPTION_PATTERN.matcher(line);
-		if (matcher.matches()) {
-			String value = matcher.group(1).trim();
-			// group(2)->selected
-			String display = matcher.group(2).trim();
-			Logger.debug("Series08QuickSelectRename [" + value + "]->["
-					+ display + "]");
-			return new Input(value, display, true);
-		} else {
+		final Matcher matcher = OPTION_PATTERN.matcher(line);
+		String value = null;
+		// group(2) ist der Anzeigename
+		String display = null;
+		// Der letzte Treffer gewinnt: das frühere matches() mit führendem
+		// gierigem ".*" wählte ebenfalls das rechteste Vorkommen. find() in
+		// der Schleife tut dasselbe, ohne die mehrdeutige Rückverfolgung.
+		while (matcher.find()) {
+			value = matcher.group(1).trim();
+			display = matcher.group(2).trim();
+		}
+		if (value == null) {
 			return null;
 		}
+		Logger.debug("Series08QuickSelectRename [" + value + "]->[" + display
+				+ "]");
+		return new Input(value, display, true);
 	}
 
 	public void parse() throws IOException {
@@ -104,6 +110,6 @@ public final class Series08QuickSelectParser {
 
 	// <option value='TUNER'>TUNER </option>
 	private final Pattern OPTION_PATTERN = Pattern
-			.compile(".*name='([^']+)' value=\"([^\"]+)\".*");
+			.compile("name='([^']+)' value=\"([^\"]+)\"");
 	private final static String START_MARKER = "name='textQuickSelectNameSelect$'";
 }

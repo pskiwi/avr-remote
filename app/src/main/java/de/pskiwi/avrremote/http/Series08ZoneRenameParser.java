@@ -42,15 +42,27 @@ public final class Series08ZoneRenameParser {
 		try {
 			String line;
 			while ((line = r.readLine()) != null) {
-				System.out.println(line);
-				Matcher matcher = OPTION_PATTERN.matcher(line);
-				if (matcher.matches()) {
-					String key = matcher.group(1).trim();
-					String value = matcher.group(2).trim();
+				// Hier stand ein System.out.println(line). Nicht nach
+				// Logger.debug übernommen: das schreibt in den
+				// RoundRobinLogger mit 25 Einträgen, den der FeedbackReporter
+				// bei Abstürzen verschickt - eine HTML-Seite zeilenweise
+				// hineinzukippen macht ihn wertlos. Jeder Treffer wird unten
+				// ohnehin geloggt.
+				final Matcher matcher = OPTION_PATTERN.matcher(line);
+				String key = null;
+				String value = null;
+				// Der letzte Treffer gewinnt: das frühere matches() mit
+				// führendem gierigem ".*" wählte ebenfalls das rechteste
+				// Vorkommen. find() in der Schleife tut dasselbe, ohne die
+				// mehrdeutige Rückverfolgung.
+				while (matcher.find()) {
+					key = matcher.group(1).trim();
+					value = matcher.group(2).trim();
+				}
+				if (key != null) {
 					map.put(key, value);
 					Logger.info("Series08ZoneRename[" + key + "]->[" + value
 							+ "]");
-
 				}
 			}
 		} finally {
@@ -95,7 +107,7 @@ public final class Series08ZoneRenameParser {
 
 	// name='Main' value="ThisIsZone1     "
 	private final Pattern OPTION_PATTERN = Pattern
-			.compile(".*name='([^']+)' value=\"([^\"]+)\".*");
+			.compile("name='([^']+)' value=\"([^\"]+)\"");
 	private final static String[] ZONE_KEYS = { "Main", "Zone2", "Zone3",
 			"Zone4", "Zone5" };
 	private final static String[] DEFAULT_NAMES = { "Main", "Zone 2", "Zone 3",

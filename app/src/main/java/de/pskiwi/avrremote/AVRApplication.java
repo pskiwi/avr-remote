@@ -17,6 +17,8 @@
 package de.pskiwi.avrremote;
 
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.net.CookieHandler;
+import java.net.CookieManager;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import android.app.Activity;
@@ -96,6 +98,13 @@ public final class AVRApplication extends Application {
 		super.onCreate();
 
 		Logger.setDelegate(ADBLogger.INSTANCE);
+
+		// Der frühere DefaultHttpClient brachte einen Cookie-Store mit, so dass
+		// aufeinander folgende Requests eine Sitzung teilten. HttpURLConnection
+		// tut das nur mit einem gesetzten CookieHandler. Series08Reader ist
+		// darauf angewiesen: dort holt ein r_option1.asp erst den Zustand, den
+		// das folgende d_option1.asp ausliest.
+		CookieHandler.setDefault(new CookieManager());
 
 		final Handler handler = new Handler();
 		final UncaughtExceptionHandler defaultUncaughtExceptionHandler = Thread

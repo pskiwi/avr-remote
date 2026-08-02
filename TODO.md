@@ -28,8 +28,10 @@ blocks the current build, which is green.
 
 ## Structural
 
-- [ ] **There are no tests at all.** Highest-value first test, because it covers a failure mode the
-      compiler cannot see: `models/ModelConfigurator` resolves the 60 receiver classes **by
+- [ ] **Test coverage is three files.** `http/HTTPSupportTest`, `http/Series08ParserTest` and
+      `http/AVRXMLInfoParserTest` (added with the Apache removal) set up `src/test` and the JUnit
+      dependency; everything else is still uncovered. The highest-value test to add next is one for `models/ModelConfigurator`, because it
+      covers a failure mode the compiler cannot see: it resolves the 60 receiver classes **by
       reflection** from a preference string (`"AVR-3310"` → `AVR3310`). Rename a class or let an
       entry in `res/values/lists.xml` drift and there is no build error — the app silently falls
       back to `AVRGeneric` and the user just misses features. A JVM unit test that runs all 60
@@ -37,6 +39,42 @@ blocks the current build, which is green.
       exactly that. Both sides hold 60 entries today, so the test starts green.
 - [ ] After that, `models/` (pure capability logic) and `core/ZoneState.java` (1237 lines) are the
       cheapest places to add coverage.
+- [ ] **`http/AVRXMLInfoParser` only works on Android and cannot be unit-tested.** `startElement` and
+      `endElement` read `localName`, which a standard `SAXParserFactory` leaves empty because it is
+      not namespace-aware by default — on a JVM the parser silently collects nothing. Android's
+      Expat-based SAX fills `localName` regardless, which is the only reason the scraping path works.
+      Falling back to `qName` when `localName` is empty would make the parser portable and testable.
+      `core/RenameService.java:109` has the same pattern and would need the same fix; the
+      `Series08*Parser` classes are unaffected, they read with `BufferedReader` and regexes.
+- [ ] **Nothing in the 2008-series path was verified against hardware.** The Apache removal touched
+      all of it and none of it could be exercised — no such receiver was available. Affected:
+      `http/Series08Reader` (the cookie store it now clears per run, and the `r_option1.asp` →
+      `d_option1.asp` sequence that depends on shared session state), plus
+      `http/Series08ZoneRenameParser` and `http/Series08QuickSelectParser`, whose `OPTION_PATTERN`
+      went from `matches()` with a wrapping `.*` to `find()` in a loop. `http/Series08ParserTest`
+      pins the behaviour that could have broken — notably that the **last** match in a line wins,
+      not the first, which is what the old greedy `.*` did — but those tests were written from the
+      code, not from a real page. One run against a 2008-series receiver settles it: check that
+      input names, zone names and quick-select names all still appear.
+- [ ] Same area, latent NPE: `Series08Reader` has no length check on the response body where
+      `AVRHTTPClient` has one. `Series08InputParser.findLine` returns null when the marker line is
+      missing and the constructor then runs `OPTION_PATTERN.matcher(null)`. An empty or 404 answer
+      triggers it. Pre-existing rather than a regression — but the Apache removal made the asymmetry
+      between the two readers visible, and only one side got the guard.
+- [ ] Same area, cookie lifetime: the store is cleared per Series08 read
+      (`Series08Reader.readSeries08Info`), whereas the old `DefaultHttpClient` was per
+      `AVRHTTPClient` instance, so it also covered the multi-zone path. Exact parity would clear it
+      in the `AVRHTTPClient` constructor. Every receiver tested sends no `Set-Cookie` at all, so
+      this only matters if a 2008-series device turns out to use sessions.
+- [ ] Side effect of the XXE hardening in `http/AVRXMLInfoParser`: on a plain JVM the parser now
+      rejects **any** XML carrying a DOCTYPE, because `disallow-doctype-decl` applies there (on
+      Android it does not — see CLAUDE.md). Receivers never send one, so nothing breaks in the app,
+      but whoever adds the JVM test the item above asks for will trip over it.
+- [ ] **`NetDisplay.doHTTPMove()` and `doHTTPSeries08Move()` are unreachable.**
+      `AbstractModel:135` returns `DisplayMoveMode.Classic` and not one of the 60 model classes
+      overrides `getDisplayMoveMode()`, so the `switch` in `ScreenMover` always takes the `default`
+      branch. Both methods (and `DisplayMoveMode`'s other two constants) are dead. Left in place
+      during the Apache removal — decide whether the feature was meant to be wired up or should go.
 - [ ] **The receiver connection lives on a daemon thread owned by `AVRApplication`, not a Service.**
       A design decision from 2010. Under modern background restrictions the process can be reclaimed
       and the connection dies with it. This is the most likely cause of "the app just stops
@@ -53,12 +91,10 @@ blocks the current build, which is green.
 
 ## Time bomb, no fuse length known
 
-- [ ] **Apache HTTP** in `http/AVRHTTPClient`, `http/Series08Reader` and `core/display/NetDisplay`
-      (26 `org.apache.http` imports across the three). Works today: `org.apache.http.legacy.jar` still ships with the android-36
-      platform, and since only cleartext HTTP on the LAN is spoken, the ancient TLS stack does not
-      matter. The risk is purely that Google drops the optional library from some future platform,
-      turning this into unplanned work. It is only GET/POST with form bodies — `HttpURLConnection`
-      would do.
+- [x] **Apache HTTP** in `http/AVRHTTPClient`, `http/Series08Reader` and `core/display/NetDisplay`
+      (26 `org.apache.http` imports across the three). Replaced by `http/HTTPSupport` on
+      `HttpURLConnection`; `useLibrary` and the manifest `<uses-library>` are gone, so the app no
+      longer depends on Google keeping the optional platform library around.
 
 ## Housekeeping
 
@@ -67,6 +103,12 @@ blocks the current build, which is green.
 - [ ] `versionCode` (124) and `versionName` (1.5.1) still sit in the manifest unchanged and must be
       raised before any release. The release workflow triggers on a `v*` tag and needs the
       `KEY_JKS`, `KEY_PASSWORD`, `KEY_ALIAS` and `STORE_PASSWORD` secrets.
+- [ ] **13 manual `try { … } finally { close(); }` blocks left** in `core/Connector`,
+      `core/MacroManager`, `core/RenameService`, `scan/AVRTargetTester`, the three
+      `http/Series08*Parser`, `log/FeedbackReporter` and `log/SDLogger`. try-with-resources is the
+      convention now (see CLAUDE.md); `http/HTTPSupport` is the reference. Worth converting in
+      passing rather than as its own sweep — `log/FeedbackReporter` and `log/SDLogger` are due for
+      the FileProvider work anyway, so they come for free there.
 - [ ] `misc/add-copyright.sh` still uses the pre-Gradle path (`../src/**/*.java` instead of
       `app/src/main/...`), so it currently matches nothing.
 - [ ] `misc/createicons.sh` looks obsolete and should probably just be deleted: it writes 46 plain

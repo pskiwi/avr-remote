@@ -11,7 +11,6 @@ if (keystorePropertiesFile.canRead()) {
 android {
     namespace "de.pskiwi.avrremote"
     compileSdk 36
-    useLibrary 'org.apache.http.legacy'
 
     defaultConfig {
         applicationId "de.pskiwi.avrremote"
@@ -53,6 +52,10 @@ android {
             }
         }
     }
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
 }
 
 
