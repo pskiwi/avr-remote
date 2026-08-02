@@ -79,6 +79,12 @@ blocks the current build, which is green.
 - [ ] `versionCode` (124) and `versionName` (1.5.1) still sit in the manifest unchanged and must be
       raised before any release. The release workflow triggers on a `v*` tag and needs the
       `KEY_JKS`, `KEY_PASSWORD`, `KEY_ALIAS` and `STORE_PASSWORD` secrets.
+- [ ] **13 manual `try { … } finally { close(); }` blocks left** in `core/Connector`,
+      `core/MacroManager`, `core/RenameService`, `scan/AVRTargetTester`, the three
+      `http/Series08*Parser`, `log/FeedbackReporter` and `log/SDLogger`. try-with-resources is the
+      convention now (see CLAUDE.md); `http/HTTPSupport` is the reference. Worth converting in
+      passing rather than as its own sweep — `log/FeedbackReporter` and `log/SDLogger` are due for
+      the FileProvider work anyway, so they come for free there.
 - [ ] `misc/add-copyright.sh` still uses the pre-Gradle path (`../src/**/*.java` instead of
       `app/src/main/...`), so it currently matches nothing.
 - [ ] `misc/createicons.sh` looks obsolete and should probably just be deleted: it writes 46 plain

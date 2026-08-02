@@ -68,11 +68,8 @@ public final class HTTPSupport {
 				// 3xx/401 eine HttpRetryException. Apache lieferte den Status
 				// einfach zurück. Bisher an keinem Receiver beobachtet.
 				connection.setFixedLengthStreamingMode(body.length);
-				final OutputStream out = connection.getOutputStream();
-				try {
+				try (OutputStream out = connection.getOutputStream()) {
 					out.write(body);
-				} finally {
-					out.close();
 				}
 			}
 			final int code = connection.getResponseCode();
@@ -90,16 +87,14 @@ public final class HTTPSupport {
 		if (in == null) {
 			return new byte[0];
 		}
-		try {
+		try (InputStream stream = in) {
 			final ByteArrayOutputStream ret = new ByteArrayOutputStream();
 			final byte[] buffer = new byte[8192];
 			int read;
-			while ((read = in.read(buffer)) != -1) {
+			while ((read = stream.read(buffer)) != -1) {
 				ret.write(buffer, 0, read);
 			}
 			return ret.toByteArray();
-		} finally {
-			in.close();
 		}
 	}
 

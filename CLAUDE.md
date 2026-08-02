@@ -144,6 +144,16 @@ Consequences:
 - **JDK 17 builds the project, but the source level is Java 11** (`sourceCompatibility`/
   `targetCompatibility VERSION_11`). No records (16), no switch expressions (14), no text blocks (15)
   — Java 11 syntax only.
+- **Within Java 11, write modern Java.** The code dates from 2010 and mostly predates it, but new and
+  touched code should not imitate that. In particular use **try-with-resources** rather than the
+  manual `try { … } finally { x.close(); }` pattern — `http/HTTPSupport` is the reference. The old
+  pattern is still in 13 places (`core/Connector`, `core/MacroManager`, `log/FeedbackReporter`,
+  `log/SDLogger`, the three `http/Series08*Parser`, `core/RenameService`, `scan/AVRTargetTester`);
+  converting one is welcome when you are editing that code anyway, but do not sweep the tree as a
+  side errand. The one reason to keep the manual form is when
+  an exception from `close()` must be swallowed deliberately — see
+  `HTTPSupportTest.serveOneRequest`, where letting it propagate would fake a test failure.
+  This does **not** extend to the UI bases above: those are a migration, not a style choice.
 - `minSdk 24`. Anything newer needs a `Build.VERSION.SDK_INT` guard. Lint reports this as `NewApi`,
   but `abortOnError false` means the build still succeeds — it will only fail on the device.
 - Indentation is tabs. Comments are a mix of German and English.

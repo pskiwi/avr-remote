@@ -65,6 +65,8 @@ public final class AVRHTTPClient {
 		formparams.put("cmd0", value);
 		// formparams.put("param2", "value2");
 		HTTPSupport.postForm(baseURL + "MainZone/index.put.asp", formparams);
+		// Statuscode loggt HTTPSupport, hier interessiert das Kommando
+		Logger.info("postValue [" + value + "] gesendet");
 	}
 
 	public enum SearchInputType {
@@ -146,6 +148,8 @@ public final class AVRHTTPClient {
 			formparams.put("Key", type.getToken());
 		}
 		HTTPSupport.postForm(baseURL + "NetAudio/index.put.asp", formparams);
+		// Statuscode loggt HTTPSupport, hier interessiert der Abschluss
+		Logger.info("doSearch [" + toSearch + "] gesendet");
 	}
 
 	// Zonen-Namen stehen in den verschiedenen Zonen-Infos (Merge)
