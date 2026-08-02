@@ -46,6 +46,30 @@ blocks the current build, which is green.
       Falling back to `qName` when `localName` is empty would make the parser portable and testable.
       `core/RenameService.java:109` has the same pattern and would need the same fix; the
       `Series08*Parser` classes are unaffected, they read with `BufferedReader` and regexes.
+- [ ] **Nothing in the 2008-series path was verified against hardware.** The Apache removal touched
+      all of it and none of it could be exercised — no such receiver was available. Affected:
+      `http/Series08Reader` (the cookie store it now clears per run, and the `r_option1.asp` →
+      `d_option1.asp` sequence that depends on shared session state), plus
+      `http/Series08ZoneRenameParser` and `http/Series08QuickSelectParser`, whose `OPTION_PATTERN`
+      went from `matches()` with a wrapping `.*` to `find()` in a loop. `http/Series08ParserTest`
+      pins the behaviour that could have broken — notably that the **last** match in a line wins,
+      not the first, which is what the old greedy `.*` did — but those tests were written from the
+      code, not from a real page. One run against a 2008-series receiver settles it: check that
+      input names, zone names and quick-select names all still appear.
+- [ ] Same area, latent NPE: `Series08Reader` has no length check on the response body where
+      `AVRHTTPClient` has one. `Series08InputParser.findLine` returns null when the marker line is
+      missing and the constructor then runs `OPTION_PATTERN.matcher(null)`. An empty or 404 answer
+      triggers it. Pre-existing rather than a regression — but the Apache removal made the asymmetry
+      between the two readers visible, and only one side got the guard.
+- [ ] Same area, cookie lifetime: the store is cleared per Series08 read
+      (`Series08Reader.readSeries08Info`), whereas the old `DefaultHttpClient` was per
+      `AVRHTTPClient` instance, so it also covered the multi-zone path. Exact parity would clear it
+      in the `AVRHTTPClient` constructor. Every receiver tested sends no `Set-Cookie` at all, so
+      this only matters if a 2008-series device turns out to use sessions.
+- [ ] Side effect of the XXE hardening in `http/AVRXMLInfoParser`: on a plain JVM the parser now
+      rejects **any** XML carrying a DOCTYPE, because `disallow-doctype-decl` applies there (on
+      Android it does not — see CLAUDE.md). Receivers never send one, so nothing breaks in the app,
+      but whoever adds the JVM test the item above asks for will trip over it.
 - [ ] **`NetDisplay.doHTTPMove()` and `doHTTPSeries08Move()` are unreachable.**
       `AbstractModel:135` returns `DisplayMoveMode.Classic` and not one of the 60 model classes
       overrides `getDisplayMoveMode()`, so the `switch` in `ScreenMover` always takes the `default`
