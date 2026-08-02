@@ -27,12 +27,12 @@ $ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/app-debu
 
 `local.properties` is deliberately untracked — the SDK path comes from `ANDROID_HOME`.
 
-**There is almost no test coverage.** `src/test` holds two JVM test classes —
-`http/HTTPSupportTest` (7 cases) and `http/AVRXMLInfoParserTest` (1 case), JUnit 4 being the only
-dependency in the project — and there is no `src/androidTest` at all. `./gradlew test` runs those
-eight cases and nothing else (twice, in fact: once per build variant), so do not report a change as
-verified because the build passed; verify on a device or emulator instead. Two limits are worth
-knowing before writing more tests:
+**There is almost no test coverage.** `src/test` holds three JVM test classes —
+`http/HTTPSupportTest` (7 cases), `http/Series08ParserTest` (5) and `http/AVRXMLInfoParserTest` (1),
+JUnit 4 being the only dependency in the project — and there is no `src/androidTest` at all.
+`./gradlew test` runs those thirteen cases and nothing else (twice, in fact: once per build
+variant), so do not report a change as verified because the build passed; verify on a device or
+emulator instead. Two limits are worth knowing before writing more tests:
 
 - These run on the desktop JVM, not on Android's OkHttp-backed stack. Anything Android-specific —
   the implicit `Accept-Encoding: gzip`, chunked request bodies — cannot be pinned here, only
@@ -40,7 +40,10 @@ knowing before writing more tests:
 - `http/AVRXMLInfoParser` cannot be driven from a JVM test without changing the class: it reads only
   SAX `localName`, which stays empty on a standard non-namespace-aware `SAXParserFactory`. Android's
   Expat-based parser fills it anyway, which is the only reason the scraping path works. Same pattern
-  in `core/RenameService`.
+  in `core/RenameService`. Its XXE hardening is Android-specific for the same reason: Android's
+  `SAXParserFactoryImpl` rejects `disallow-doctype-decl` with `SAXNotRecognizedException`, so the
+  parser disables `external-general-entities` and `external-parameter-entities` instead — those two
+  are supported. Verified on a Pixel 8; do not "simplify" it to the usual one-liner.
 
 Lint runs with `abortOnError false`, so lint *errors* do not fail the build — check
 `app/build/reports/lint-results-debug.html` explicitly when it matters.

@@ -68,6 +68,15 @@ public final class AVRXMLInfoParser extends DefaultHandler {
 
 		final SAXParserFactory factory = SAXParserFactory.newInstance();
 		try {
+			// Das XML kommt unauthentifiziert per Klartext-HTTP aus dem LAN.
+			// Ohne dies könnte ein vorgetäuschter Receiver über externe
+			// Entities lokale Dateien auslesen (XXE).
+			// Achtung: "disallow-doctype-decl" wäre die naheliegende Sperre,
+			// Androids SAXParserFactoryImpl kennt sie aber nicht und wirft
+			// SAXNotRecognizedException - auf einem Pixel 8 nachgemessen.
+			// Diese beiden Features werden dort unterstützt.
+			factory.setFeature(EXTERNAL_GENERAL_ENTITIES, false);
+			factory.setFeature(EXTERNAL_PARAMETER_ENTITIES, false);
 			SAXParser parser = factory.newSAXParser();
 			parser.parse(in, this);
 		} catch (Exception e) {
@@ -81,6 +90,8 @@ public final class AVRXMLInfoParser extends DefaultHandler {
 	private String value;
 	private final AVRXMLInfo info = new AVRXMLInfo();
 
+	private static final String EXTERNAL_GENERAL_ENTITIES = "http://xml.org/sax/features/external-general-entities";
+	private static final String EXTERNAL_PARAMETER_ENTITIES = "http://xml.org/sax/features/external-parameter-entities";
 	private static final String VALUE_TAG = "value";
 	private static final String ROOT_TAG = "item";
 }
