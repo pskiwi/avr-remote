@@ -116,6 +116,13 @@ blocks the current build, which is green.
       **current** directory. Run from `misc/` or the repo root it only creates a stray `res/` tree;
       run from `app/src/main` it would overwrite the real icons with red squares. `misc/mkicons.sh`
       is the maintained script and already uses the Gradle path (`TGT=../app/src/main/res`).
+- [ ] **Play-Store icon still shows the old 2010 raster.** The app icon is a vector now
+      (`res/drawable/ic_launcher_foreground.xml` plus the adaptive icon in `mipmap-anydpi-v26/`),
+      but the store listing needs a 512×512 PNG uploaded by hand in the Play Console — and it must
+      be **opaque**, so the transparent adaptive background has to be flattened onto the black
+      chassis for that export. Neither `misc/mkicons.sh` nor anything else in-tree can do it: there
+      is no rasterizer set up locally. `res/drawable/icon_small.png` (32×32) is the last leftover of
+      the old icon and is referenced nowhere.
 - [ ] Lint reports 48 unused resources and 30 missing German translations.
       `res/values-v14/dimension.xml` holds a single `widget_margin`, a left-over override of
       `res/values/dimension.xml:27` from an app widget that no longer exists; lint also flags the

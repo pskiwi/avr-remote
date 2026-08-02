@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon layer (Android 13+). Concentric silhouette - a filled disc would only be a blob.
+     The system replaces the colour, so the fill here is irrelevant beyond its alpha. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Chassis rim -->
+    <path
+        android:pathData="M54,23 a31,31 0 1,0 0,62 a31,31 0 1,0 0,-62 Z"
+        android:strokeColor="#000000"
+        android:strokeWidth="5" />
+
+    <!-- Surround -->
+    <path
+        android:pathData="M54,33 a21,21 0 1,0 0,42 a21,21 0 1,0 0,-42 Z"
+        android:strokeColor="#000000"
+        android:strokeWidth="6" />
+
+    <!-- Dome -->
+    <path
+        android:pathData="M54,42 a12,12 0 1,0 0,24 a12,12 0 1,0 0,-24 Z"
+        android:fillColor="#000000" />
+
+</vector>

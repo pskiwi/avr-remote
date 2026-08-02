@@ -54,7 +54,7 @@ public final class StatusbarManager {
 			builder.setContentIntent(contentIntent);
 			builder.setContentTitle(contentTitle);
 			builder.setContentText(contentText);
-			builder.setSmallIcon(R.drawable.icon);
+			builder.setSmallIcon(R.drawable.ic_stat_avr);
 			builder.setOngoing(true);
 
 			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
