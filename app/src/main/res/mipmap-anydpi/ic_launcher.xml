@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Fallback for API 24/25, which have no adaptive icons. No mask is applied there, so no safe
+<!-- Fallback for API 24/25, which have no adaptive icons. Same artwork as
+     drawable/ic_launcher_foreground.xml - change both - but no mask is applied here, so no safe
      zone is needed and the motif fills the viewport (r=47 instead of 32.5). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
@@ -15,12 +16,13 @@
         android:strokeColor="#666666"
         android:strokeWidth="2.9" />
 
-    <!-- Surround: annulus between r=35.1 and r=18.65 -->
+    <!-- Surround: annulus between r=35.05 and r=18.3. The hole is a touch smaller than the dome
+         that covers it - see ic_launcher_foreground.xml. -->
     <path
         android:fillType="evenOdd"
         android:fillColor="#FF0000"
-        android:pathData="M54,18.9 a35.1,35.1 0 1,0 0,70.2 a35.1,35.1 0 1,0 0,-70.2 Z
-                          M54,35.35 a18.65,18.65 0 1,0 0,37.3 a18.65,18.65 0 1,0 0,-37.3 Z" />
+        android:pathData="M54,18.95 a35.05,35.05 0 1,0 0,70.1 a35.05,35.05 0 1,0 0,-70.1 Z
+                          M54,35.7 a18.3,18.3 0 1,0 0,36.6 a18.3,18.3 0 1,0 0,-36.6 Z" />
 
     <!-- Dome -->
     <path android:pathData="M54,35.35 a18.65,18.65 0 1,0 0,37.3 a18.65,18.65 0 1,0 0,-37.3 Z">

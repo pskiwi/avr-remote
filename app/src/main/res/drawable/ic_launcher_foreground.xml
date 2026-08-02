@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Adaptive-icon foreground: the speaker driver of the old 63x63 icon.png, redrawn as a vector.
-     Centre 54,54; the chassis has r=32.5, so the motif stays inside the 66dp safe zone. -->
+     Centre 54,54; the chassis has r=32.5, so the motif stays inside the 66dp safe zone. The
+     surround and dome keep the proportions of the original (23.5 and 12.5 against a 31.5 chassis).
+     mipmap-anydpi/ic_launcher.xml holds the same artwork scaled up for API 24/25 - change both. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
@@ -15,15 +17,17 @@
         android:strokeColor="#666666"
         android:strokeWidth="2" />
 
-    <!-- Surround: annulus between r=24.6 and r=13.4 -->
+    <!-- Surround: annulus between r=24.25 and r=12.6. The hole is a touch smaller than the dome
+         that covers it - two antialiased edges meeting at exactly the same radius leave a
+         hairline seam. -->
     <path
         android:fillType="evenOdd"
         android:fillColor="#FF0000"
-        android:pathData="M54,29.4 a24.6,24.6 0 1,0 0,49.2 a24.6,24.6 0 1,0 0,-49.2 Z
-                          M54,40.6 a13.4,13.4 0 1,0 0,26.8 a13.4,13.4 0 1,0 0,-26.8 Z" />
+        android:pathData="M54,29.75 a24.25,24.25 0 1,0 0,48.5 a24.25,24.25 0 1,0 0,-48.5 Z
+                          M54,41.4 a12.6,12.6 0 1,0 0,25.2 a12.6,12.6 0 1,0 0,-25.2 Z" />
 
     <!-- Dome -->
-    <path android:pathData="M54,40.6 a13.4,13.4 0 1,0 0,26.8 a13.4,13.4 0 1,0 0,-26.8 Z">
+    <path android:pathData="M54,41.1 a12.9,12.9 0 1,0 0,25.8 a12.9,12.9 0 1,0 0,-25.8 Z">
         <aapt:attr name="android:fillColor">
             <gradient
                 android:type="radial"
