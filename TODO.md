@@ -41,6 +41,15 @@ blocks the current build, which is green.
       A design decision from 2010. Under modern background restrictions the process can be reclaimed
       and the connection dies with it. This is the most likely cause of "the app just stops
       responding" reports.
+- [ ] Two races in the resume path, flagged in PR #13 review, not fixed there because both predate
+      that PR and are independent of its Doze-detection change:
+      `ActiveHandler.contextResumed()` → `forceReconnect()` → `ResilentConnector.stopConnector()` →
+      `threadHandler.join()` (`core/ResilentConnector.java:241`, unbounded — see also the `join(1000)`
+      at `:47`) runs on the UI thread, so a slow `checkAddress()`/`connect()` in the old thread can
+      block resume long enough to ANR. Separately, `java.util.Timer` catches up on missed ticks once
+      the process thaws, so a `StopConnectorTask` deferred by Doze (`ActiveHandler.java`'s
+      `StopConnectorTask.run()`) can fire just after resume and stop a connection
+      `contextResumed()` just rebuilt; `cancelCurrentTask()` only helps if it wins that race.
 
 ## Time bomb, no fuse length known
 

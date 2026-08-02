@@ -20,6 +20,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import android.content.Context;
+import android.os.SystemClock;
 import de.pskiwi.avrremote.core.ResilentConnector;
 import de.pskiwi.avrremote.log.Logger;
 
@@ -41,9 +42,26 @@ public final class ActiveHandler {
 	public void contextResumed(Context context) {
 		Logger.info("ActiveHandler.activity resumed " + context);
 		activeContext = context;
+		// "task != null" allein reicht nicht: der Timer kann durch Doze/App-
+		// Standby beliebig verzoegert werden, auch weit ueber disconnectTimeout
+		// hinaus, ohne dass StopConnectorTask je gefeuert hat. Stattdessen die
+		// tatsaechlich vergangene Zeit seit contextPaused() gegen den Timeout
+		// pruefen.
+		final boolean quickReturn = pausedAtElapsedRealtime >= 0
+				&& SystemClock.elapsedRealtime() - pausedAtElapsedRealtime < AVRSettings
+						.getDisconnectTimeout(context) * 1000L;
+		pausedAtElapsedRealtime = -1;
 		cancelCurrentTask();
-		if (!connector.isRunning()) {
-			connector.reconfigure(context);
+		if (quickReturn) {
+			if (!connector.isRunning()) {
+				connector.reconfigure(context);
+			}
+		} else {
+			// Laenger im Hintergrund (oder der Task konnte durch Doze/App-
+			// Standby verzoegert werden) -> "isRunning()" beruht evtl. auf
+			// einem Socket, den Android stillschweigend gekappt hat. Statt
+			// dem zu vertrauen, Verbindung immer frisch aufbauen.
+			connector.forceReconnect();
 		}
 	}
 
@@ -58,6 +76,7 @@ public final class ActiveHandler {
 			final int disconnectTimeout = AVRSettings
 					.getDisconnectTimeout(context);
 			Logger.debug("auto disconnect :" + disconnectTimeout + "sec");
+			pausedAtElapsedRealtime = SystemClock.elapsedRealtime();
 			timer.schedule(task, disconnectTimeout * 1000);
 			activeContext = null;
 		}
@@ -82,6 +101,8 @@ public final class ActiveHandler {
 
 	// Die Variable task darf nur im EDT verändert werden !
 	private TimerTask task;
+	// -1 = kein Pause-Zeitpunkt gemerkt (z.B. allererstes contextResumed())
+	private long pausedAtElapsedRealtime = -1;
 	private Context activeContext;
 	private final Timer timer = new Timer("StopConnector-Timer", true);
 	private final ResilentConnector connector;
