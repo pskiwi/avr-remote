@@ -139,7 +139,13 @@ Consequences:
 
 - **No AndroidX, no third-party dependencies.** `app/build.gradle` has no `dependencies {}` block at
   all. Everything is raw framework API. Keep it that way unless explicitly asked — adding AndroidX
-  would pull the whole legacy UI stack into a migration.
+  would pull the whole legacy UI stack into a migration. This is why `log/LogFileProvider` is a
+  hand-written `ContentProvider` and not `androidx.core.content.FileProvider`: it exists only to hand
+  the zipped log to the mail app as a content URI (`log/SDLogger.getLogURI()` →
+  `log/FeedbackReporter.sendMail()`, which must set `FLAG_GRANT_READ_URI_PERMISSION`). It serves
+  exactly one file name out of `SDLogger.getLogDir()`, read-only, and the canonical-path check in
+  `resolve()` is the traversal guard the AndroidX class would otherwise provide. The platform
+  `android.content.FileProvider` is no substitute — it only exists from API 34, minSdk is 24.
 - The UI is built on deprecated bases: `TabActivity`, `ListActivity`, `ExpandableListActivity`,
   `PreferenceActivity`, `TabHost`/`TabWidget` layouts, and pre-Holo platform themes
   (`Theme.NoTitleBar`, plus `Theme.Light` and `Theme.Dialog` used directly from the manifest).
@@ -150,8 +156,8 @@ Consequences:
 - **Within Java 11, write modern Java.** The code dates from 2010 and mostly predates it, but new and
   touched code should not imitate that. In particular use **try-with-resources** rather than the
   manual `try { … } finally { x.close(); }` pattern — `http/HTTPSupport` is the reference. The old
-  pattern is still in 13 places (`core/Connector`, `core/MacroManager`, `log/FeedbackReporter`,
-  `log/SDLogger`, the three `http/Series08*Parser`, `core/RenameService`, `scan/AVRTargetTester`);
+  pattern is still in 12 places (`core/Connector`, `core/MacroManager`, `log/FeedbackReporter`,
+  the three `http/Series08*Parser`, `core/RenameService`, `scan/AVRTargetTester`);
   converting one is welcome when you are editing that code anyway, but do not sweep the tree as a
   side errand — and note `core/Connector.java:168` is not convertible at all, it closes the socket
   only on the failure path (`if (!ok)`). The other reason to keep the manual form is when
@@ -183,10 +189,6 @@ Three things are easy to forget and all are required at `targetSdk 36`:
 Do not treat these as regressions; they predate the SDK 36 upgrade. Fixes are tracked in
 [TODO.md](TODO.md) → *Broken today*:
 
-- `log/SDLogger` writes to `Environment.getExternalStorageDirectory()` — fails under scoped storage
-  since Android 10. `WRITE_EXTERNAL_STORAGE` in the manifest has been a no-op since Android 11.
-- `SDLogger.getLogURI()` returns a `file://` URI that `log/FeedbackReporter` puts into
-  `Intent.EXTRA_STREAM` — throws `FileUriExposedException`. Sending logs needs a `FileProvider`.
 - The custom-background picker (`AVRSettings`) stores the URI without
   `takePersistableUriPermission()`, so it does not survive a restart.
 

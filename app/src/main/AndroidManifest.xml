@@ -14,8 +14,6 @@
 
     <uses-permission android:name="android.permission.INTERNET" >
     </uses-permission>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" >
-    </uses-permission>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" >
     </uses-permission>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" >
@@ -69,6 +67,12 @@
             android:exported="false"
             android:label="Options"
             android:theme="@android:style/Theme.Dialog" />
+
+        <provider
+            android:name=".log.LogFileProvider"
+            android:authorities="de.pskiwi.avrremote.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true" />
     </application>
 
 </manifest>

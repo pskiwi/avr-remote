@@ -91,6 +91,8 @@ public final class FeedbackReporter {
 				final Uri uri = sdLogger.getLogURI();
 				if (uri != null) {
 					emailIntent.putExtra(Intent.EXTRA_STREAM, uri);
+					emailIntent
+							.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 				}
 			}
 

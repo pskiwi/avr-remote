@@ -6,14 +6,20 @@ blocks the current build, which is green.
 
 ## Broken today
 
-- [ ] **Sending logs does not work.** `SDLogger.getLogURI()` returns a `file://` URI,
-      `log/FeedbackReporter.java:93` puts it into `Intent.EXTRA_STREAM` → `FileUriExposedException`
-      since targetSdk 24. This is the app's own support channel ("Feedback" in the options menu).
-      Fix: add a `FileProvider` and hand out a content URI.
-- [ ] **`SDLogger` writes to `Environment.getExternalStorageDirectory()`**, which fails under
-      scoped storage (Android 10+). Move to `getExternalFilesDir(null)`.
-- [ ] Once both are done, drop `WRITE_EXTERNAL_STORAGE` from the manifest — it has been a no-op
-      since Android 11. (Until then it should at least carry `android:maxSdkVersion="28"`.)
+- [x] **Sending logs does not work.** `SDLogger.getLogURI()` returned a `file://` URI which
+      `log/FeedbackReporter` put into `Intent.EXTRA_STREAM` → `FileUriExposedException` since
+      targetSdk 24. Now handed out as a content URI by `log/LogFileProvider`, with
+      `FLAG_GRANT_READ_URI_PERMISSION` on the intent. The provider is written by hand rather than
+      derived from `androidx.core`: the project has no dependencies (CLAUDE.md), and the platform
+      `android.content.FileProvider` only exists from API 34 while minSdk is 24. It serves exactly
+      one file name from the log directory, read-only, and is `exported="false"`.
+- [x] **`SDLogger` writes to `Environment.getExternalStorageDirectory()`**, which fails under
+      scoped storage (Android 10+). Moved to `getExternalFilesDir(null)`, falling back to
+      `getFilesDir()`. The `MEDIA_MOUNTED`/`MEDIA_REMOVED` receiver went with it — an app-specific
+      directory is always there — which also fixes the leak from `stopWatchingExternalStorage()`
+      never having had a caller.
+- [x] Once both are done, drop `WRITE_EXTERNAL_STORAGE` from the manifest — it has been a no-op
+      since Android 11.
 
 ## Next platform deadline: targetSdk 37
 
@@ -103,12 +109,12 @@ blocks the current build, which is green.
 - [ ] `versionCode` (124) and `versionName` (1.5.1) still sit in the manifest unchanged and must be
       raised before any release. The release workflow triggers on a `v*` tag and needs the
       `KEY_JKS`, `KEY_PASSWORD`, `KEY_ALIAS` and `STORE_PASSWORD` secrets.
-- [ ] **13 manual `try { … } finally { close(); }` blocks left** in `core/Connector`,
+- [ ] **12 manual `try { … } finally { close(); }` blocks left** in `core/Connector`,
       `core/MacroManager`, `core/RenameService`, `scan/AVRTargetTester`, the three
-      `http/Series08*Parser`, `log/FeedbackReporter` and `log/SDLogger`. try-with-resources is the
+      `http/Series08*Parser` and `log/FeedbackReporter`. try-with-resources is the
       convention now (see CLAUDE.md); `http/HTTPSupport` is the reference. Worth converting in
-      passing rather than as its own sweep — `log/FeedbackReporter` and `log/SDLogger` are due for
-      the FileProvider work anyway, so they come for free there.
+      passing rather than as its own sweep — `log/SDLogger` came for free with the FileProvider
+      work above, `log/FeedbackReporter` was not touched there.
 - [ ] `misc/add-copyright.sh` still uses the pre-Gradle path (`../src/**/*.java` instead of
       `app/src/main/...`), so it currently matches nothing.
 - [ ] `misc/createicons.sh` looks obsolete and should probably just be deleted: it writes 46 plain
