@@ -142,10 +142,12 @@ Consequences:
   would pull the whole legacy UI stack into a migration. This is why `log/LogFileProvider` is a
   hand-written `ContentProvider` and not `androidx.core.content.FileProvider`: it exists only to hand
   the zipped log to the mail app as a content URI (`log/SDLogger.getLogURI()` →
-  `log/FeedbackReporter.sendMail()`, which must set `FLAG_GRANT_READ_URI_PERMISSION`). It serves
-  exactly one file name out of `SDLogger.getLogDir()`, read-only, and the canonical-path check in
-  `resolve()` is the traversal guard the AndroidX class would otherwise provide. The platform
-  `android.content.FileProvider` is no substitute — it only exists from API 34, minSdk is 24.
+  `log/FeedbackReporter.sendMail()`, which must set `FLAG_GRANT_READ_URI_PERMISSION`). There is no
+  platform equivalent to fall back to at any API level — `FileProvider` has only ever shipped in the
+  support library and AndroidX; the framework has no such class. It serves exactly one file name out
+  of `SDLogger.getLogDir()`, read-only. The traversal guard is the `ZIP_NAME` comparison in
+  `resolve()`: the file name is a constant and is only *checked* against the URI, never taken from
+  it. Do not "harden" that with a canonical-path check — it could not fail.
 - The UI is built on deprecated bases: `TabActivity`, `ListActivity`, `ExpandableListActivity`,
   `PreferenceActivity`, `TabHost`/`TabWidget` layouts, and pre-Holo platform themes
   (`Theme.NoTitleBar`, plus `Theme.Light` and `Theme.Dialog` used directly from the manifest).

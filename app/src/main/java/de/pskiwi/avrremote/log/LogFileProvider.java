@@ -18,7 +18,8 @@ package de.pskiwi.avrremote.log;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import android.content.ContentProvider;
 import android.content.ContentResolver;
@@ -31,9 +32,10 @@ import android.os.ParcelFileDescriptor;
 import android.provider.OpenableColumns;
 
 /**
- * Gibt das gezippte Log als content-URI heraus. Ein FileProvider von Hand,
- * weil das Projekt bewusst ohne AndroidX auskommt und
- * android.content.FileProvider erst ab API 34 existiert.
+ * Gibt das gezippte Log als content-URI heraus. Ein FileProvider von Hand, weil
+ * es den fertigen nur in AndroidX gibt (androidx.core.content.FileProvider) und
+ * das Projekt bewusst ohne Abhängigkeiten auskommt - im Framework selbst
+ * existiert keine FileProvider-Klasse.
  */
 public final class LogFileProvider extends ContentProvider {
 
@@ -64,7 +66,9 @@ public final class LogFileProvider extends ContentProvider {
 
 	/**
 	 * Ohne DISPLAY_NAME/SIZE nennen viele Mail-Apps den Anhang "null" oder
-	 * verwerfen ihn.
+	 * verwerfen ihn. Nicht erkannte Spalten fallen aus dem Ergebnis heraus,
+	 * statt mit null aufzutauchen: fragt eine App nach MediaColumns.DATA, soll
+	 * sie eine fehlende Spalte sehen und nicht einen Pfad, der null ist.
 	 */
 	@Override
 	public Cursor query(Uri uri, String[] projection, String selection,
@@ -75,18 +79,22 @@ public final class LogFileProvider extends ContentProvider {
 		} catch (FileNotFoundException x) {
 			return null;
 		}
-		final String[] columns = projection != null ? projection
+		final String[] requested = projection != null ? projection
 				: new String[] { OpenableColumns.DISPLAY_NAME,
 						OpenableColumns.SIZE };
-		final Object[] values = new Object[columns.length];
-		for (int i = 0; i < columns.length; i++) {
-			if (OpenableColumns.DISPLAY_NAME.equals(columns[i])) {
-				values[i] = file.getName();
-			} else if (OpenableColumns.SIZE.equals(columns[i])) {
-				values[i] = file.length();
+		final List<String> columns = new ArrayList<>(requested.length);
+		final List<Object> values = new ArrayList<>(requested.length);
+		for (String column : requested) {
+			if (OpenableColumns.DISPLAY_NAME.equals(column)) {
+				columns.add(column);
+				values.add(file.getName());
+			} else if (OpenableColumns.SIZE.equals(column)) {
+				columns.add(column);
+				values.add(file.length());
 			}
 		}
-		final MatrixCursor cursor = new MatrixCursor(columns, 1);
+		final MatrixCursor cursor = new MatrixCursor(
+				columns.toArray(new String[0]), 1);
 		cursor.addRow(values);
 		return cursor;
 	}
@@ -108,28 +116,20 @@ public final class LogFileProvider extends ContentProvider {
 	}
 
 	/**
-	 * Genau eine Datei ist erreichbar. Der Canonical-Vergleich fängt zusätzlich
-	 * alles ab, was per Pfad-Trick aus dem Log-Verzeichnis herausführt.
+	 * Genau eine Datei ist erreichbar. Der Schutz gegen Pfad-Tricks ist der
+	 * Vergleich mit ZIP_NAME: der Dateiname kommt nicht aus der URI, er wird
+	 * nur gegen sie geprüft. Ein Canonical-Vergleich hinterher wäre toter Code.
 	 */
 	private File resolve(Uri uri) throws FileNotFoundException {
 		final Context ctx = getContext();
 		if (ctx == null) {
 			throw new FileNotFoundException("no context: " + uri);
 		}
-		if (!SDLogger.ZIP_NAME.equals(uri.getLastPathSegment())
-				|| uri.getPathSegments().size() != 1) {
+		if (uri.getPathSegments().size() != 1
+				|| !SDLogger.ZIP_NAME.equals(uri.getLastPathSegment())) {
 			throw new FileNotFoundException("unknown file: " + uri);
 		}
-		final File logdir = SDLogger.getLogDir(ctx);
-		final File file = new File(logdir, SDLogger.ZIP_NAME);
-		try {
-			if (!file.getCanonicalFile().getParentFile()
-					.equals(logdir.getCanonicalFile())) {
-				throw new FileNotFoundException("outside log dir: " + uri);
-			}
-		} catch (IOException x) {
-			throw new FileNotFoundException("cannot resolve: " + uri);
-		}
+		final File file = new File(SDLogger.getLogDir(ctx), SDLogger.ZIP_NAME);
 		if (!file.canRead()) {
 			throw new FileNotFoundException("not readable: " + uri);
 		}

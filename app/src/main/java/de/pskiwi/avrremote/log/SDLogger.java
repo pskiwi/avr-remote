@@ -139,6 +139,11 @@ public final class SDLogger implements ILogger {
 
 	public void close() {
 		if (currentHandler != null) {
+			// logger ist der prozessweite JUL-Logger "avrremote", nicht einer
+			// pro SDLogger. Ohne removeHandler sammelt jedes Umschalten des
+			// Log-Modus einen geschlossenen Handler dort an, der über seine
+			// äußere Instanz den ganzen SDLogger festhält.
+			logger.removeHandler(currentHandler);
 			currentHandler.close();
 			currentHandler = null;
 		}

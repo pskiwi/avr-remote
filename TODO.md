@@ -10,9 +10,10 @@ blocks the current build, which is green.
       `log/FeedbackReporter` put into `Intent.EXTRA_STREAM` → `FileUriExposedException` since
       targetSdk 24. Now handed out as a content URI by `log/LogFileProvider`, with
       `FLAG_GRANT_READ_URI_PERMISSION` on the intent. The provider is written by hand rather than
-      derived from `androidx.core`: the project has no dependencies (CLAUDE.md), and the platform
-      `android.content.FileProvider` only exists from API 34 while minSdk is 24. It serves exactly
-      one file name from the log directory, read-only, and is `exported="false"`.
+      derived from `androidx.core`: the project has no dependencies (CLAUDE.md), and there is no
+      platform `FileProvider` at any API level to fall back to — the class has only ever existed in
+      the support library and AndroidX. It serves exactly one file name from the log directory,
+      read-only, and is `exported="false"`.
 - [x] **`SDLogger` writes to `Environment.getExternalStorageDirectory()`**, which fails under
       scoped storage (Android 10+). Moved to `getExternalFilesDir(null)`, falling back to
       `getFilesDir()`. The `MEDIA_MOUNTED`/`MEDIA_REMOVED` receiver went with it — an app-specific
@@ -128,7 +129,10 @@ blocks the current build, which is green.
       whole `-v14` qualifier as pointless at minSdk 24.
 - [ ] `allowBackup="true"` without `dataExtractionRules`. Not a bug — the API 31 default backs
       everything up, including receiver IPs in the SharedPreferences — but an explicit rule would be
-      cleaner.
+      cleaner. Note this got wider when the log moved to `getExternalFilesDir(null)`: that directory
+      is inside the default full-backup scope, the old shared-external `AVRRemote/` was not, so with
+      logging enabled the log files and `avrremote.zip` — which contain the same receiver IPs, via
+      `AVRSettings.getAll()` — now travel with the backup too.
 - [ ] Dead version check: `StatusbarManager.java:50` gates on `SDK_INT >= JELLY_BEAN`, always true
       at minSdk 24 (lint: `ObsoleteSdkInt`). The `if` wraps lines 51–74; the `Context`/`Intent`/
       `PendingIntent` setup above it stays.
