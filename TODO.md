@@ -30,9 +30,8 @@ blocks the current build, which is green.
 
 - [ ] **Test coverage is two files.** `http/HTTPSupportTest` and `http/AVRXMLInfoParserTest` (added
       with the Apache removal) set up `src/test` and the JUnit dependency; everything else is still
-      uncovered. Highest-value next
-      test, because it covers a failure mode the
-      compiler cannot see: `models/ModelConfigurator` resolves the 60 receiver classes **by
+      uncovered. The highest-value test to add next is one for `models/ModelConfigurator`, because it
+      covers a failure mode the compiler cannot see: it resolves the 60 receiver classes **by
       reflection** from a preference string (`"AVR-3310"` → `AVR3310`). Rename a class or let an
       entry in `res/values/lists.xml` drift and there is no build error — the app silently falls
       back to `AVRGeneric` and the user just misses features. A JVM unit test that runs all 60
@@ -45,7 +44,7 @@ blocks the current build, which is green.
       not namespace-aware by default — on a JVM the parser silently collects nothing. Android's
       Expat-based SAX fills `localName` regardless, which is the only reason the scraping path works.
       Falling back to `qName` when `localName` is empty would make the parser portable and testable.
-      `core/RenameService.java:107` has the same pattern and would need the same fix; the
+      `core/RenameService.java:109` has the same pattern and would need the same fix; the
       `Series08*Parser` classes are unaffected, they read with `BufferedReader` and regexes.
 - [ ] **`NetDisplay.doHTTPMove()` and `doHTTPSeries08Move()` are unreachable.**
       `AbstractModel:135` returns `DisplayMoveMode.Classic` and not one of the 60 model classes

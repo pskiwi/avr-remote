@@ -198,32 +198,46 @@ public final class HTTPSupportTest {
 	 * läuft in den Lese-Timeout statt klar zu scheitern.
 	 */
 	private void serveOneRequest() {
+		final Socket socket;
 		try {
-			final Socket socket = server.accept();
-			try {
-				request = readRequest(socket.getInputStream());
-				final byte[] body = responseBody.getBytes("UTF-8");
-				final StringBuilder head = new StringBuilder("HTTP/1.0 ");
-				head.append(responseStatus).append("\r\n");
-				head.append("Content-Type: text/xml; charset=utf-8\r\n");
-				if (sendContentLength) {
-					head.append("Content-Length: ").append(body.length)
-							.append("\r\n");
-				}
-				head.append("\r\n");
-				responseHead = head.toString();
-				final OutputStream out = socket.getOutputStream();
-				out.write(responseHead.getBytes("US-ASCII"));
-				out.write(body);
-				out.flush();
-			} finally {
-				socket.close();
-			}
+			socket = server.accept();
 		} catch (IOException x) {
-			// beim Abbau ist die Exception aus accept() erwartet und darf den
-			// eigentlichen Testfehler nicht überdecken
+			// einzige Stelle, an der beim Abbau eine Exception erwartet ist -
+			// der Guard steht bewusst nur hier, sonst verschlucken die Tests
+			// echte Server-Fehler
 			if (!stopping) {
 				failure = x;
+			}
+			return;
+		}
+		try {
+			// wird der Test abgebrochen, während der Client verbunden ist,
+			// schließt server.close() diesen Socket nicht - ohne Timeout
+			// bliebe der Thread für immer in read() hängen
+			socket.setSoTimeout(SO_TIMEOUT);
+			request = readRequest(socket.getInputStream());
+			final byte[] body = responseBody.getBytes("UTF-8");
+			final StringBuilder head = new StringBuilder("HTTP/1.0 ");
+			head.append(responseStatus).append("\r\n");
+			head.append("Content-Type: text/xml; charset=utf-8\r\n");
+			if (sendContentLength) {
+				head.append("Content-Length: ").append(body.length)
+						.append("\r\n");
+			}
+			head.append("\r\n");
+			responseHead = head.toString();
+			final OutputStream out = socket.getOutputStream();
+			out.write(responseHead.getBytes("US-ASCII"));
+			out.write(body);
+			out.flush();
+		} catch (IOException x) {
+			// ab hier ist jede Exception echt
+			failure = x;
+		} finally {
+			try {
+				socket.close();
+			} catch (IOException ignore) {
+				// beim Schließen nicht mehr interessant
 			}
 		}
 	}
@@ -275,4 +289,7 @@ public final class HTTPSupportTest {
 	private volatile String responseStatus = "200 OK";
 	private volatile String responseBody = "ok";
 	private volatile boolean sendContentLength = true;
+
+	/** knapp unter dem join(5000) im Abbau, damit der Thread sicher endet */
+	private static final int SO_TIMEOUT = 4000;
 }

@@ -18,6 +18,8 @@ package de.pskiwi.avrremote.http;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.net.CookieHandler;
+import java.net.CookieManager;
 import java.util.List;
 
 import de.pskiwi.avrremote.http.AVRXMLInfo.Input;
@@ -30,6 +32,16 @@ public final class Series08Reader {
 	}
 
 	public AVRXMLInfo readSeries08Info() throws Exception {
+
+		// Der frühere DefaultHttpClient wurde je Lesevorgang neu angelegt,
+		// seine Cookies galten also nur für diesen einen Durchlauf. Der
+		// prozessweite CookieHandler aus AVRApplication lebt dagegen bis zum
+		// Prozessende - vor jedem Durchlauf leeren, sonst würde eine veraltete
+		// Sitzungs-ID weiter mitgeschickt.
+		final CookieHandler cookies = CookieHandler.getDefault();
+		if (cookies instanceof CookieManager) {
+			((CookieManager) cookies).getCookieStore().removeAll();
+		}
 
 		final AVRXMLInfo info = new AVRXMLInfo();
 

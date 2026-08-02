@@ -60,11 +60,21 @@ Release builds are signed only when `~/keystore.properties` exists or the `KEY_A
    search. `http/Series08*` parse the 2008-series variant. Every request goes through
    `http/HTTPSupport` (`HttpURLConnection`, GET and form POST, nothing else); its three callers are
    `http/AVRHTTPClient`, `http/Series08Reader` and — easy to miss — `core/display/NetDisplay`.
-   Two settings there are deliberate and load-bearing against the receivers' 2008-era GoAhead
-   webservers: `Accept-Encoding: identity` (the old Apache client never asked for gzip) and
-   `setFixedLengthStreamingMode` (so the body is never sent chunked). Receivers speak plain HTTP, so
-   `android:usesCleartextTraffic="true"` in the manifest is load-bearing too — removing it kills the
-   whole scraping path.
+   Three things there are deliberate and load-bearing against the receivers' 2008-era GoAhead
+   webservers, and all three look removable to someone who does not know why they exist:
+
+   - `Accept-Encoding: identity` — the old Apache client never asked for gzip, Android does.
+   - `setFixedLengthStreamingMode` — so the request body is never sent chunked.
+   - `CookieHandler.setDefault(new CookieManager())` in `AVRApplication.onCreate`. The receivers
+     tested so far send no `Set-Cookie` at all, so this looks pointless — but `Series08Reader`
+     fetches `r_option1.asp` purely to establish state that the following `d_option1.asp` reads
+     back, and the Apache client it replaced carried a cookie store. Without a handler
+     `HttpURLConnection` shares nothing between requests, and the failure would be silent (empty
+     quick-select names). `readSeries08Info()` clears the store per run, because the old store was
+     per-client and did not outlive one read.
+
+   Receivers speak plain HTTP, so `android:usesCleartextTraffic="true"` in the manifest is
+   load-bearing too — removing it kills the whole scraping path.
 
 ### State flow
 
