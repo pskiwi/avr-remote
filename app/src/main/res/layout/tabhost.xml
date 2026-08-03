@@ -23,6 +23,18 @@
             android:gravity="center"
             android:singleLine="true" />
 
+        <!-- Nur im Test-Build sichtbar, siehe AVRRemote.onCreate -->
+        <TextView
+            android:id="@+id/textBuildInfo"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:singleLine="true"
+            android:textColor="@color/buildInfo"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
         <Button
             android:id="@+id/btnConnect"
             android:layout_width="fill_parent"
