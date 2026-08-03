@@ -155,9 +155,19 @@ blocks the current build, which is green.
       is inside the default full-backup scope, the old shared-external `AVRRemote/` was not, so with
       logging enabled the log files and `avrremote.zip` — which contain the same receiver IPs, via
       `AVRSettings.getAll()` — now travel with the backup too.
-- [ ] Dead version check: `StatusbarManager.java:50` gates on `SDK_INT >= JELLY_BEAN`, always true
-      at minSdk 24 (lint: `ObsoleteSdkInt`). The `if` wraps lines 51–74; the `Context`/`Intent`/
-      `PendingIntent` setup above it stays.
+- [x] Dead version check in `StatusbarManager.updateNotification()`: a `SDK_INT >= JELLY_BEAN`
+      gate, always true at minSdk 24 (lint: `ObsoleteSdkInt`). Removed, and worth recording why it
+      was more than clutter — the `if` had no `else`, so had it ever been false the method would
+      have posted no notification at all and said nothing. The inner `>= O` check stays; API 26 is
+      above minSdk, so the notification channel really is conditional. Lint's remaining
+      `ObsoleteSdkInt` is `res/values-v14`, a folder qualifier rather than a version check, and is
+      the item above.
+- [ ] Two things noticed in `StatusbarManager` while doing that, both pre-existing and both left
+      alone: the field `private Notification notification;` is never read or written — the only
+      notification in play is the local in `updateNotification()` — and `createNotificationChannel`
+      runs on every call rather than once. The latter is harmless (creating an existing channel id
+      only updates the name; importance can only be lowered and the sound is ignored after
+      creation), but it belongs in `AVRApplication.onCreate`.
 - [ ] **`ScreenInfo` measures the window, not the display.** The class builds its diagonal from
       `getDefaultDisplay().getMetrics()` (`ScreenInfo.java:28-33`), and every caller hands it an
       Activity — so in multi-window the numbers describe the activity's window, which is exactly why
