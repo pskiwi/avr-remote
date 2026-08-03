@@ -64,6 +64,29 @@ Release builds are signed only when `~/keystore.properties` exists or the `KEY_A
 `KEY_PASSWORD` / `STORE_FILE` / `STORE_PASSWORD` env vars are set; otherwise
 `app-release-unsigned.apk` is produced and cannot be installed — see [RELEASE.md](RELEASE.md).
 
+Debug builds show a greyed-out line with branch, short commit hash and commit time above the status
+bar (`R.id.textBuildInfo` in `tabhost.xml`, switched visible in `AVRRemote.onCreate`). The value comes
+from `BuildConfig.BUILD_INFO`, which `app/build.gradle` fills by calling `git` at configuration time —
+**only in the `debug` build type**; `defaultConfig` sets it to the empty string and that is what
+release keeps, which is what makes the line disappear there. Commit time, not build time, so the field
+stays stable between builds of the same commit; a `+` after the hash means the working tree was dirty.
+Three things there are deliberate:
+
+- `providers.exec`, not `ProcessBuilder`. Starting a process directly makes the configuration
+  incompatible with the configuration cache — the build then *aborts* with "external process started"
+  the moment anyone passes `--configuration-cache`, rather than degrading. Note the exec spec takes no
+  `errorOutput`: a value source rejects an arbitrary stream and the whole provider fails to be created,
+  which silently empties `BUILD_INFO`. Gradle discards the stderr anyway.
+- On detached HEAD only `GITHUB_REF_NAME` is consulted, and the branch is left out entirely when that
+  is unset. `git name-rev` would fill it, but with whatever ref happens to reach the commit —
+  `tags/v1.0~1` (a *different* commit, and the `~1` is then stripped by the charset filter), a foreign
+  branch, or `undefined`. No branch beats a wrong one.
+- The value is filtered to `[A-Za-z0-9._/+: -]` because it is pasted into generated Java source. Keep
+  the `-` last in that character class.
+
+Every `git` call falls back to an empty string (no git binary, no repo, git failing for any reason),
+and an empty `BUILD_INFO` just means no line — the build must never fail over this.
+
 ## Architecture
 
 ### Two independent transports

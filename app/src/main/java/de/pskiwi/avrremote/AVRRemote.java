@@ -130,6 +130,13 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 		textDisplayHandler = new TextDisplayHandler(
 				(TextView) findViewById(R.id.textDisplay));
 
+		// Nur im Test-Build: Branch, Commit und Commit-Zeit über der Status-Zeile.
+		if (!BuildConfig.BUILD_INFO.isEmpty()) {
+			final TextView buildInfo = (TextView) findViewById(R.id.textBuildInfo);
+			buildInfo.setText(BuildConfig.BUILD_INFO);
+			buildInfo.setVisibility(View.VISIBLE);
+		}
+
 		Logger.info("AVRRemote:init tabs");
 		final TabHost tabHost = getTabHost();
 
