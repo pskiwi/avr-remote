@@ -158,16 +158,20 @@ blocks the current build, which is green.
 - [ ] Dead version check: `StatusbarManager.java:50` gates on `SDK_INT >= JELLY_BEAN`, always true
       at minSdk 24 (lint: `ObsoleteSdkInt`). The `if` wraps lines 51–74; the `Context`/`Intent`/
       `PendingIntent` setup above it stays.
-- [ ] **`ScreenInfo.isTablet()` calls anything over 4.5 inches a tablet** (`ScreenInfo.java:52`,
-      physical diagonal from `DisplayMetrics`). Reasonable in 2010; today every device that clears
-      minSdk 24 is well past it — a Pixel 8 measures about 6.2 — so the method now answers `true`
-      everywhere and no longer distinguishes anything. The orientation lock it used to guard is gone
-      (Play flagged it, and it had been unreachable for years), but one caller is left:
-      `ScreenListAdapter.java:140` picks text size 22 for "tablets", so every modern phone takes the
-      tablet branch and the `heightPixels` ladder below it is dead. Deciding what the app actually
-      wants here — smallest-width qualifiers rather than inches — is a UI question, not a rename.
-      Note `ScreenInfo` also feeds `FeedbackReporter.java:176`, where it is only logged, and that
-      `Display.getMetrics()` behind it has been deprecated since API 30.
+- [ ] **`ScreenInfo` measures the window, not the display.** The class builds its diagonal from
+      `getDefaultDisplay().getMetrics()` (`ScreenInfo.java:28-33`), and every caller hands it an
+      Activity — so in multi-window the numbers describe the activity's window, which is exactly why
+      the API was deprecated in API 30 in favour of `WindowMetrics.getBounds()`. Nothing depends on
+      the value any more: `isTablet()` and its 4.5-inch threshold are gone, and what is left only
+      reaches the OSD log line and `FeedbackReporter.java:169-176`. So this is a diagnostics-quality
+      item, not a behaviour one — but a feedback report from a split-screen session currently
+      overstates nothing and understates the device, which is worth knowing before trusting one.
+      For the record on that threshold: it was **not** unreachable, as the commit removing the
+      orientation lock claimed. Small phones above minSdk 24 exist — the Unihertz Jelly 2 is 3.0",
+      the Palm PVG100 3.3" — and on those the lock fired and `ScreenListAdapter`'s 12/15/21sp ladder
+      ran. Moving the size to `@dimen/osd_row_text_size` therefore does change something there:
+      those devices go to 22sp in a row whose height is fixed. Rare enough to accept, not rare
+      enough to have called impossible.
 
 ## Large, no deadline
 
