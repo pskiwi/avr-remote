@@ -45,34 +45,31 @@ public final class StatusbarManager {
 		PendingIntent contentIntent = PendingIntent.getActivity(app, 0,
 				notificationIntent, PendingIntent.FLAG_IMMUTABLE);
 
-        // https://stackoverflow.com/questions/32345768/cannot-resolve-method-setlatesteventinfo
 		// https://developer.android.com/guide/topics/ui/notifiers/notifications.html
-		if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-			Notification.Builder builder = new Notification.Builder(context);
+		Notification.Builder builder = new Notification.Builder(context);
 
-			builder.setAutoCancel(false);
-			builder.setContentIntent(contentIntent);
-			builder.setContentTitle(contentTitle);
-			builder.setContentText(contentText);
-			builder.setSmallIcon(R.drawable.ic_stat_avr);
-			builder.setOngoing(true);
+		builder.setAutoCancel(false);
+		builder.setContentIntent(contentIntent);
+		builder.setContentTitle(contentTitle);
+		builder.setContentText(contentText);
+		builder.setSmallIcon(R.drawable.ic_stat_avr);
+		builder.setOngoing(true);
 
-			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-			{
-				String channelId = "avr_remote_channel";
-				NotificationChannel channel = new NotificationChannel(
-						channelId,
-						"AVR-Remote",
-						NotificationManager.IMPORTANCE_DEFAULT);
-				channel.setSound(null, null);
-				notificationManager.createNotificationChannel(channel);
-				builder.setChannelId(channelId);
-			}
-
-			Notification notification=builder.build();
-
-			notificationManager.notify(NOTIFICATION_ID,notification);
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+		{
+			String channelId = "avr_remote_channel";
+			NotificationChannel channel = new NotificationChannel(
+					channelId,
+					"AVR-Remote",
+					NotificationManager.IMPORTANCE_DEFAULT);
+			channel.setSound(null, null);
+			notificationManager.createNotificationChannel(channel);
+			builder.setChannelId(channelId);
 		}
+
+		Notification notification=builder.build();
+
+		notificationManager.notify(NOTIFICATION_ID,notification);
 	}
 
 	public void update() {
