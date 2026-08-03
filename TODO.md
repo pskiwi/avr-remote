@@ -137,11 +137,14 @@ blocks the current build, which is green.
       chassis leaves open are filled rather than transparent. The claim that nothing in-tree can
       rasterize was half right: `magick`, `rsvg-convert` and `inkscape` are all absent, but macOS
       ships `qlmanage`, and `qlmanage -t -s 512` renders the SVG faithfully (command recorded in a
-      comment at the top of the SVG). Change all three copies of the artwork together —
-      `res/drawable/ic_launcher_foreground.xml`, `assets/icon.svg`, `misc/play-store-icon.svg`.
-      **Still open: uploading it in the Play Console**, which cannot be automated — see
-      [RELEASE.md](RELEASE.md). `res/drawable/icon_small.png` (32×32) is the last leftover of the
-      old icon and is referenced nowhere.
+      comment at the top of the SVG). The artwork now has **four** copies that have to move together
+      — `res/drawable/ic_launcher_foreground.xml` (plus its API 24/25 twin in `mipmap-anydpi/`),
+      `assets/icon.svg`, `docs/avr-icon.svg` (byte-identical to the latter, feeds the GitHub Pages
+      site) and `misc/play-store-icon.svg`. Deduplicating them would be worth more than the fourth
+      copy costs, but nothing in the build can generate one from another.
+      **Still open: uploading it in the Play Console**, which cannot be automated — it is tracked as
+      a checkbox in [RELEASE.md](RELEASE.md) instead. `res/drawable/icon_small.png` (32×32) is the
+      last leftover of the old icon and is referenced nowhere.
 - [ ] Lint reports 48 unused resources and 30 missing German translations.
       `res/values-v14/dimension.xml` holds a single `widget_margin`, a left-over override of
       `res/values/dimension.xml:27` from an app widget that no longer exists; lint also flags the
@@ -171,7 +174,7 @@ blocks the current build, which is green.
 - [ ] `OnScreenDisplayActivity` was never exercised during the SDK 36 verification — reaching it
       needs receiver display data. Worth a manual pass on a real receiver.
 
-## Open question
+## Answered
 
 - [x] The README links to the **Google Play Store**, but the release workflow builds an APK for
       GitHub Releases. Answered: the App Bundle requirement applies to apps published **since

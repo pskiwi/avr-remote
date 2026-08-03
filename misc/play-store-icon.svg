@@ -1,8 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512">
   <title>AVR-Remote</title>
-  <!-- Source for the 512x512 Play Store listing icon. Same artwork as ../app/src/main/assets/icon.svg
-       and res/drawable/ic_launcher_foreground.xml - change all three together.
-       Regenerate (macOS, no rasterizer needed beyond QuickLook):
+  <!-- Source for the 512x512 Play Store listing icon. The same artwork lives in three other places -
+       change all four together:
+         ../app/src/main/assets/icon.svg                     (README)
+         ../docs/avr-icon.svg                                (GitHub Pages, byte-identical to the above)
+         ../app/src/main/res/drawable/ic_launcher_foreground.xml  (and its API 24/25 twin in mipmap-anydpi/)
+       Regenerate, from this directory (macOS - no rasterizer needed beyond QuickLook):
          qlmanage -t -s 512 -o . play-store-icon.svg && mv play-store-icon.svg.png play-store-icon-512.png -->
 
   <defs>
