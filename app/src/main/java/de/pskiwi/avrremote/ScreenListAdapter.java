@@ -18,7 +18,6 @@ package de.pskiwi.avrremote;
 
 import android.content.Context;
 import android.os.Handler;
-import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -133,24 +132,6 @@ public final class ScreenListAdapter extends BaseAdapter {
 		} else {
 			Logger.info("rowtext not found");
 		}
-		final DisplayMetrics displayMetrics = parentView.getResources()
-				.getDisplayMetrics();
-
-		final ScreenInfo screenInfo = new ScreenInfo(context);
-		if (screenInfo.isTablet()) {
-			tt.setTextSize(22);
-		} else {
-			if (displayMetrics.heightPixels < 800) {
-				if (displayMetrics.heightPixels < 480) {
-					tt.setTextSize(12);
-				} else {
-					tt.setTextSize(15);
-				}
-			} else {
-				tt.setTextSize(21);
-			}
-		}
-
 		return v;
 	}
 

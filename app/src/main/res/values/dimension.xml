@@ -20,6 +20,10 @@
     
     <dimen name="osd_bottom_margin">100dip</dimen>
     <dimen name="neg_osd_bottom_margin">-100dip</dimen>
+
+    <!-- sp, nicht dip: die Zeile soll der Schriftgröße des Nutzers folgen.
+         Größer nur ab sw600dp, siehe values-sw600dp. -->
+    <dimen name="osd_row_text_size">22sp</dimen>
     
     <dimen name="button_corners">0dip</dimen>
     <dimen name="button_stroke">5dip</dimen>

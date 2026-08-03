@@ -130,6 +130,30 @@ the alias CI actually signs with comes from the `KEY_ALIAS` secret and cannot be
       (`res/drawable/ic_launcher_foreground.xml`, `app/src/main/assets/icon.svg`, `docs/avr-icon.svg`
       and the store SVG).
 
+### Recommendations to decline
+
+The Console attaches "recommended actions" to every release. They are generic, they do not know what
+the app is, and they come back each time. Decided once, so they do not have to be re-argued:
+
+- **"Enable R8 to improve memory and performance" — no.** `ModelConfigurator.java:84` resolves the
+  60 receiver classes by name, `Class.forName("de.pskiwi.avrremote.models." + avrModel)`. They have
+  no static references, so shrinking removes all of them and every user falls back to `AVRGeneric`.
+
+  What makes that bad is not that features disappear — it is that they do not. `AVRGeneric` extends
+  `AbstractModel`, which answers `true` to `hasZones()`, `hasQuick()` and `hasLevels()` and reports
+  `TYPE_7CH` levels, and `AVRGeneric.getZoneCount()` returns 3. So every receiver would be driven as
+  a generic 3-zone, 7-channel device with quick-select: a phantom zone on 2-zone models, a missing
+  one on 4-zone models, the generic input and surround lists instead of the model's own, and
+  quick-select offered where the hardware has none. Only `supportsDAB()` is an outright loss. The app
+  would look like it works and send the wrong commands.
+
+  `ModelConfiguratorTest` does **not** protect against this: it runs on the JVM against unminified
+  classes, so the build stays green and the damage only appears in the field. Turning R8 on would
+  need `-keep class de.pskiwi.avrremote.models.** { *; }` and verification on a device with a real
+  model selected — for close to nothing, because the app has no runtime dependencies and the APK is
+  343 KB. Shrinking libraries is where R8 normally earns its keep, and there are none. See also
+  CLAUDE.md → *Receiver models*.
+
 ### Deadlines
 
 Everything below was checked in August 2026 and none of it is under our control, so re-read the

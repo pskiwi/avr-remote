@@ -49,16 +49,12 @@ public final class ScreenInfo {
 		return phyWidth;
 	}
 
-	public boolean isTablet() {
-		return getSquareWidth() > 4.5f;
-	}
-
 	@Override
 	public String toString() {
-		return "ScreenInfo sw:" + getSquareWidth() + " tablet:" + isTablet()
-				+ " xw:" + phyWidth + " yw:" + phyHeight + " xp/d:"
-				+ metrics.widthPixels + "/" + metrics.xdpi + "   yp/d:"
-				+ metrics.heightPixels + "/" + metrics.ydpi;
+		return "ScreenInfo sw:" + getSquareWidth() + " xw:" + phyWidth + " yw:"
+				+ phyHeight + " xp/d:" + metrics.widthPixels + "/"
+				+ metrics.xdpi + "   yp/d:" + metrics.heightPixels + "/"
+				+ metrics.ydpi;
 	}
 
 	private final Display display;

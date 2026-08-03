@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Echte Tablets. Der Rest des Projekts qualifiziert noch mit "xlarge"
+         (values-xlarge/dimension.xml); sw600dp ist der Nachfolger und ab
+         minSdk 24 überall verfügbar. -->
+    <dimen name="osd_row_text_size">26sp</dimen>
+</resources>

@@ -168,6 +168,20 @@ blocks the current build, which is green.
       runs on every call rather than once. The latter is harmless (creating an existing channel id
       only updates the name; importance can only be lowered and the sound is ignored after
       creation), but it belongs in `AVRApplication.onCreate`.
+- [ ] **`ScreenInfo` measures the window, not the display.** The class builds its diagonal from
+      `getDefaultDisplay().getMetrics()` (`ScreenInfo.java:28-33`), and every caller hands it an
+      Activity — so in multi-window the numbers describe the activity's window, which is exactly why
+      the API was deprecated in API 30 in favour of `WindowMetrics.getBounds()`. Nothing depends on
+      the value any more: `isTablet()` and its 4.5-inch threshold are gone, and what is left only
+      reaches the OSD log line and `FeedbackReporter.java:169-176`. So this is a diagnostics-quality
+      item, not a behaviour one — but a feedback report from a split-screen session currently
+      overstates nothing and understates the device, which is worth knowing before trusting one.
+      For the record on that threshold: it was **not** unreachable, as the commit removing the
+      orientation lock claimed. Small phones above minSdk 24 exist — the Unihertz Jelly 2 is 3.0",
+      the Palm PVG100 3.3" — and on those the lock fired and `ScreenListAdapter`'s 12/15/21sp ladder
+      ran. Moving the size to `@dimen/osd_row_text_size` therefore does change something there:
+      those devices go to 22sp in a row whose height is fixed. Rare enough to accept, not rare
+      enough to have called impossible.
 
 ## Large, no deadline
 
@@ -181,8 +195,14 @@ blocks the current build, which is green.
       at `:62`) without `takePersistableUriPermission()`, so it does not survive a restart. Note the
       fix is not just an added call: the picker uses `ACTION_PICK`, and persistable permissions need
       `ACTION_OPEN_DOCUMENT`. Part of the same Activity-Result-API rewrite.
-- [ ] `OnScreenDisplayActivity` was never exercised during the SDK 36 verification — reaching it
-      needs receiver display data. Worth a manual pass on a real receiver.
+- [x] `OnScreenDisplayActivity` was never exercised during the SDK 36 verification — reaching it
+      needs receiver display data. Done in August 2026 on a Pixel 8 (Android 17) against a real
+      receiver, with display lines actually populated: the list renders, the row text is the
+      expected size, and the screen rotates cleanly now that the portrait lock is gone — including
+      landscape, which falls back to the portrait layout because the OSD layouts have no
+      `layout-land` variant. Still unexercised there: the transport buttons and the search paths
+      (`btnPlay`/`btnPause`/`btnStop`, `screenMenu.doSearch()`), and the whole of `NetDisplay`'s
+      parsing beyond what that one receiver happened to send.
 
 ## Answered
 
