@@ -14,7 +14,7 @@
             android:layout_weight="1"
             android:id="@+id/rowtext"
             android:singleLine="true"
-            android:textSize="20dip"
+            android:textSize="@dimen/osd_row_text_size"
         	android:textStyle="bold"
             android:ellipsize="marquee"
         />
