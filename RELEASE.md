@@ -130,6 +130,21 @@ the alias CI actually signs with comes from the `KEY_ALIAS` secret and cannot be
       (`res/drawable/ic_launcher_foreground.xml`, `app/src/main/assets/icon.svg`, `docs/avr-icon.svg`
       and the store SVG).
 
+### Recommendations to decline
+
+The Console attaches "recommended actions" to every release. They are generic, they do not know what
+the app is, and they come back each time. Decided once, so they do not have to be re-argued:
+
+- **"Enable R8 to improve memory and performance" — no.** `ModelConfigurator.java:84` resolves the
+  60 receiver classes by name, `Class.forName("de.pskiwi.avrremote.models." + avrModel)`. They have
+  no static references, so shrinking removes all of them and every user silently falls back to
+  `AVRGeneric`, losing zones, quick-select, level controls and DAB. `ModelConfiguratorTest` does
+  **not** protect against this: it runs on the JVM against unminified classes, so the build stays
+  green and the damage only appears in the field. Turning it on would need
+  `-keep class de.pskiwi.avrremote.models.** { *; }` and verification on a device with a real model
+  selected — for close to nothing, because the app has no dependencies at all and the APK is 343 KB.
+  That is where R8 normally earns its keep. See also CLAUDE.md → *Receiver models*.
+
 ### Deadlines
 
 Everything below was checked in August 2026 and none of it is under our control, so re-read the
