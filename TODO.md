@@ -35,7 +35,7 @@ blocks the current build, which is green.
 
 ## Structural
 
-- [ ] **Test coverage is three files.** `http/HTTPSupportTest`, `http/Series08ParserTest` and
+- [x] **Test coverage was three files.** `http/HTTPSupportTest`, `http/Series08ParserTest` and
       `http/AVRXMLInfoParserTest` (added with the Apache removal) set up `src/test` and the JUnit
       dependency; everything else is still uncovered. The highest-value test to add next is one for `models/ModelConfigurator`, because it
       covers a failure mode the compiler cannot see: it resolves the 60 receiver classes **by
@@ -44,6 +44,12 @@ blocks the current build, which is green.
       back to `AVRGeneric` and the user just misses features. A JVM unit test that runs all 60
       entries of `@array/modelNames` through the same normalisation and instantiates them catches
       exactly that. Both sides hold 60 entries today, so the test starts green.
+      → `models/ModelConfiguratorTest` does this in both directions (name → class, and every
+      concrete `IAVRModel` has a list entry). The reflection moved out of `update()` into
+      `ModelConfigurator.createModel(String)`, which is what the test drives; the dash and
+      `(experimental)` stripping is deliberately spelled out a second time in the test, so that
+      changing the convention shows up as a failure. `lists.xml` is declared as a test input in
+      `app/build.gradle`, otherwise Gradle skips the test on exactly the change it guards.
 - [ ] After that, `models/` (pure capability logic) and `core/ZoneState.java` (1237 lines) are the
       cheapest places to add coverage.
 - [ ] **`http/AVRXMLInfoParser` only works on Android and cannot be unit-tested.** `startElement` and

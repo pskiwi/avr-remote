@@ -27,12 +27,12 @@ $ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/app-debu
 
 `local.properties` is deliberately untracked — the SDK path comes from `ANDROID_HOME`.
 
-**There is almost no test coverage.** `src/test` holds three JVM test classes —
-`http/HTTPSupportTest` (7 cases), `http/Series08ParserTest` (5) and `http/AVRXMLInfoParserTest` (1),
-JUnit 4 being the only dependency in the project — and there is no `src/androidTest` at all.
-`./gradlew test` runs those thirteen cases and nothing else (twice, in fact: once per build
-variant), so do not report a change as verified because the build passed; verify on a device or
-emulator instead. Two limits are worth knowing before writing more tests:
+**There is almost no test coverage.** `src/test` holds four JVM test classes —
+`http/HTTPSupportTest` (7 cases), `http/Series08ParserTest` (6), `models/ModelConfiguratorTest` (3)
+and `http/AVRXMLInfoParserTest` (1), JUnit 4 being the only dependency in the project — and there is
+no `src/androidTest` at all. `./gradlew test` runs those seventeen cases and nothing else (twice, in
+fact: once per build variant), so do not report a change as verified because the build passed;
+verify on a device or emulator instead. Three limits are worth knowing before writing more tests:
 
 - These run on the desktop JVM, not on Android's OkHttp-backed stack. Anything Android-specific —
   the implicit `Accept-Encoding: gzip`, chunked request bodies — cannot be pinned here, only
@@ -44,6 +44,13 @@ emulator instead. Two limits are worth knowing before writing more tests:
   `SAXParserFactoryImpl` rejects `disallow-doctype-decl` with `SAXNotRecognizedException`, so the
   parser disables `external-general-entities` and `external-parameter-entities` instead — those two
   are supported. Verified on a Pixel 8; do not "simplify" it to the usual one-liner.
+- A test that reads project files from disk rather than from the classpath — `res/` and `src/` are
+  on neither — must be declared as a task input, or Gradle calls the test up to date on exactly the
+  change it exists to catch. `ModelConfiguratorTest` reads `res/values/lists.xml`, hence the
+  `tasks.withType(Test).configureEach { inputs.file(...) }` block at the bottom of `app/build.gradle`
+  (it covers both variants — verified by watching `testReleaseUnitTest` re-run too). It also
+  resolves its paths against both the module and the root directory, because the working directory
+  depends on how the run was started.
 
 Lint runs with `abortOnError false`, so lint *errors* do not fail the build — check
 `app/build/reports/lint-results-debug.html` explicitly when it matters.
@@ -130,8 +137,12 @@ Consequences:
 - Adding a receiver needs **two** changes: a class in `models/` *and* an entry in
   `@array/modelNames` in `res/values/lists.xml`. The names must correspond after dash-stripping.
   Both sides currently hold exactly 60 entries and resolve 1:1 — if they drift apart, the orphaned
-  name falls back to `AVRGeneric` and the user just silently misses features. (Note `lists.xml` holds
-  130 `<item>`s across 14 arrays; only the 60 in `modelNames` are receivers.)
+  name falls back to `AVRGeneric` and the user just silently misses features. `ModelConfiguratorTest`
+  is what turns that silent drift into a red build, in both directions; it drives the real lookup in
+  `ModelConfigurator.createModel(String)`, split out of `update()` because there it sat behind a
+  `Context`. Its own `expectedClassName` restates the dash and `(experimental)` stripping on purpose
+  — that second copy is what pins the naming convention. (Note `lists.xml` holds 130 `<item>`s
+  across 14 arrays; only the 60 in `modelNames` are receivers.)
 - The model classes have no static references. Never enable R8/ProGuard shrinking without a
   keep rule for `de.pskiwi.avrremote.models.**`.
 
