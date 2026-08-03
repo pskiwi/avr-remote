@@ -4,14 +4,20 @@ apply plugin: 'com.android.application'
 // Branch, Commit und Commit-Zeit für die Info-Zeile im Test-Build. Läuft zur
 // Configuration-Time; schlägt git fehl (kein git, kein Repo, Export ohne .git),
 // darf das den Build nicht abbrechen.
+// providers.exec und nicht ProcessBuilder: einen Prozess direkt zu starten macht
+// die Konfiguration inkompatibel zum Configuration-Cache (dann bricht der Build
+// mit "external process started" ab, sobald jemand --configuration-cache setzt).
 def git(String... args) {
     try {
-        def process = new ProcessBuilder(["git"] + (args as List))
-                .directory(rootDir)
-                .redirectError(ProcessBuilder.Redirect.DISCARD)
-                .start()
-        def out = process.inputStream.getText("UTF-8")
-        return process.waitFor() == 0 ? out.trim() : ""
+        def result = providers.exec {
+            commandLine(["git"] + (args as List))
+            workingDir = rootDir
+            ignoreExitValue = true
+        }
+        if (result.result.get().exitValue != 0) {
+            return ""
+        }
+        return result.standardOutput.asText.get().trim()
     } catch (Exception e) {
         return ""
     }
@@ -22,10 +28,18 @@ def buildInfo = {
     if (hash.isEmpty()) {
         return ""
     }
+    // Uncommittete Änderungen markieren - sonst behauptet die Zeile einen Stand,
+    // den das APK gar nicht enthält.
+    if (!git("status", "--porcelain").isEmpty()) {
+        hash += "+"
+    }
     // Bei detached HEAD (so checkt die CI aus) liefert --abbrev-ref nur "HEAD".
+    // Dann bleibt nur GITHUB_REF_NAME - kein git name-rev: das nennt irgendeinen
+    // erreichbaren Ref und liefert Namen wie "tags/v1.0~1" oder "undefined", also
+    // lieber gar keinen Branch als einen falschen.
     def branch = git("rev-parse", "--abbrev-ref", "HEAD")
     if (branch.isEmpty() || branch == "HEAD") {
-        branch = System.getenv("GITHUB_REF_NAME") ?: git("name-rev", "--name-only", "HEAD")
+        branch = System.getenv("GITHUB_REF_NAME") ?: ""
     }
     def date = git("log", "-1", "--format=%cd", "--date=format:%Y-%m-%d %H:%M")
     // Der Wert landet in generiertem Java-Code, also nur Unverfängliches durchlassen.
