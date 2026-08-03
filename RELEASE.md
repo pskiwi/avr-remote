@@ -44,12 +44,32 @@ the alias CI actually signs with comes from the `KEY_ALIAS` secret and cannot be
    `app/src/main/AndroidManifest.xml` and nowhere else — there is no `versionCode` in
    `app/build.gradle`. Both must be raised; Play rejects a `versionCode` that is not higher than the
    last one.
-2. **Add release notes** to `app/src/main/assets/whatsnew.html`, as a new `<b>version</b>` block at
-   the top of the list. `AboutActivity` renders this file, and `AVRRemote` opens it automatically on
-   the first start after an update — but only once a receiver is configured, the check at
-   `AVRRemote.java:118` is `getConnectionConfig().isDefined() && AVRSettings.isShowChangeLog(this)`.
-   `isShowChangeLog()` compares `packageInfo.versionCode` against the stored `AVRLastVersionCode`
-   preference, so **an unchanged `versionCode` means nobody ever sees the notes**.
+2. **Add release notes** in two places, which say the same thing at different lengths.
+
+   `app/src/main/assets/whatsnew.html` is the in-app dialog — a new `<b>version</b>` block at the top
+   of the list. `AboutActivity` renders the file, and `AVRRemote` opens it automatically on the first
+   start after an update, but only once a receiver is configured: the check at `AVRRemote.java:118`
+   is `getConnectionConfig().isDefined() && AVRSettings.isShowChangeLog(this)`. `isShowChangeLog()`
+   compares `packageInfo.versionCode` against the stored `AVRLastVersionCode` preference, so **an
+   unchanged `versionCode` means nobody ever sees the notes**.
+
+   `version.xml` is the Play Store wording, 500 characters per language. It is **not** checked in;
+   `.gitignore` covers it, because it is input for the Console rather than part of the app. Its
+   shape:
+
+   ```xml
+   <de-DE>
+   …
+   </de-DE>
+
+   <en-US>
+   …
+   </en-US>
+   ```
+
+   Deliberately not a well-formed XML document — two roots, no declaration — because that is what
+   the Console expects when it splits the text by language tag. The app ships exactly these two
+   locales (`res/values` and `res/values-de`).
 
    **Credit every entry** with the GitHub login of whoever made the change, in trailing parentheses:
    `(pskiwi)`, or `(#13/netmindz)` when there is a pull request or issue to point at. Get the names
@@ -90,7 +110,14 @@ the alias CI actually signs with comes from the `KEY_ALIAS` secret and cannot be
 ### Every release
 
 - [ ] Upload the APK from the GitHub Release to a production release.
-- [ ] Paste the release notes (the `whatsnew.html` block, as plain text).
+- [ ] Paste the release notes from the local `version.xml` (see step 2) — the `<de-DE>` and
+      `<en-US>` blocks, without the comment. Play truncates silently at 500 characters per language,
+      so count first, stripping the comment or the tag names quoted inside it throw the match off:
+
+      ```sh
+      python3 -c "import re; s=re.sub(r'<!--.*?-->','',open('version.xml').read(),flags=re.S); \
+        [print(t, len(b.strip())) for t,b in re.findall(r'<(\S+?)>(.*?)</\1>', s, re.S)]"
+      ```
 - [ ] Check that no declaration on the *App content* page has gone red since last time. An
       outstanding declaration blocks **all** changes, including store-listing edits.
 - [ ] If `minSdk` was raised, note that the device catalogue shrinks accordingly and the affected

@@ -3,3 +3,5 @@ app/build
 build
 .idea
 local.properties
+version.xml
+*.log
