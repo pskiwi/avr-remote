@@ -58,4 +58,11 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
 }
 
+// ModelConfiguratorTest liest lists.xml direkt von der Platte, nicht über den
+// Classpath. Ohne diese Zeile hält Gradle den Test für aktuell, wenn genau die
+// Datei sich ändert, um die es dabei geht.
+tasks.withType(Test).configureEach {
+    inputs.file("src/main/res/values/lists.xml")
+}
+
 

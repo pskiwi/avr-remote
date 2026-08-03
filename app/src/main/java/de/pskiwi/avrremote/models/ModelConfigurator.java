@@ -41,18 +41,6 @@ public final class ModelConfigurator {
 	}
 
 	public void update() {
-		// "AVR-3310" -> "AVR3310"
-		final String am = AVRSettings.getAVRModel(ctx, currentReceiver)
-				.replace("-", "").trim();
-		final String avrModel;
-		// "(experimental)" weg
-		int p = am.indexOf("(");
-		if (p != -1) {
-			avrModel = am.substring(0, p).trim();
-		} else {
-			avrModel = am;
-		}
-
 		// "North America" -> "NorthAmerica"
 		final String avrModelArea = AVRSettings.getAVRModelArea(ctx)
 				.replace(" ", "").trim();
@@ -62,22 +50,43 @@ public final class ModelConfigurator {
 			area = ModelArea.valueOf(avrModelArea);
 		}
 		Logger.info("Area set to " + area);
-		if (avrModel.length() == 0) {
-			model = new AVRGeneric();
-		} else {
-			try {
-				model = (IAVRModel) Class.forName(
-						"de.pskiwi.avrremote.models." + avrModel).newInstance();
-			} catch (Exception x) {
-				Logger.error("create " + avrModel + " failed", x);
-				model = new AVRGeneric();
-			}
-		}
+		model = createModel(AVRSettings.getAVRModel(ctx, currentReceiver));
 		Logger.info("model is " + model.getClass().getName() + " area is "
 				+ area);
 
 		updateZoneState();
 
+	}
+
+	/**
+	 * Löst den Namen aus den Einstellungen per Reflection in die Modellklasse
+	 * auf: "AVR-3310" -> {@link AVR3310}, "ASD-51 (experimental)" ->
+	 * {@link ASD51}. Schlägt das fehl, gibt es nur einen Log-Eintrag und
+	 * {@link AVRGeneric}, der Anwender merkt davon nichts. Deshalb prüft
+	 * {@code ModelConfiguratorTest} alle Einträge aus
+	 * {@code @array/modelNames}.
+	 */
+	static IAVRModel createModel(String modelName) {
+		// "AVR-3310" -> "AVR3310"
+		final String am = modelName.replace("-", "").trim();
+		final String avrModel;
+		// "(experimental)" weg
+		int p = am.indexOf("(");
+		if (p != -1) {
+			avrModel = am.substring(0, p).trim();
+		} else {
+			avrModel = am;
+		}
+		if (avrModel.length() == 0) {
+			return new AVRGeneric();
+		}
+		try {
+			return (IAVRModel) Class.forName(
+					"de.pskiwi.avrremote.models." + avrModel).newInstance();
+		} catch (Exception x) {
+			Logger.error("create " + avrModel + " failed", x);
+			return new AVRGeneric();
+		}
 	}
 
 	private void updateZoneState() {
