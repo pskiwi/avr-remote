@@ -47,7 +47,8 @@ verify on a device or emulator instead. Three limits are worth knowing before wr
 - A test that reads project files from disk rather than from the classpath — `res/` and `src/` are
   on neither — must be declared as a task input, or Gradle calls the test up to date on exactly the
   change it exists to catch. `ModelConfiguratorTest` reads `res/values/lists.xml`, hence the
-  `tasks.withType(Test) { inputs.file(...) }` block at the bottom of `app/build.gradle`. It also
+  `tasks.withType(Test).configureEach { inputs.file(...) }` block at the bottom of `app/build.gradle`
+  (it covers both variants — verified by watching `testReleaseUnitTest` re-run too). It also
   resolves its paths against both the module and the root directory, because the working directory
   depends on how the run was started.
 
@@ -137,10 +138,11 @@ Consequences:
   `@array/modelNames` in `res/values/lists.xml`. The names must correspond after dash-stripping.
   Both sides currently hold exactly 60 entries and resolve 1:1 — if they drift apart, the orphaned
   name falls back to `AVRGeneric` and the user just silently misses features. `ModelConfiguratorTest`
-  is what turns that silent drift into a red build, in both directions; the normalisation it drives
-  lives in `ModelConfigurator.createModel(String)`, split out of `update()` so the test does not have
-  to reimplement it. (Note `lists.xml` holds 130 `<item>`s across 14 arrays; only the 60 in
-  `modelNames` are receivers.)
+  is what turns that silent drift into a red build, in both directions; it drives the real lookup in
+  `ModelConfigurator.createModel(String)`, split out of `update()` because there it sat behind a
+  `Context`. Its own `expectedClassName` restates the dash and `(experimental)` stripping on purpose
+  — that second copy is what pins the naming convention. (Note `lists.xml` holds 130 `<item>`s
+  across 14 arrays; only the 60 in `modelNames` are receivers.)
 - The model classes have no static references. Never enable R8/ProGuard shrinking without a
   keep rule for `de.pskiwi.avrremote.models.**`.
 

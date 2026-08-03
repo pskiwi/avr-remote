@@ -91,7 +91,7 @@ public final class ModelConfiguratorTest {
 	@Test
 	public void unknownModelFallsBackToGenericWithoutFailing() {
 		assertEquals(AVRGeneric.class,
-				ModelConfigurator.createModel("AVR-4711").getClass());
+				ModelConfigurator.createModel("Kein-Solches-Modell").getClass());
 	}
 
 	/** "ASD-51 (experimental)" -> "ASD51" */
@@ -116,6 +116,10 @@ public final class ModelConfiguratorTest {
 					names.add(items.item(j).getTextContent().trim());
 				}
 				assertTrue("modelNames ist leer", !names.isEmpty());
+				// Ohne diese Prüfung wäre ein doppelter Eintrag grün: unten
+				// steht ein Set, und beide Kopien lösen ja auf
+				assertEquals("doppelter Eintrag in modelNames",
+						new TreeSet<String>(names).size(), names.size());
 				return names;
 			}
 		}
