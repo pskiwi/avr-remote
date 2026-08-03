@@ -60,6 +60,12 @@ Release builds are signed only if `~/keystore.properties` exists or the `KEY_ALI
 `KEY_PASSWORD`, `STORE_FILE` and `STORE_PASSWORD` environment variables are set.
 Without those, `./gradlew build` produces an unsigned release APK.
 
+## Release
+
+Tagging `v<version>` builds a signed APK and publishes it as a GitHub Release; the Play Store upload
+is manual. The whole procedure, including the Play Console checklist, is in
+[RELEASE.md](RELEASE.md).
+
 ## Receiver specs
 Search for
 

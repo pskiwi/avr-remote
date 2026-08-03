@@ -111,11 +111,13 @@ blocks the current build, which is green.
 
 ## Housekeeping
 
-- [ ] **Gradle 10 syntax**: `./gradlew --warning-mode all` flags exactly two spots —
+- [x] **Gradle 10 syntax**: `./gradlew --warning-mode all` flags exactly two spots —
       `namespace "…"` and `abortOnError false` need `=` assignment. Two characters.
-- [ ] `versionCode` (124) and `versionName` (1.5.1) still sit in the manifest unchanged and must be
-      raised before any release. The release workflow triggers on a `v*` tag and needs the
-      `KEY_JKS`, `KEY_PASSWORD`, `KEY_ALIAS` and `STORE_PASSWORD` secrets.
+- [x] `versionCode` and `versionName` sat in the manifest unchanged since Nov 2020 and had to be
+      raised before any release. Now 125 / 1.6.0, with a matching block in `assets/whatsnew.html` —
+      without the `versionCode` bump the release notes never open, `AVRSettings.isShowChangeLog()`
+      compares it against the `AVRLastVersionCode` preference. The whole procedure is written down
+      in [RELEASE.md](RELEASE.md) now.
 - [ ] **12 manual `try { … } finally { close(); }` blocks left** in `core/Connector`,
       `core/MacroManager`, `core/RenameService`, `scan/AVRTargetTester`, the three
       `http/Series08*Parser` and `log/FeedbackReporter`. try-with-resources is the
@@ -129,13 +131,17 @@ blocks the current build, which is green.
       **current** directory. Run from `misc/` or the repo root it only creates a stray `res/` tree;
       run from `app/src/main` it would overwrite the real icons with red squares. `misc/mkicons.sh`
       is the maintained script and already uses the Gradle path (`TGT=../app/src/main/res`).
-- [ ] **Play-Store icon still shows the old 2010 raster.** The app icon is a vector now
-      (`res/drawable/ic_launcher_foreground.xml` plus the adaptive icon in `mipmap-anydpi-v26/`),
-      but the store listing needs a 512×512 PNG uploaded by hand in the Play Console — and it must
-      be **opaque**, so the transparent adaptive background has to be flattened onto the black
-      chassis for that export. Neither `misc/mkicons.sh` nor anything else in-tree can do it: there
-      is no rasterizer set up locally. `res/drawable/icon_small.png` (32×32) is the last leftover of
-      the old icon and is referenced nowhere.
+- [x] **Play-Store icon still showed the old 2010 raster.** The 512×512 export now exists as
+      `misc/play-store-icon-512.png`, rendered from `misc/play-store-icon.svg` — the same artwork as
+      `assets/icon.svg` plus a black `<rect>` covering the full viewBox, so the corners the round
+      chassis leaves open are filled rather than transparent. The claim that nothing in-tree can
+      rasterize was half right: `magick`, `rsvg-convert` and `inkscape` are all absent, but macOS
+      ships `qlmanage`, and `qlmanage -t -s 512` renders the SVG faithfully (command recorded in a
+      comment at the top of the SVG). Change all three copies of the artwork together —
+      `res/drawable/ic_launcher_foreground.xml`, `assets/icon.svg`, `misc/play-store-icon.svg`.
+      **Still open: uploading it in the Play Console**, which cannot be automated — see
+      [RELEASE.md](RELEASE.md). `res/drawable/icon_small.png` (32×32) is the last leftover of the
+      old icon and is referenced nowhere.
 - [ ] Lint reports 48 unused resources and 30 missing German translations.
       `res/values-v14/dimension.xml` holds a single `widget_margin`, a left-over override of
       `res/values/dimension.xml:27` from an app widget that no longer exists; lint also flags the
@@ -167,6 +173,10 @@ blocks the current build, which is green.
 
 ## Open question
 
-- [ ] The README links to the **Google Play Store**, but the release workflow builds an APK for
-      GitHub Releases. If the app is still maintained on Play, check whether an App Bundle is now
-      required there instead of an APK.
+- [x] The README links to the **Google Play Store**, but the release workflow builds an APK for
+      GitHub Releases. Answered: the App Bundle requirement applies to apps published **since
+      August 2021**; apps that were already on Play may keep shipping APKs, so the workflow does not
+      have to change. The Play upload was never automated in the first place — the `v*` tag only
+      creates a GitHub Release, and the Console step is manual. Switching to an AAB would force
+      enrolment in Play App Signing, which is irreversible, so it is worth doing only if the Console
+      actually refuses the APK. Details, deadlines and the Console checklist: [RELEASE.md](RELEASE.md).
