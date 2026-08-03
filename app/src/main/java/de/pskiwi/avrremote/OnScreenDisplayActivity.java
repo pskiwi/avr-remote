@@ -20,7 +20,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import android.app.ListActivity;
-import android.content.pm.ActivityInfo;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -85,10 +84,6 @@ public final class OnScreenDisplayActivity extends ListActivity implements
 
 		final ScreenInfo screenInfo = new ScreenInfo(this);
 		Logger.info("create OSD " + screenInfo.toString());
-		if (!screenInfo.isTablet()) {
-			this
-					.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-		}
 
 		optionsMenu = new OptionsMenu(this, getApp().getModelConfigurator(),
 				this);

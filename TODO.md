@@ -158,6 +158,16 @@ blocks the current build, which is green.
 - [ ] Dead version check: `StatusbarManager.java:50` gates on `SDK_INT >= JELLY_BEAN`, always true
       at minSdk 24 (lint: `ObsoleteSdkInt`). The `if` wraps lines 51–74; the `Context`/`Intent`/
       `PendingIntent` setup above it stays.
+- [ ] **`ScreenInfo.isTablet()` calls anything over 4.5 inches a tablet** (`ScreenInfo.java:52`,
+      physical diagonal from `DisplayMetrics`). Reasonable in 2010; today every device that clears
+      minSdk 24 is well past it — a Pixel 8 measures about 6.2 — so the method now answers `true`
+      everywhere and no longer distinguishes anything. The orientation lock it used to guard is gone
+      (Play flagged it, and it had been unreachable for years), but one caller is left:
+      `ScreenListAdapter.java:140` picks text size 22 for "tablets", so every modern phone takes the
+      tablet branch and the `heightPixels` ladder below it is dead. Deciding what the app actually
+      wants here — smallest-width qualifiers rather than inches — is a UI question, not a rename.
+      Note `ScreenInfo` also feeds `FeedbackReporter.java:176`, where it is only logged, and that
+      `Display.getMetrics()` behind it has been deprecated since API 30.
 
 ## Large, no deadline
 
