@@ -185,8 +185,14 @@ blocks the current build, which is green.
       at `:62`) without `takePersistableUriPermission()`, so it does not survive a restart. Note the
       fix is not just an added call: the picker uses `ACTION_PICK`, and persistable permissions need
       `ACTION_OPEN_DOCUMENT`. Part of the same Activity-Result-API rewrite.
-- [ ] `OnScreenDisplayActivity` was never exercised during the SDK 36 verification — reaching it
-      needs receiver display data. Worth a manual pass on a real receiver.
+- [x] `OnScreenDisplayActivity` was never exercised during the SDK 36 verification — reaching it
+      needs receiver display data. Done in August 2026 on a Pixel 8 (Android 17) against a real
+      receiver, with display lines actually populated: the list renders, the row text is the
+      expected size, and the screen rotates cleanly now that the portrait lock is gone — including
+      landscape, which falls back to the portrait layout because the OSD layouts have no
+      `layout-land` variant. Still unexercised there: the transport buttons and the search paths
+      (`btnPlay`/`btnPause`/`btnStop`, `screenMenu.doSearch()`), and the whole of `NetDisplay`'s
+      parsing beyond what that one receiver happened to send.
 
 ## Answered
 
