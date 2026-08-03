@@ -9,7 +9,7 @@ if (keystorePropertiesFile.canRead()) {
 }
 
 android {
-    namespace "de.pskiwi.avrremote"
+    namespace = "de.pskiwi.avrremote"
     compileSdk 36
 
     defaultConfig {
@@ -24,7 +24,7 @@ android {
     }
 
     lint {
-        abortOnError false
+        abortOnError = false
     }
 
     def fromEnv=System.getenv("KEY_PASSWORD")!=null && !System.getenv("KEY_PASSWORD").trim().isEmpty()

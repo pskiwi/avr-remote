@@ -12,6 +12,11 @@ housekeeping items, each with file and line. Read it before proposing work of yo
 like an oversight is usually already listed there with the reason it was left alone. When you finish
 one of the items, tick its checkbox in the same commit.
 
+**[RELEASE.md](RELEASE.md) is the release procedure** — where the version lives, how signing is
+wired up, the tag convention, and the Play Console checklist with its deadlines. The one thing worth
+knowing before reading it: the `v*` tag workflow publishes to **GitHub Releases only**; there is no
+Play Store automation and never has been.
+
 ## Build and run
 
 The build needs **JDK 17** and **Android SDK Platform 36**:
@@ -52,12 +57,12 @@ verify on a device or emulator instead. Three limits are worth knowing before wr
   resolves its paths against both the module and the root directory, because the working directory
   depends on how the run was started.
 
-Lint runs with `abortOnError false`, so lint *errors* do not fail the build — check
+Lint runs with `abortOnError = false`, so lint *errors* do not fail the build — check
 `app/build/reports/lint-results-debug.html` explicitly when it matters.
 
 Release builds are signed only when `~/keystore.properties` exists or the `KEY_ALIAS` /
 `KEY_PASSWORD` / `STORE_FILE` / `STORE_PASSWORD` env vars are set; otherwise
-`app-release-unsigned.apk` is produced and cannot be installed.
+`app-release-unsigned.apk` is produced and cannot be installed — see [RELEASE.md](RELEASE.md).
 
 ## Architecture
 
