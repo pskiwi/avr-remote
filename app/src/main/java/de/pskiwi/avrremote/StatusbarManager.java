@@ -45,6 +45,7 @@ public final class StatusbarManager {
 		PendingIntent contentIntent = PendingIntent.getActivity(app, 0,
 				notificationIntent, PendingIntent.FLAG_IMMUTABLE);
 
+		// https://developer.android.com/guide/topics/ui/notifiers/notifications.html
 		Notification.Builder builder = new Notification.Builder(context);
 
 		builder.setAutoCancel(false);
