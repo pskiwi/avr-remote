@@ -42,8 +42,11 @@ public final class ResilentConnector implements ISender {
 				Logger.info("stop connector");
 				thread.interrupt();
 				try {
-					// 1000 wg. ANR Broadcast of Intent {
-					// act=android.intent.action.SCREEN_OFF
+					// Begrenzt warten: join() laeuft ueber forceReconnect()
+					// auf dem UI-Thread, und ein Thread in einem nicht
+					// unterbrechbaren Connect/Ping wuerde ihn sonst bis zum
+					// ANR blockieren. Der "Zombie" ist ueber generation
+					// bereits entwertet und kann nichts mehr publizieren.
 					thread.join(1000);
 				} catch (InterruptedException e) {
 					Logger.error("Reconnector:join failed", e);

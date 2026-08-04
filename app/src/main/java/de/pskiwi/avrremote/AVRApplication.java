@@ -83,16 +83,6 @@ public final class AVRApplication extends Application {
 		private boolean connected;
 	};
 
-	private final BroadcastReceiver standByEventReceiver = new BroadcastReceiver() {
-
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			Logger.info("System StandBy ...");
-			connector.stop();
-		}
-
-	};
-
 	@Override
 	public void onCreate() {
 		super.onCreate();
@@ -163,10 +153,6 @@ public final class AVRApplication extends Application {
 		filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
 		filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
 		registerReceiver(wifiEventReceiver, filter);
-
-		IntentFilter standbyFilter = new IntentFilter();
-		standbyFilter.addAction(Intent.ACTION_SCREEN_OFF);
-		registerReceiver(standByEventReceiver, standbyFilter);
 
 		statusbarManager = new StatusbarManager(this);
 

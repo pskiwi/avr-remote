@@ -90,17 +90,21 @@ blocks the current build, which is green.
       during the Apache removal — decide whether the feature was meant to be wired up or should go.
 - [ ] **The receiver connection lives on a daemon thread owned by `AVRApplication`, not a Service.**
       A design decision from 2010. Under modern background restrictions the process can be reclaimed
-      and the connection dies with it. This is the most likely cause of "the app just stops
-      responding" reports.
-- [ ] Two races in the resume path, flagged in PR #13 review, not fixed there because both predate
-      that PR and are independent of its Doze-detection change:
-      `ActiveHandler.contextResumed()` → `forceReconnect()` → `ResilentConnector.stopConnector()` →
-      `threadHandler.join()` (`core/ResilentConnector.java:241`, unbounded — see also the `join(1000)`
-      at `:47`) runs on the UI thread, so a slow `checkAddress()`/`connect()` in the old thread can
-      block resume long enough to ANR. Separately, `java.util.Timer` catches up on missed ticks once
-      the process thaws, so a `StopConnectorTask` deferred by Doze (`ActiveHandler.java`'s
-      `StopConnectorTask.run()`) can fire just after resume and stop a connection
-      `contextResumed()` just rebuilt; `cancelCurrentTask()` only helps if it wins that race.
+      and the connection dies with it. Note that the one "app does not reconnect after standby"
+      report we have a log for was *not* this — the process had survived; it was the stale-teardown
+      race in the item below.
+- [ ] `ActiveHandler.contextResumed()` → `forceReconnect()` → `ResilentConnector.stopConnector()` →
+      `threadHandler.join()` (`core/ResilentConnector.java:244`, unbounded — see also the `join(1000)`
+      at `:50`) runs on the UI thread, so a slow `checkAddress()`/`connect()` in the old thread can
+      block resume long enough to ANR. Flagged in PR #13 review, predates that PR. The second race
+      listed there — a teardown deferred by Doze firing just after resume and stopping the
+      connection `contextResumed()` had just rebuilt — is fixed, see below.
+- [x] Teardown deferred by Doze stops the connection right after resume, leaving no reconnect loop
+      at all until the app is killed and restarted. Both delivery paths are closed: the
+      `ACTION_SCREEN_OFF` receiver in `AVRApplication` is gone (`ActiveHandler` is now the only
+      owner of the disconnect policy, so the connection drops after the user's auto-disconnect
+      timeout instead of immediately on screen-off), and `StopConnectorTask.run()` skips the stop
+      when an activity is active again — `cancelCurrentTask()` only wins that race sometimes.
 
 ## Time bomb, no fuse length known
 

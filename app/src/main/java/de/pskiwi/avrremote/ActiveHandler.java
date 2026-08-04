@@ -31,6 +31,15 @@ public final class ActiveHandler {
 		@Override
 		public void run() {
 			Logger.info("run stopConnectorRunnable");
+			// Der Task kann durch Doze/App-Standby beliebig verzoegert werden
+			// und dann erst feuern, wenn laengst wieder eine Activity im
+			// Vordergrund ist - und wuerde die Verbindung abraeumen, die
+			// contextResumed() gerade aufgebaut hat. cancelCurrentTask()
+			// gewinnt dieses Rennen nur manchmal.
+			if (isActive()) {
+				Logger.info("stopConnectorRunnable: activity active -> skip");
+				return;
+			}
 			connector.stop();
 		}
 	}
@@ -103,7 +112,8 @@ public final class ActiveHandler {
 	private TimerTask task;
 	// -1 = kein Pause-Zeitpunkt gemerkt (z.B. allererstes contextResumed())
 	private long pausedAtElapsedRealtime = -1;
-	private Context activeContext;
+	// volatile: wird vom Timer-Thread in StopConnectorTask gelesen
+	private volatile Context activeContext;
 	private final Timer timer = new Timer("StopConnector-Timer", true);
 	private final ResilentConnector connector;
 }
