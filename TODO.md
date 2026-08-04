@@ -129,6 +129,24 @@ blocks the current build, which is green.
       as buttons that stay greyed out until the next status change repairs them. Cheaper to fix than
       it looks: `fireListener()` only copies the status and `Handler.post()`s it, so a `synchronized`
       on `setStatus()` would cover a few field writes and a post, never the UI fanout itself.
+- [ ] **`AVRTargetTester.PING_TIMEOUT` is 250 ms, which a phone waking from standby cannot meet.**
+      Measured on a Pixel 8 against an AVR-3310 on 2.4 GHz, all three within seconds of each other:
+      a Mac on the same LAN pings the receiver in 8 ms, the phone once properly awake needs **62 ms**,
+      and in the first moments after waking it does not get through at all — ICMP fails and even the
+      2500 ms TCP connect to port 23 times out, while the receiver answers the Mac the whole time.
+      That is Wi-Fi power save: the radio sleeps between beacons and only wakes on DTIM. So
+      `checkAddress()` reports "not reachable" for a receiver that is plainly there, exactly in the
+      situation where a user has just picked the phone up.
+      Consequences, in the order they bite: `setStatus(Reachable, false)` cascades in `EnableManager`
+      and greys out the whole UI; the reconnect delay climbs 1→2→4→8→16 s and only resets on a
+      *successful* connection, so staying in the foreground through a bad patch can leave the user
+      waiting 16 s after the network is fine again (a resume escapes it, `forceReconnect()` builds a
+      fresh `Reconnector` with the index at 0). The connect itself is attempted regardless — the
+      "Auf jeden Fall versuchen" comment in `Reconnector.run()` covers that — so this is about the
+      displayed state and the backoff, not about refusing to connect.
+      This may well be part of what users report as "does not reconnect after standby". Worth
+      measuring before changing: raising the timeout costs a slower subnet sweep in `scan/AVRScanner`,
+      which uses the same constant, so the two uses probably want separate values.
 
 ## Time bomb, no fuse length known
 
