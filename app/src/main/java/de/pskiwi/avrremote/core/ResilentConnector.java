@@ -30,41 +30,48 @@ import de.pskiwi.avrremote.models.ModelConfigurator;
 /** Hält die Verbindung zum AVR. */
 public final class ResilentConnector implements ISender {
 
-	// Verwaltung des Verbindungsthreads
-	private final static class ThreadHandler {
+	// Verwaltung des Verbindungsthreads.
+	// Paketprivat statt private, damit ThreadHandlerTest drankommt: der
+	// ResilentConnector selbst ist aus einem JVM-Test nicht zu bauen
+	// (EnableManager, ModelConfigurator, Context), diese Klasse dagegen kennt
+	// nur Thread und Logger. Gleiches Muster wie ModelConfigurator.createModel().
+	final static class ThreadHandler {
 
 		// isAlive(), nicht nur "!= null": ein gestorbener Thread wuerde
 		// reconfigure() sonst glauben machen, es laufe noch ein Reconnect-Loop,
 		// und der Kurzschluss dort startet dann nie einen neuen. Aktuell kann
-		// das nicht passieren - join() nullt thread im finally - aber die
-		// Fehlerklasse ist genau die, die den Reconnect schon einmal
-		// stillschweigend beerdigt hat.
+		// das nicht passieren - stop() nullt das Feld - aber die Fehlerklasse
+		// ist genau die, die den Reconnect schon einmal stillschweigend
+		// beerdigt hat.
 		public synchronized boolean isDefined() {
 			return thread != null && thread.isAlive();
 		}
 
-		public synchronized void join() {
+		public synchronized void stop() {
 			if (thread != null) {
 				Logger.info("stop connector");
 				thread.interrupt();
-				try {
-					// Begrenzt warten: join() laeuft ueber forceReconnect()
-					// auf dem UI-Thread, und ein Thread in einem nicht
-					// unterbrechbaren Connect/Ping wuerde ihn sonst bis zum
-					// ANR blockieren. Der "Zombie" ist ueber generation
-					// bereits entwertet und kann nichts mehr publizieren.
-					thread.join(1000);
-				} catch (InterruptedException e) {
-					Logger.error("Reconnector:join failed", e);
-				} finally {
-					thread = null;
-				}
-				Logger.info("Reconnector:connector stopped");
+				// Bewusst kein join: der Aufrufer ist ueber forceReconnect()
+				// der UI-Thread, und der Thread, auf den zu warten waere,
+				// steckt typischerweise in checkAddress() - isReachable() und
+				// Socket-Connects reagieren nicht auf interrupt(). Das Warten
+				// liefe also verlaesslich in seinen Timeout und der Code machte
+				// danach ohnehin weiter, ohne dass der Thread gestorben waere.
+				// Ueber generation ist er bereits entwertet, kann nichts mehr
+				// publizieren und beendet sich beim naechsten isCurrent().
+				// "detached", nicht "stopped": der Thread laeuft u.U. noch
+				// Sekunden weiter und loggt dabei. Name mitgeben, sonst ist im
+				// Log nicht zu unterscheiden, wer da noch schreibt.
+				Logger.info("Reconnector:connector detached ("
+						+ thread.getName() + ")");
+				thread = null;
 			}
 		}
 
-		public synchronized void start(Runnable runner) {
-			thread = new Thread(runner, "ResilentThreadHandler");
+		public synchronized void start(Runnable runner, int epoch) {
+			// Epoche im Namen: nach einem stop() koennen kurzzeitig mehrere
+			// Threads leben und ins selbe Log schreiben
+			thread = new Thread(runner, "ResilentThreadHandler-" + epoch);
 			thread.setDaemon(true);
 			thread.start();
 		}
@@ -90,8 +97,10 @@ public final class ResilentConnector implements ISender {
 		public void run() {
 			while (!Thread.currentThread().isInterrupted() && isCurrent()) {
 				try {
-					if (isCurrent()) {
-						connector = IConnector.NULL_CONNECTOR;
+					if (!publishConnector(epoch, IConnector.NULL_CONNECTOR)) {
+						// sonst laeuft ein laengst abgeloester Thread noch durch
+						// checkAddress() - gut 2sec Ping- und Port-Timeouts
+						return;
 					}
 					Logger.info("Reconnector:build new connection to ["
 							+ connectionConfig + "]");
@@ -114,12 +123,14 @@ public final class ResilentConnector implements ISender {
 					} catch (Throwable x) {
 						// Bei Fehler Reachable setzen, sonst wird Reachable
 						// über "Connected" mit gesetzt
-						enableManager
-								.setStatus(StatusFlag.Reachable, reachable);
+						if (isCurrent()) {
+							enableManager.setStatus(StatusFlag.Reachable,
+									reachable);
+						}
 						throw x;
 					}
 
-					if (!isCurrent()) {
+					if (!publishConnector(epoch, newConnector)) {
 						// wurde waehrend des (nicht unterbrechbaren) Connects
 						// bereits gestoppt/neu gestartet -> verwerfen
 						Logger.info("Reconnector:superseded while connecting -> discard ["
@@ -128,12 +139,23 @@ public final class ResilentConnector implements ISender {
 						return;
 					}
 
-					connector = newConnector;
 					reconnectDelayIndex = 0;
 					Logger.info("Reconnector:connection to ["
 							+ connectionConfig + "] established");
-					fireConnected(connector, true);
-					connector.waitUntilClosed();
+					// ab hier newConnector statt des geteilten Feldes: das kann
+					// ein anderer Thread laengst wieder geleert haben, und
+					// NULL_CONNECTOR.waitUntilClosed() kehrt sofort zurueck -
+					// wir wuerden eine zweite Verbindung aufbauen und diese
+					// hier offen stehen lassen.
+					if (isCurrent()) {
+						// die einzige Stelle, an der ein abgeloester Thread
+						// "Connected" *setzen* wuerde: nach dem reset() in
+						// clearState() bliebe das Flag stehen, ohne Verbindung
+						// und ohne Reconnect-Loop dahinter. Wie die Wache unten
+						// verengt auch diese das Fenster nur.
+						fireConnected(newConnector, true);
+					}
+					newConnector.waitUntilClosed();
 					Logger.info("Reconnector:Reconnector:connection to ["
 							+ connectionConfig + "] closed");
 
@@ -146,10 +168,22 @@ public final class ResilentConnector implements ISender {
 					reachable = connectionConfig.checkAddress(true);
 					Logger.debug("Reconnector:reachable [" + connectionConfig
 							+ "] : " + reachable);
-					// falls !reachable, wird connected direkt gelöscht
-					enableManager.setStatus(StatusFlag.Reachable, reachable);
-					fireConnected(connector, false);
-					connector = IConnector.NULL_CONNECTOR;
+					// Nochmal pruefen: checkAddress blockiert hier rund 1sec
+					// (500ms Ping + 500ms Port 80, nicht unterbrechbar). In der
+					// Zeit kann laengst ein neuer Thread verbunden haben, und
+					// dessen Verbindung wuerden die drei Zeilen hier abraeumen
+					// - setStatus(Reachable,false) loescht per Fallthrough
+					// Connected, Power und alle Zonen gleich mit. Die Wache
+					// verengt das Fenster auf Mikrosekunden, sie schliesst es
+					// nicht; dicht ist nur der gefaehrliche Teil, weil
+					// publishConnector() unter dem Monitor nochmal prueft und
+					// eine lebende Verbindung so nicht mehr ersetzt werden kann.
+					if (isCurrent()) {
+						// falls !reachable, wird connected direkt gelöscht
+						enableManager.setStatus(StatusFlag.Reachable, reachable);
+						fireConnected(newConnector, false);
+						publishConnector(epoch, IConnector.NULL_CONNECTOR);
+					}
 
 				} catch (InterruptedException x) {
 					Logger.info("Reconnector:connector interrupted -> return ["
@@ -234,7 +268,8 @@ public final class ResilentConnector implements ISender {
 	private void startConnector() {
 		Logger.info("Reconnector:start new connector " + connectionConfig);
 		if (connectionConfig.isDefined()) {
-			threadHandler.start(new Reconnector(generation.incrementAndGet()));
+			final int epoch = generation.incrementAndGet();
+			threadHandler.start(new Reconnector(epoch), epoch);
 		} else {
 			Logger.info("startConnector ignored: " + connectionConfig);
 		}
@@ -243,11 +278,13 @@ public final class ResilentConnector implements ISender {
 	private void stopConnector() {
 		// invalidiert einen evtl. noch laufenden "Zombie"-Thread (z.B. in
 		// einem nicht unterbrechbaren Connect/Ping haengend), so dass dieser
-		// keine Werte mehr publizieren darf, selbst wenn threadHandler.join()
-		// unten in den Timeout laeuft.
+		// keine Werte mehr publizieren darf. threadHandler.stop() wartet nicht
+		// auf ihn: die Entwertung muss allein tragen, deshalb konsultiert
+		// Reconnector.run() sie vor jedem Schreibzugriff auf geteilten Zustand
+		// und publishConnector() macht Pruefung und Zuweisung atomar.
 		generation.incrementAndGet();
 		try {
-			threadHandler.join();
+			threadHandler.stop();
 		} finally {
 			closeCurrentConnection();
 		}
@@ -315,9 +352,34 @@ public final class ResilentConnector implements ISender {
 		}
 	}
 
+	/**
+	 * Setzt das geteilte Feld nur, solange die Generation des Aufrufers noch
+	 * aktuell ist - und zwar atomar gegen {@link #closeAndClearConnector()}.
+	 * Ein blosses "if (isCurrent()) connector = ..." reicht nicht: faellt das
+	 * Entwerten genau zwischen Pruefung und Zuweisung, haengt ein abgeloester
+	 * Thread noch eine <em>lebende</em> Verbindung ins Feld, nachdem der
+	 * Aufraeumer schon durch ist. Die schliesst dann niemand mehr, und
+	 * isRunning() haelt sie fuer die aktuelle.
+	 *
+	 * @return false, wenn der Aufrufer abgeloest wurde und selbst aufraeumen muss
+	 */
+	private synchronized boolean publishConnector(int epoch, IConnector c) {
+		if (generation.get() != epoch) {
+			return false;
+		}
+		connector = c;
+		return true;
+	}
+
 	private void closeCurrentConnection() {
 		clearState();
+		closeAndClearConnector();
+	}
 
+	// Der Monitor deckt nur den Zugriff auf das Feld ab, nicht clearState():
+	// gebraucht wird er allein gegen publishConnector(), und je kleiner der
+	// Abschnitt, desto weniger laesst sich damit anstellen.
+	private synchronized void closeAndClearConnector() {
 		try {
 			connector.close();
 		} finally {
@@ -347,6 +409,10 @@ public final class ResilentConnector implements ISender {
 	private final EnableManager enableManager;
 	private final ModelConfigurator modelConfigurator;
 	private final List<IConnectionListener> listener = new CopyOnWriteArrayList<IConnectionListener>();;
+	// volatile fuer die vielen ungesicherten Leser (send, query, isRunning,
+	// ...), der Monitor nur fuer die beiden Schreiber publishConnector() und
+	// closeAndClearConnector() - die muessen gegeneinander atomar sein,
+	// Sichtbarkeit allein reicht dort nicht.
 	private volatile IConnector connector = IConnector.NULL_CONNECTOR;
 	private ConnectionConfiguration connectionConfig = ConnectionConfiguration.UNDEFINED;
 	private final ThreadHandler threadHandler = new ThreadHandler();
