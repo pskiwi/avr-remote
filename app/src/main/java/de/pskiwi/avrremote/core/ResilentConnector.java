@@ -30,8 +30,12 @@ import de.pskiwi.avrremote.models.ModelConfigurator;
 /** Hält die Verbindung zum AVR. */
 public final class ResilentConnector implements ISender {
 
-	// Verwaltung des Verbindungsthreads
-	private final static class ThreadHandler {
+	// Verwaltung des Verbindungsthreads.
+	// Paketprivat statt private, damit ThreadHandlerTest drankommt: der
+	// ResilentConnector selbst ist aus einem JVM-Test nicht zu bauen
+	// (EnableManager, ModelConfigurator, Context), diese Klasse dagegen kennt
+	// nur Thread und Logger. Gleiches Muster wie ModelConfigurator.createModel().
+	final static class ThreadHandler {
 
 		// isAlive(), nicht nur "!= null": ein gestorbener Thread wuerde
 		// reconfigure() sonst glauben machen, es laufe noch ein Reconnect-Loop,
@@ -43,22 +47,19 @@ public final class ResilentConnector implements ISender {
 			return thread != null && thread.isAlive();
 		}
 
-		public synchronized void join() {
+		public synchronized void stop() {
 			if (thread != null) {
 				Logger.info("stop connector");
 				thread.interrupt();
-				try {
-					// Begrenzt warten: join() laeuft ueber forceReconnect()
-					// auf dem UI-Thread, und ein Thread in einem nicht
-					// unterbrechbaren Connect/Ping wuerde ihn sonst bis zum
-					// ANR blockieren. Der "Zombie" ist ueber generation
-					// bereits entwertet und kann nichts mehr publizieren.
-					thread.join(1000);
-				} catch (InterruptedException e) {
-					Logger.error("Reconnector:join failed", e);
-				} finally {
-					thread = null;
-				}
+				// Bewusst kein join: der Aufrufer ist ueber forceReconnect()
+				// der UI-Thread, und der Thread, auf den zu warten waere,
+				// steckt typischerweise in checkAddress() - isReachable() und
+				// Socket-Connects reagieren nicht auf interrupt(). Das Warten
+				// liefe also verlaesslich in seinen Timeout und der Code machte
+				// danach ohnehin weiter, ohne dass der Thread gestorben waere.
+				// Ueber generation ist er bereits entwertet, kann nichts mehr
+				// publizieren und beendet sich beim naechsten isCurrent().
+				thread = null;
 				Logger.info("Reconnector:connector stopped");
 			}
 		}
@@ -243,11 +244,11 @@ public final class ResilentConnector implements ISender {
 	private void stopConnector() {
 		// invalidiert einen evtl. noch laufenden "Zombie"-Thread (z.B. in
 		// einem nicht unterbrechbaren Connect/Ping haengend), so dass dieser
-		// keine Werte mehr publizieren darf, selbst wenn threadHandler.join()
-		// unten in den Timeout laeuft.
+		// keine Werte mehr publizieren darf. threadHandler.stop() wartet nicht
+		// auf ihn, diese Entwertung ist also die ganze Absicherung.
 		generation.incrementAndGet();
 		try {
-			threadHandler.join();
+			threadHandler.stop();
 		} finally {
 			closeCurrentConnection();
 		}

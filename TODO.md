@@ -93,13 +93,14 @@ blocks the current build, which is green.
       and the connection dies with it. Note that the one "app does not reconnect after standby"
       report we have a log for was *not* this — the process had survived; it was the stale-teardown
       race in the item below.
-- [ ] `ActiveHandler.contextResumed()` → `forceReconnect()` → `ResilentConnector.stopConnector()` →
-      `threadHandler.join()` (`core/ResilentConnector.java:250`) runs on the UI thread. Bounded at
-      roughly a second by the `join(1000)` at `:56` plus the `closeCurrentConnection()` in the
-      `finally`, but that is still enough to ANR when a slow `checkAddress()`/`connect()` in the old
-      thread holds it up. Flagged in PR #13 review, predates that PR. The second race listed there —
-      a teardown deferred by Doze firing just after resume and stopping the connection
-      `contextResumed()` had just rebuilt — is fixed, see below.
+- [x] `ActiveHandler.contextResumed()` → `forceReconnect()` → `ResilentConnector.stopConnector()`
+      runs on the UI thread and waited there for the old reconnect thread — a full second whenever
+      that thread sat in `checkAddress()`, because neither `InetAddress.isReachable()` nor the
+      `testPort()` connects react to `interrupt()`. The wait bought nothing either: it timed out and
+      the code carried on with the thread still alive. `ThreadHandler.stop()` now interrupts and
+      returns; the `generation` bump is what keeps the old thread from publishing, as it already had
+      to be whenever the `join` timed out. `core/ThreadHandlerTest` pins it — the timing case fails
+      at ~1000 ms against the old implementation. Flagged in PR #13 review, predates that PR.
 - [x] Teardown deferred by Doze stops the connection right after resume, leaving no reconnect loop
       at all until the app is killed and restarted. The `ACTION_SCREEN_OFF` receiver in
       `AVRApplication` is gone — `ActiveHandler` is now the only owner of the disconnect policy, so
