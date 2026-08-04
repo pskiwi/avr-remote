@@ -57,8 +57,9 @@ knowing before writing more tests:
   (it covers both variants — verified by watching `testReleaseUnitTest` re-run too). It also
   resolves its paths against both the module and the root directory, because the working directory
   depends on how the run was started.
-- `core/ThreadHandlerTest` is the only test that asserts on wall-clock time: it pins that tearing
-  the reconnect thread down does not block its caller, which is the UI thread via
+- `core/ThreadHandlerTest` asserts on wall-clock time, as does `Series08ParserTest`'s
+  `largeLineStaysFast`: it pins that tearing the reconnect thread down does not block its caller,
+  which is the UI thread via
   `ActiveHandler.contextResumed()` → `forceReconnect()`. The threshold sits between "no wait" and
   the `join(1000)` it replaced (measured 1003 ms), so keep that margin if you touch it. It reaches
   `ResilentConnector.ThreadHandler` because that nested class is package-private for exactly this

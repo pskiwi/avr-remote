@@ -99,7 +99,7 @@ public final class ResilentConnector implements ISender {
 				try {
 					if (!publishConnector(epoch, IConnector.NULL_CONNECTOR)) {
 						// sonst laeuft ein laengst abgeloester Thread noch durch
-						// checkAddress() - bis zu 2sec Ping- und Port-Timeouts
+						// checkAddress() - gut 2sec Ping- und Port-Timeouts
 						return;
 					}
 					Logger.info("Reconnector:build new connection to ["
@@ -148,10 +148,11 @@ public final class ResilentConnector implements ISender {
 					// wir wuerden eine zweite Verbindung aufbauen und diese
 					// hier offen stehen lassen.
 					if (isCurrent()) {
-						// die einzige Stelle, an der ein abgeloester Thread ein
-						// Flag *setzen* wuerde statt es zu loeschen: nach dem
-						// reset() in clearState() bliebe "Connected" stehen,
-						// ohne Verbindung und ohne Reconnect-Loop.
+						// die einzige Stelle, an der ein abgeloester Thread
+						// "Connected" *setzen* wuerde: nach dem reset() in
+						// clearState() bliebe das Flag stehen, ohne Verbindung
+						// und ohne Reconnect-Loop dahinter. Wie die Wache unten
+						// verengt auch diese das Fenster nur.
 						fireConnected(newConnector, true);
 					}
 					newConnector.waitUntilClosed();
