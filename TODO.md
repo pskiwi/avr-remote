@@ -98,9 +98,13 @@ blocks the current build, which is green.
       that thread sat in `checkAddress()`, because neither `InetAddress.isReachable()` nor the
       `testPort()` connects react to `interrupt()`. The wait bought nothing either: it timed out and
       the code carried on with the thread still alive. `ThreadHandler.stop()` now interrupts and
-      returns; the `generation` bump is what keeps the old thread from publishing, as it already had
-      to be whenever the `join` timed out. `core/ThreadHandlerTest` pins it — the timing case fails
-      at ~1000 ms against the old implementation. Flagged in PR #13 review, predates that PR.
+      returns. What the `join` *did* cover by accident was a detached thread that came back inside
+      that second: its stale writes then landed before `closeCurrentConnection()`, which cleaned up
+      after them. So the same change had to make `Reconnector.run()` consult `generation` before
+      every write to shared state, and `publishConnector()` makes that check atomic against the
+      cleanup — a check-then-assign only narrows the window. `core/ThreadHandlerTest` pins the
+      timing (the case fails at ~1000 ms against the old implementation) but reaches none of that
+      second half. Flagged in PR #13 review, predates that PR.
 - [x] Teardown deferred by Doze stops the connection right after resume, leaving no reconnect loop
       at all until the app is killed and restarted. The `ACTION_SCREEN_OFF` receiver in
       `AVRApplication` is gone — `ActiveHandler` is now the only owner of the disconnect policy, so
@@ -108,6 +112,23 @@ blocks the current build, which is green.
       screen-off. On the timer path `StopConnectorTask.run()` skips the stop when an activity is
       active again (`cancelCurrentTask()` only wins that race sometimes) and, because that check is
       not atomic against a resume landing right after it, reconnects itself if one did.
+- [ ] **`ResilentConnector.connectionConfig` is a plain field read across threads.** Written on the
+      UI thread in `reconfigure()` and `forceReconnect()`, read by every reconnect thread — the
+      `checkAddress()` calls and half the log lines in `Reconnector.run()`. Without `volatile` there
+      is no guarantee a running thread ever sees a new address, so after an IP change the old thread
+      can keep dialling the old receiver until it exits on its own. Never observed; the threads are
+      short-lived and `stopConnector()` interrupts them anyway, which is probably why it has never
+      surfaced. One keyword to fix. Left alone in the PR that removed the `join`, because that PR
+      had no business touching it — but note the same PR made concurrent readers *certain* rather
+      than occasional, so the odds moved.
+- [ ] **`EnableManager.setStatus()` is an unsynchronised read-modify-write.** It copies
+      `connectionStatus`, mutates it through the deliberate `switch` fallthrough, compares and fires
+      the listeners (`EnableManager.java:109`). Callers now include the UI thread, the
+      `StopConnector-Timer` thread and one or more reconnect threads at the same time. Two
+      overlapping calls can lose a flag or fire listeners with a half-built status, which surfaces
+      as buttons that stay greyed out until the next status change repairs them. Fixing it properly
+      means deciding who owns that state rather than sprinkling `synchronized` on it — the listeners
+      are called from inside, so the lock would be held across the whole UI fanout.
 
 ## Time bomb, no fuse length known
 
