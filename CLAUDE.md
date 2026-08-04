@@ -32,13 +32,13 @@ $ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/app-debu
 
 `local.properties` is deliberately untracked — the SDK path comes from `ANDROID_HOME`.
 
-**There is almost no test coverage.** `src/test` holds five JVM test classes —
+**There is almost no test coverage.** `src/test` holds six JVM test classes —
 `http/HTTPSupportTest` (7 cases), `http/Series08ParserTest` (6), `core/ThreadHandlerTest` (5),
-`models/ModelConfiguratorTest` (3) and `http/AVRXMLInfoParserTest` (1), JUnit 4 being the only
-dependency in the project — and there is no `src/androidTest` at all. `./gradlew test` runs those
-twenty-two cases and nothing else (twice, in fact: once per build variant), so do not report a change
-as verified because the build passed; verify on a device or emulator instead. Four limits are worth
-knowing before writing more tests:
+`models/ModelConfiguratorTest` (3), `ReceiverStatusTest` (3) and `http/AVRXMLInfoParserTest` (1),
+JUnit 4 being the only dependency in the project — and there is no `src/androidTest` at all.
+`./gradlew test` runs those twenty-five cases and nothing else (twice, in fact: once per build
+variant), so do not report a change as verified because the build passed; verify on a device or
+emulator instead. Four limits are worth knowing before writing more tests:
 
 - These run on the desktop JVM, not on Android's OkHttp-backed stack. Anything Android-specific —
   the implicit `Accept-Encoding: gzip`, chunked request bodies — cannot be pinned here, only
@@ -69,6 +69,33 @@ knowing before writing more tests:
   it does *not* cover: that a detached thread publishes nothing after `stop()` returns. That is the
   load-bearing half of the argument, it lives in `Reconnector.run()`'s `isCurrent()` checks and
   `publishConnector()`, and no JVM test reaches it — read those before touching either.
+
+**Reading a log a user sent in** (`log/SDLogger` writes it, `log/FeedbackReporter` mails it). One
+line looks like this, and a message can run over several lines — anything not matching the header is
+a continuation:
+
+```
+2026-08-04  20:22:07.667 #0 - INFO : [main] openend at Tue Aug 04 20:22:07 GMT+02:00 2026
+```
+
+**Sort by `#seq`, never by timestamp or line order.** Neither of those is the order the events
+happened in: `java.util.logging` stamps the time when the `LogRecord` is built but writes later, so
+threads overtake each other — the field log from 2026-08-03 has 99 inversions in 2672 lines, one of
+them right where it mattered. Sorting by the timestamp does not repair it either, because it only
+has millisecond resolution and 65 % of those lines share a millisecond with another. `#seq` comes
+from `LogRecord`, assigned in the constructor from the same instant as the time, and it is the one
+total order; on a run from a Pixel 8 it removed all inversions. It has gaps — the counter is
+JVM-global and the framework's own logging consumes numbers too — which is harmless.
+
+The thread name is captured in `SDLogger.withThread()` at log time rather than in the formatter, so
+it stays right no matter which thread does the writing. Expect `main`, `receiver`, `sender`,
+`ResilentThreadHandler-<epoch>` (the epoch is the `generation` from `ResilentConnector`, and several
+can be alive at once) and `StopConnector-Timer`. logcat has no such field because it carries its own
+tid column.
+
+`ReceiverStatus.toString()` walks `StatusFlag.values()` rather than its own map, so the flags always
+appear in the same order and two status lines can be diffed as text. Over the map they could not:
+three of eleven flag sets in that field log show up in more than one order, one of them in three.
 
 Lint runs with `abortOnError = false`, so lint *errors* do not fail the build — check
 `app/build/reports/lint-results-debug.html` explicitly when it matters.
