@@ -97,7 +97,11 @@ public final class ResilentConnector implements ISender {
 		public void run() {
 			while (!Thread.currentThread().isInterrupted() && isCurrent()) {
 				try {
-					publishConnector(epoch, IConnector.NULL_CONNECTOR);
+					if (!publishConnector(epoch, IConnector.NULL_CONNECTOR)) {
+						// sonst laeuft ein laengst abgeloester Thread noch durch
+						// checkAddress() - bis zu 2sec Ping- und Port-Timeouts
+						return;
+					}
 					Logger.info("Reconnector:build new connection to ["
 							+ connectionConfig + "]");
 					boolean reachable = connectionConfig.checkAddress(false);
@@ -143,7 +147,13 @@ public final class ResilentConnector implements ISender {
 					// NULL_CONNECTOR.waitUntilClosed() kehrt sofort zurueck -
 					// wir wuerden eine zweite Verbindung aufbauen und diese
 					// hier offen stehen lassen.
-					fireConnected(newConnector, true);
+					if (isCurrent()) {
+						// die einzige Stelle, an der ein abgeloester Thread ein
+						// Flag *setzen* wuerde statt es zu loeschen: nach dem
+						// reset() in clearState() bliebe "Connected" stehen,
+						// ohne Verbindung und ohne Reconnect-Loop.
+						fireConnected(newConnector, true);
+					}
 					newConnector.waitUntilClosed();
 					Logger.info("Reconnector:Reconnector:connection to ["
 							+ connectionConfig + "] closed");
@@ -157,12 +167,16 @@ public final class ResilentConnector implements ISender {
 					reachable = connectionConfig.checkAddress(true);
 					Logger.debug("Reconnector:reachable [" + connectionConfig
 							+ "] : " + reachable);
-					// Nochmal pruefen: checkAddress blockiert bis zu 1,5sec
-					// (Ping- und Port-Timeouts, nicht unterbrechbar). In der
+					// Nochmal pruefen: checkAddress blockiert hier rund 1sec
+					// (500ms Ping + 500ms Port 80, nicht unterbrechbar). In der
 					// Zeit kann laengst ein neuer Thread verbunden haben, und
 					// dessen Verbindung wuerden die drei Zeilen hier abraeumen
 					// - setStatus(Reachable,false) loescht per Fallthrough
-					// Connected, Power und alle Zonen gleich mit.
+					// Connected, Power und alle Zonen gleich mit. Die Wache
+					// verengt das Fenster auf Mikrosekunden, sie schliesst es
+					// nicht; dicht ist nur der gefaehrliche Teil, weil
+					// publishConnector() unter dem Monitor nochmal prueft und
+					// eine lebende Verbindung so nicht mehr ersetzt werden kann.
 					if (isCurrent()) {
 						// falls !reachable, wird connected direkt gelöscht
 						enableManager.setStatus(StatusFlag.Reachable, reachable);
@@ -361,8 +375,9 @@ public final class ResilentConnector implements ISender {
 		closeAndClearConnector();
 	}
 
-	// nicht die ganze closeCurrentConnection() synchronisieren: clearState()
-	// feuert Listener, und die sollen den Monitor nicht sehen
+	// Der Monitor deckt nur den Zugriff auf das Feld ab, nicht clearState():
+	// gebraucht wird er allein gegen publishConnector(), und je kleiner der
+	// Abschnitt, desto weniger laesst sich damit anstellen.
 	private synchronized void closeAndClearConnector() {
 		try {
 			connector.close();
@@ -393,6 +408,10 @@ public final class ResilentConnector implements ISender {
 	private final EnableManager enableManager;
 	private final ModelConfigurator modelConfigurator;
 	private final List<IConnectionListener> listener = new CopyOnWriteArrayList<IConnectionListener>();;
+	// volatile fuer die vielen ungesicherten Leser (send, query, isRunning,
+	// ...), der Monitor nur fuer die beiden Schreiber publishConnector() und
+	// closeAndClearConnector() - die muessen gegeneinander atomar sein,
+	// Sichtbarkeit allein reicht dort nicht.
 	private volatile IConnector connector = IConnector.NULL_CONNECTOR;
 	private ConnectionConfiguration connectionConfig = ConnectionConfiguration.UNDEFINED;
 	private final ThreadHandler threadHandler = new ThreadHandler();

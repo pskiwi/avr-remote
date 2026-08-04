@@ -126,9 +126,9 @@ blocks the current build, which is green.
       the listeners (`EnableManager.java:109`). Callers now include the UI thread, the
       `StopConnector-Timer` thread and one or more reconnect threads at the same time. Two
       overlapping calls can lose a flag or fire listeners with a half-built status, which surfaces
-      as buttons that stay greyed out until the next status change repairs them. Fixing it properly
-      means deciding who owns that state rather than sprinkling `synchronized` on it — the listeners
-      are called from inside, so the lock would be held across the whole UI fanout.
+      as buttons that stay greyed out until the next status change repairs them. Cheaper to fix than
+      it looks: `fireListener()` only copies the status and `Handler.post()`s it, so a `synchronized`
+      on `setStatus()` would cover a few field writes and a post, never the UI fanout itself.
 
 ## Time bomb, no fuse length known
 

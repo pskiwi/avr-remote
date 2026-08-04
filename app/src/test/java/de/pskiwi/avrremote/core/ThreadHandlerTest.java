@@ -155,6 +155,12 @@ public final class ThreadHandlerTest {
 		assertTrue("erster Thread hat den interrupt nicht bekommen",
 				first.interrupts.await(5, TimeUnit.SECONDS));
 		assertTrue("neuer Thread nicht uebernommen", handler.isDefined());
+
+		// isDefined() allein wuerde nicht unterscheiden, welchen der beiden der
+		// Handler fuehrt - der erste lebt ja noch. Erst dass dieses stop() beim
+		// zweiten ankommt, belegt es.
 		handler.stop();
+		assertTrue("stop() ging nicht an den zweiten Thread",
+				second.interrupts.await(5, TimeUnit.SECONDS));
 	}
 }

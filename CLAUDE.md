@@ -62,8 +62,9 @@ knowing before writing more tests:
   `ActiveHandler.contextResumed()` → `forceReconnect()`. The threshold sits between "no wait" and
   the `join(1000)` it replaced (measured 1003 ms), so keep that margin if you touch it. It reaches
   `ResilentConnector.ThreadHandler` because that nested class is package-private for exactly this
-  reason — the enclosing class needs `EnableManager`, `ModelConfigurator` and a `Context` and cannot
-  be built from a JVM test at all. Same trick as `ModelConfigurator.createModel(String)`. Note what
+  reason — the enclosing class cannot be built from a JVM test at all, because its constructor wants
+  an `EnableManager` and that one builds a `Handler` in a field initialiser. Same trick as
+  `ModelConfigurator.createModel(String)`. Note what
   it does *not* cover: that a detached thread publishes nothing after `stop()` returns. That is the
   load-bearing half of the argument, it lives in `Reconnector.run()`'s `isCurrent()` checks and
   `publishConnector()`, and no JVM test reaches it — read those before touching either.
@@ -187,8 +188,9 @@ Consequences:
 
 ## Conventions and constraints
 
-- **No AndroidX, no third-party dependencies.** `app/build.gradle` has no `dependencies {}` block at
-  all. Everything is raw framework API. Keep it that way unless explicitly asked — adding AndroidX
+- **No AndroidX, no third-party dependencies.** `app/build.gradle`'s `dependencies {}` block holds a
+  single line, `testImplementation 'junit:junit:4.13.2'` — nothing ships in the APK.
+  Everything is raw framework API. Keep it that way unless explicitly asked — adding AndroidX
   would pull the whole legacy UI stack into a migration. This is why `log/LogFileProvider` is a
   hand-written `ContentProvider` and not `androidx.core.content.FileProvider`: it exists only to hand
   the zipped log to the mail app as a content URI (`log/SDLogger.getLogURI()` →
