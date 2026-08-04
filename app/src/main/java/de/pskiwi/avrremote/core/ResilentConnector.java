@@ -33,8 +33,14 @@ public final class ResilentConnector implements ISender {
 	// Verwaltung des Verbindungsthreads
 	private final static class ThreadHandler {
 
+		// isAlive(), nicht nur "!= null": ein gestorbener Thread wuerde
+		// reconfigure() sonst glauben machen, es laufe noch ein Reconnect-Loop,
+		// und der Kurzschluss dort startet dann nie einen neuen. Aktuell kann
+		// das nicht passieren - join() nullt thread im finally - aber die
+		// Fehlerklasse ist genau die, die den Reconnect schon einmal
+		// stillschweigend beerdigt hat.
 		public synchronized boolean isDefined() {
-			return thread != null;
+			return thread != null && thread.isAlive();
 		}
 
 		public synchronized void join() {

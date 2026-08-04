@@ -94,8 +94,8 @@ blocks the current build, which is green.
       report we have a log for was *not* this — the process had survived; it was the stale-teardown
       race in the item below.
 - [ ] `ActiveHandler.contextResumed()` → `forceReconnect()` → `ResilentConnector.stopConnector()` →
-      `threadHandler.join()` (`core/ResilentConnector.java:244`) runs on the UI thread. Bounded at
-      roughly a second by the `join(1000)` at `:50` plus the `closeCurrentConnection()` in the
+      `threadHandler.join()` (`core/ResilentConnector.java:250`) runs on the UI thread. Bounded at
+      roughly a second by the `join(1000)` at `:56` plus the `closeCurrentConnection()` in the
       `finally`, but that is still enough to ANR when a slow `checkAddress()`/`connect()` in the old
       thread holds it up. Flagged in PR #13 review, predates that PR. The second race listed there —
       a teardown deferred by Doze firing just after resume and stopping the connection
