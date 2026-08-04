@@ -33,8 +33,14 @@ public final class ResilentConnector implements ISender {
 	// Verwaltung des Verbindungsthreads
 	private final static class ThreadHandler {
 
+		// isAlive(), nicht nur "!= null": ein gestorbener Thread wuerde
+		// reconfigure() sonst glauben machen, es laufe noch ein Reconnect-Loop,
+		// und der Kurzschluss dort startet dann nie einen neuen. Aktuell kann
+		// das nicht passieren - join() nullt thread im finally - aber die
+		// Fehlerklasse ist genau die, die den Reconnect schon einmal
+		// stillschweigend beerdigt hat.
 		public synchronized boolean isDefined() {
-			return thread != null;
+			return thread != null && thread.isAlive();
 		}
 
 		public synchronized void join() {
@@ -42,8 +48,11 @@ public final class ResilentConnector implements ISender {
 				Logger.info("stop connector");
 				thread.interrupt();
 				try {
-					// 1000 wg. ANR Broadcast of Intent {
-					// act=android.intent.action.SCREEN_OFF
+					// Begrenzt warten: join() laeuft ueber forceReconnect()
+					// auf dem UI-Thread, und ein Thread in einem nicht
+					// unterbrechbaren Connect/Ping wuerde ihn sonst bis zum
+					// ANR blockieren. Der "Zombie" ist ueber generation
+					// bereits entwertet und kann nichts mehr publizieren.
 					thread.join(1000);
 				} catch (InterruptedException e) {
 					Logger.error("Reconnector:join failed", e);

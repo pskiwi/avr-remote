@@ -31,7 +31,24 @@ public final class ActiveHandler {
 		@Override
 		public void run() {
 			Logger.info("run stopConnectorRunnable");
+			// Der Task kann durch Doze/App-Standby beliebig verzoegert werden
+			// und dann erst feuern, wenn laengst wieder eine Activity im
+			// Vordergrund ist - und wuerde die Verbindung abraeumen, die
+			// contextResumed() gerade aufgebaut hat. cancelCurrentTask()
+			// gewinnt dieses Rennen nur manchmal.
+			if (isActive()) {
+				Logger.info("stopConnectorRunnable: activity active -> skip");
+				return;
+			}
 			connector.stop();
+			// Die Wache oben ist kein atomares Check-then-Act: genau zwischen
+			// ihr und dem stop() kann ein contextResumed() gelaufen sein, dessen
+			// frisch gestarteten Reconnect-Thread stop() gerade entwertet hat.
+			// Dann selbst heilen, sonst bleibt gar kein Reconnect-Loop uebrig.
+			if (isActive()) {
+				Logger.info("stopConnectorRunnable: resume won the race -> reconnect");
+				connector.forceReconnect();
+			}
 		}
 	}
 
@@ -41,15 +58,23 @@ public final class ActiveHandler {
 
 	public void contextResumed(Context context) {
 		Logger.info("ActiveHandler.activity resumed " + context);
+		// vor cancelCurrentTask(): ein StopConnectorTask, der jetzt gerade
+		// laeuft, sieht so auf jeden Fall isActive()
 		activeContext = context;
 		// "task != null" allein reicht nicht: der Timer kann durch Doze/App-
 		// Standby beliebig verzoegert werden, auch weit ueber disconnectTimeout
 		// hinaus, ohne dass StopConnectorTask je gefeuert hat. Stattdessen die
 		// tatsaechlich vergangene Zeit seit contextPaused() gegen den Timeout
-		// pruefen.
+		// pruefen. Gedeckelt, weil der Timeout bis zu 2h betragen darf, das
+		// "isRunning()" unten aber nur Sekunden lang etwas wert ist: es haengt
+		// an Socket.isConnected(), und das bleibt nach einem einmal geglueckten
+		// Connect fuer immer true - auch bei einem Socket, den Doze laengst
+		// gekappt hat. Der Shortcut ist fuer Rotation, Dialoge und Tab-Wechsel
+		// gedacht.
+		final long quickReturnTimeout = Math.min(
+				AVRSettings.getDisconnectTimeout(context), MAX_QUICK_RETURN_SEC) * 1000L;
 		final boolean quickReturn = pausedAtElapsedRealtime >= 0
-				&& SystemClock.elapsedRealtime() - pausedAtElapsedRealtime < AVRSettings
-						.getDisconnectTimeout(context) * 1000L;
+				&& SystemClock.elapsedRealtime() - pausedAtElapsedRealtime < quickReturnTimeout;
 		pausedAtElapsedRealtime = -1;
 		cancelCurrentTask();
 		if (quickReturn) {
@@ -103,7 +128,10 @@ public final class ActiveHandler {
 	private TimerTask task;
 	// -1 = kein Pause-Zeitpunkt gemerkt (z.B. allererstes contextResumed())
 	private long pausedAtElapsedRealtime = -1;
-	private Context activeContext;
+	// volatile: wird vom Timer-Thread in StopConnectorTask gelesen
+	private volatile Context activeContext;
 	private final Timer timer = new Timer("StopConnector-Timer", true);
 	private final ResilentConnector connector;
+	// so lange darf contextResumed() der bestehenden Verbindung glauben
+	private static final int MAX_QUICK_RETURN_SEC = 60;
 }
