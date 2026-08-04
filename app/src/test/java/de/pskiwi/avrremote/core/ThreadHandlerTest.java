@@ -16,7 +16,6 @@
  */
 package de.pskiwi.avrremote.core;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -68,7 +67,7 @@ public final class ThreadHandlerTest {
 	public void stopWaitsNotForAnUninterruptibleThread() throws Exception {
 		final ThreadHandler handler = new ThreadHandler();
 		final UninterruptibleRunner runner = new UninterruptibleRunner();
-		handler.start(runner);
+		handler.start(runner, 1);
 		assertTrue("Thread nicht angelaufen",
 				runner.started.await(5, TimeUnit.SECONDS));
 
@@ -86,7 +85,7 @@ public final class ThreadHandlerTest {
 	public void stopInterruptsTheThread() throws Exception {
 		final ThreadHandler handler = new ThreadHandler();
 		final UninterruptibleRunner runner = new UninterruptibleRunner();
-		handler.start(runner);
+		handler.start(runner, 1);
 		assertTrue("Thread nicht angelaufen",
 				runner.started.await(5, TimeUnit.SECONDS));
 
@@ -103,7 +102,7 @@ public final class ThreadHandlerTest {
 	public void isDefinedIsFalseAfterStop() throws Exception {
 		final ThreadHandler handler = new ThreadHandler();
 		final UninterruptibleRunner runner = new UninterruptibleRunner();
-		handler.start(runner);
+		handler.start(runner, 1);
 		assertTrue("Thread nicht angelaufen",
 				runner.started.await(5, TimeUnit.SECONDS));
 		assertTrue(handler.isDefined());
@@ -121,7 +120,7 @@ public final class ThreadHandlerTest {
 			public void run() {
 				done.countDown();
 			}
-		});
+		}, 1);
 		assertTrue("Thread nicht gelaufen", done.await(5, TimeUnit.SECONDS));
 
 		// Der Thread ist zu Ende, ohne dass jemand stop() gerufen hat. Wuerde
@@ -131,6 +130,31 @@ public final class ThreadHandlerTest {
 			Thread.sleep(10);
 		}
 		assertFalse("toter Thread gilt noch als definiert", handler.isDefined());
-		assertEquals(0, done.getCount());
+	}
+
+	/**
+	 * Die reale Sequenz aus {@code forceReconnect()}: stoppen und sofort neu
+	 * starten. Der Handler muss danach den <em>neuen</em> Thread fuehren, sonst
+	 * haelt reconfigure() den Loop fuer tot oder fuer lebendig, je nachdem.
+	 */
+	@Test
+	public void startAfterStopTracksTheNewThread() throws Exception {
+		final ThreadHandler handler = new ThreadHandler();
+		final UninterruptibleRunner first = new UninterruptibleRunner();
+		handler.start(first, 1);
+		assertTrue(first.started.await(5, TimeUnit.SECONDS));
+		handler.stop();
+		assertFalse(handler.isDefined());
+
+		final UninterruptibleRunner second = new UninterruptibleRunner();
+		handler.start(second, 2);
+		assertTrue(second.started.await(5, TimeUnit.SECONDS));
+
+		// Der erste laeuft noch - er ignoriert den interrupt -, darf den
+		// Handler aber nicht mehr belegen.
+		assertTrue("erster Thread hat den interrupt nicht bekommen",
+				first.interrupts.await(5, TimeUnit.SECONDS));
+		assertTrue("neuer Thread nicht uebernommen", handler.isDefined());
+		handler.stop();
 	}
 }

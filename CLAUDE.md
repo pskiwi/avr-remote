@@ -33,10 +33,10 @@ $ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/app-debu
 `local.properties` is deliberately untracked — the SDK path comes from `ANDROID_HOME`.
 
 **There is almost no test coverage.** `src/test` holds five JVM test classes —
-`http/HTTPSupportTest` (7 cases), `http/Series08ParserTest` (6), `core/ThreadHandlerTest` (4),
+`http/HTTPSupportTest` (7 cases), `http/Series08ParserTest` (6), `core/ThreadHandlerTest` (5),
 `models/ModelConfiguratorTest` (3) and `http/AVRXMLInfoParserTest` (1), JUnit 4 being the only
 dependency in the project — and there is no `src/androidTest` at all. `./gradlew test` runs those
-twenty-one cases and nothing else (twice, in fact: once per build variant), so do not report a change
+twenty-two cases and nothing else (twice, in fact: once per build variant), so do not report a change
 as verified because the build passed; verify on a device or emulator instead. Four limits are worth
 knowing before writing more tests:
 
@@ -63,7 +63,10 @@ knowing before writing more tests:
   the `join(1000)` it replaced (measured 1003 ms), so keep that margin if you touch it. It reaches
   `ResilentConnector.ThreadHandler` because that nested class is package-private for exactly this
   reason — the enclosing class needs `EnableManager`, `ModelConfigurator` and a `Context` and cannot
-  be built from a JVM test at all. Same trick as `ModelConfigurator.createModel(String)`.
+  be built from a JVM test at all. Same trick as `ModelConfigurator.createModel(String)`. Note what
+  it does *not* cover: that a detached thread publishes nothing after `stop()` returns. That is the
+  load-bearing half of the argument, it lives in `Reconnector.run()`'s `isCurrent()` checks and
+  `publishConnector()`, and no JVM test reaches it — read those before touching either.
 
 Lint runs with `abortOnError = false`, so lint *errors* do not fail the build — check
 `app/build/reports/lint-results-debug.html` explicitly when it matters.
