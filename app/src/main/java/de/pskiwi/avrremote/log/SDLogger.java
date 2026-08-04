@@ -57,9 +57,37 @@ public final class SDLogger implements ILogger {
 				 */
 				@Override
 				public String format(LogRecord r) {
-					return DATE_FORMAT.format(new Date(r.getMillis())) + " #"
-							+ r.getSequenceNumber() + " - " + r.getLevel()
-							+ " : " + r.getMessage() + "\n";
+					final StringBuilder ret = new StringBuilder();
+					ret.append(DATE_FORMAT.format(new Date(r.getMillis())));
+					ret.append(" #").append(r.getSequenceNumber());
+					ret.append(" - ").append(r.getLevel());
+					ret.append(" : ").append(r.getMessage()).append("\n");
+					appendStackTrace(ret, r.getThrown());
+					return ret.toString();
+				}
+
+				/**
+				 * Ohne das steht im eingeschickten Log nur die Meldung, und
+				 * "reading macros.txt failed" laesst offen, ob eine erwartete
+				 * FileNotFoundException dahintersteckt oder etwas Ernstes. Das
+				 * Throwable geht bis hierher mit und wurde bisher verworfen -
+				 * nur logcat bekam es, und das schickt kein Anwender mit.
+				 */
+				private void appendStackTrace(StringBuilder ret, Throwable t) {
+					for (Throwable x = t; x != null; x = x.getCause()) {
+						ret.append(x == t ? "\t" : "\tCaused by: ");
+						ret.append(x).append("\n");
+						final StackTraceElement[] trace = x.getStackTrace();
+						final int show = Math.min(trace.length, MAX_TRACE);
+						for (int i = 0; i < show; i++) {
+							ret.append("\t\tat ").append(trace[i]).append("\n");
+						}
+						if (trace.length > show) {
+							ret.append("\t\t... ")
+									.append(trace.length - show)
+									.append(" more\n");
+						}
+					}
 				}
 			});
 			setLevel(Level.ALL);
@@ -179,6 +207,9 @@ public final class SDLogger implements ILogger {
 
 	private static final int MAX_FILE = 3;
 	private static final int FILE_SIZE = 500 * 1024;
+	// gedeckelt, weil das Log rotiert: ein voller Android-Stacktrace ist
+	// schnell 40 Zeilen, und die obersten sagen alles, was man braucht
+	private static final int MAX_TRACE = 12;
 	private final java.util.logging.Logger logger = java.util.logging.Logger
 			.getLogger(LOG_NAME);
 	private final File logdir;

@@ -80,22 +80,35 @@ a continuation:
 
 **Sort by `#seq`, never by timestamp or line order.** Neither of those is the order the events
 happened in: `java.util.logging` stamps the time when the `LogRecord` is built but writes later, so
-threads overtake each other — the field log from 2026-08-03 has 99 inversions in 2672 lines, one of
-them right where it mattered. Sorting by the timestamp does not repair it either, because it only
-has millisecond resolution and 65 % of those lines share a millisecond with another. `#seq` comes
-from `LogRecord`, assigned in the constructor from the same instant as the time, and it is the one
-total order; on a run from a Pixel 8 it removed all inversions. It has gaps — the counter is
-JVM-global and the framework's own logging consumes numbers too — which is harmless.
+threads overtake each other — the field log from 2026-08-03 has 7 inversions in its 2488 header
+lines, one of them right where it mattered. (Count header lines only. A naive line-wise check counts
+the 184 continuation lines too and reports 99, which is wrong.) Sorting by the timestamp does not
+repair it either, because it only has millisecond resolution and 65 % of those lines share a
+millisecond with another. `#seq` comes from `LogRecord`, assigned in the constructor from the same
+instant as the time, and it is the one total order **within one process run** — on two runs from a
+Pixel 8 it removed every inversion (9 and 4 respectively, 0 after sorting).
+
+`#seq` restarts at `#0` in each process, and one log file usually holds several runs appended, so
+**split on the `openend at` lines before sorting**. Sorting a whole file by `#seq` interleaves the
+runs and produces garbage: on that same file it turned 13 inversions into 259. The counter can also
+have gaps — it is JVM-global and a rotation boundary cuts the file mid-stream — though in practice
+nothing else in the process uses `java.util.logging`, and one of those runs was gapless from `#0` to
+`#689`.
 
 The thread name is captured in `SDLogger.withThread()` at log time rather than in the formatter, so
-it stays right no matter which thread does the writing. Expect `main`, `receiver`, `sender`,
-`ResilentThreadHandler-<epoch>` (the epoch is the `generation` from `ResilentConnector`, and several
-can be alive at once) and `StopConnector-Timer`. logcat has no such field because it carries its own
-tid column.
+it stays right no matter which thread does the writing. Seen so far: `main`, `receiver`, `sender`,
+`StateCheckThread`, `LoadXMLStatus`, `StopConnector-Timer` and `ResilentThreadHandler-<n>`, where
+`<n>` is the `generation` counter from `ResilentConnector` and several can be alive at once. logcat
+has no such field because it carries its own tid column.
+
+An exception is followed by its type, message and up to `MAX_TRACE` frames of stack, indented with
+tabs, `Caused by:` per cause. Before 1.6.1 the formatter dropped the `Throwable` entirely, so older
+logs carry only the message — `reading macros.txt failed` there could be the harmless
+`FileNotFoundException` it usually is, or anything else.
 
 `ReceiverStatus.toString()` walks `StatusFlag.values()` rather than its own map, so the flags always
 appear in the same order and two status lines can be diffed as text. Over the map they could not:
-three of eleven flag sets in that field log show up in more than one order, one of them in three.
+3 of the 11 flag sets in that field log show up in more than one order, two of them in three.
 
 Lint runs with `abortOnError = false`, so lint *errors* do not fail the build — check
 `app/build/reports/lint-results-debug.html` explicitly when it matters.

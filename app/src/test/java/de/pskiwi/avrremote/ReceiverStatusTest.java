@@ -29,28 +29,21 @@ import de.pskiwi.avrremote.EnableManager.StatusFlag;
  * ist damit das, woran sich eine Auswertung entlanghangelt. Zwei solche Zeilen
  * lassen sich nur vergleichen, wenn die Flags immer in derselben Reihenfolge
  * stehen - über die {@link java.util.concurrent.ConcurrentHashMap} darunter gilt
- * das nicht, im Feld-Log vom 03.08.2026 erscheint dieselbe Sechsermenge in drei
- * verschiedenen Sortierungen.
+ * das nicht: die iteriert nach Hash, und der ist bei Enum-Konstanten der
+ * Identity-Hash und damit von Lauf zu Lauf verschieden. Im Feld-Log vom
+ * 03.08.2026 erscheinen 3 von 11 Flag-Mengen in mehr als einer Sortierung.
+ *
+ * <p>
+ * Deshalb pinnt {@link #orderFollowsTheEnum()} die Reihenfolge gegen den
+ * erwarteten String und nicht zwei Instanzen gegeneinander: ein Vergleich
+ * zweier Instanzen faellt gegen die alte Implementierung nur, wenn die
+ * Identity-Hashes im jeweiligen Lauf gerade unguenstig liegen.
  */
 public final class ReceiverStatusTest {
 
 	@Test
-	public void orderDoesNotDependOnInsertion() {
-		final StatusFlag[] flags = { StatusFlag.Logging, StatusFlag.WLAN,
-				StatusFlag.Reachable, StatusFlag.Connected, StatusFlag.Power,
-				StatusFlag.Zone1, StatusFlag.Zone2 };
-
-		final ReceiverStatus forward = new ReceiverStatus();
-		for (int i = 0; i < flags.length; i++) {
-			forward.set(flags[i], i % 2 == 0);
-		}
-
-		final ReceiverStatus backward = new ReceiverStatus();
-		for (int i = flags.length - 1; i >= 0; i--) {
-			backward.set(flags[i], i % 2 == 0);
-		}
-
-		assertEquals(forward.toString(), backward.toString());
+	public void emptyStatusPrintsEmptyBrackets() {
+		assertEquals("[]", new ReceiverStatus().toString());
 	}
 
 	@Test
