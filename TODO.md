@@ -94,17 +94,19 @@ blocks the current build, which is green.
       report we have a log for was *not* this — the process had survived; it was the stale-teardown
       race in the item below.
 - [ ] `ActiveHandler.contextResumed()` → `forceReconnect()` → `ResilentConnector.stopConnector()` →
-      `threadHandler.join()` (`core/ResilentConnector.java:244`, unbounded — see also the `join(1000)`
-      at `:50`) runs on the UI thread, so a slow `checkAddress()`/`connect()` in the old thread can
-      block resume long enough to ANR. Flagged in PR #13 review, predates that PR. The second race
-      listed there — a teardown deferred by Doze firing just after resume and stopping the
-      connection `contextResumed()` had just rebuilt — is fixed, see below.
+      `threadHandler.join()` (`core/ResilentConnector.java:244`) runs on the UI thread. Bounded at
+      roughly a second by the `join(1000)` at `:50` plus the `closeCurrentConnection()` in the
+      `finally`, but that is still enough to ANR when a slow `checkAddress()`/`connect()` in the old
+      thread holds it up. Flagged in PR #13 review, predates that PR. The second race listed there —
+      a teardown deferred by Doze firing just after resume and stopping the connection
+      `contextResumed()` had just rebuilt — is fixed, see below.
 - [x] Teardown deferred by Doze stops the connection right after resume, leaving no reconnect loop
-      at all until the app is killed and restarted. Both delivery paths are closed: the
-      `ACTION_SCREEN_OFF` receiver in `AVRApplication` is gone (`ActiveHandler` is now the only
-      owner of the disconnect policy, so the connection drops after the user's auto-disconnect
-      timeout instead of immediately on screen-off), and `StopConnectorTask.run()` skips the stop
-      when an activity is active again — `cancelCurrentTask()` only wins that race sometimes.
+      at all until the app is killed and restarted. The `ACTION_SCREEN_OFF` receiver in
+      `AVRApplication` is gone — `ActiveHandler` is now the only owner of the disconnect policy, so
+      the connection drops after the user's auto-disconnect timeout instead of immediately on
+      screen-off. On the timer path `StopConnectorTask.run()` skips the stop when an activity is
+      active again (`cancelCurrentTask()` only wins that race sometimes) and, because that check is
+      not atomic against a resume landing right after it, reconnects itself if one did.
 
 ## Time bomb, no fuse length known
 
