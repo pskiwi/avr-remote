@@ -44,14 +44,25 @@ public final class ReceiverStatus {
 		return ret;
 	}
 
+	/**
+	 * Landet bei jedem Statuswechsel im Log. Bewusst über
+	 * {@link StatusFlag#values()} statt über die Map: deren Reihenfolge haengt
+	 * an der Einfuegereihenfolge, so dass dieselbe Flag-Menge unterschiedlich
+	 * aussieht und zwei Log-Zeilen sich nicht vergleichen lassen.
+	 */
 	@Override
 	public String toString() {
 		final StringBuilder ret = new StringBuilder("[");
-		for (Map.Entry<StatusFlag, Boolean> e : status.entrySet()) {
+		for (StatusFlag f : StatusFlag.values()) {
+			final Boolean value = status.get(f);
+			// nicht gesetzt heisst "unbekannt" und ist etwas anderes als false
+			if (value == null) {
+				continue;
+			}
 			if (ret.length() > 1) {
 				ret.append(", ");
 			}
-			ret.append(e.getKey() + ":" + e.getValue());
+			ret.append(f + ":" + value);
 		}
 		ret.append("]");
 		return ret.toString();

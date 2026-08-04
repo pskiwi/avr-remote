@@ -27,7 +27,6 @@ import java.util.logging.FileHandler;
 import java.util.logging.Formatter;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
-import java.util.logging.SimpleFormatter;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -42,13 +41,53 @@ public final class SDLogger implements ILogger {
 		public SDHandler() throws IOException {
 			super(logdir.getAbsolutePath() + File.separator + LOG_NAME
 					+ "-%g.log", FILE_SIZE, MAX_FILE, true);
-			setFormatter(new SimpleFormatter());
 			setFormatter(new Formatter() {
 
+				/**
+				 * Die laufende Nummer ist das einzige verlaessliche
+				 * Sortierkriterium. Die Zeilenreihenfolge ist es nicht - sie
+				 * gibt die Reihenfolge der Schreibzugriffe wieder, und ein
+				 * Thread kann zwischen dem Erzeugen des Records (da faellt der
+				 * Zeitstempel) und dem Schreiben verdraengt werden. Der
+				 * Zeitstempel ist es auch nicht: er hat nur
+				 * Millisekundenaufloesung, und im Feld-Log vom 03.08.2026
+				 * teilen sich 65% der Zeilen eine Millisekunde mit einer
+				 * anderen. LogRecord vergibt die Nummer im Konstruktor, also im
+				 * selben Moment wie getMillis().
+				 */
 				@Override
 				public String format(LogRecord r) {
-					return DATE_FORMAT.format(new Date(r.getMillis())) + " - "
-							+ r.getLevel() + " : " + r.getMessage() + "\n";
+					final StringBuilder ret = new StringBuilder();
+					ret.append(DATE_FORMAT.format(new Date(r.getMillis())));
+					ret.append(" #").append(r.getSequenceNumber());
+					ret.append(" - ").append(r.getLevel());
+					ret.append(" : ").append(r.getMessage()).append("\n");
+					appendStackTrace(ret, r.getThrown());
+					return ret.toString();
+				}
+
+				/**
+				 * Ohne das steht im eingeschickten Log nur die Meldung, und
+				 * "reading macros.txt failed" laesst offen, ob eine erwartete
+				 * FileNotFoundException dahintersteckt oder etwas Ernstes. Das
+				 * Throwable geht bis hierher mit und wurde bisher verworfen -
+				 * nur logcat bekam es, und das schickt kein Anwender mit.
+				 */
+				private void appendStackTrace(StringBuilder ret, Throwable t) {
+					for (Throwable x = t; x != null; x = x.getCause()) {
+						ret.append(x == t ? "\t" : "\tCaused by: ");
+						ret.append(x).append("\n");
+						final StackTraceElement[] trace = x.getStackTrace();
+						final int show = Math.min(trace.length, MAX_TRACE);
+						for (int i = 0; i < show; i++) {
+							ret.append("\t\tat ").append(trace[i]).append("\n");
+						}
+						if (trace.length > show) {
+							ret.append("\t\t... ")
+									.append(trace.length - show)
+									.append(" more\n");
+						}
+					}
 				}
 			});
 			setLevel(Level.ALL);
@@ -74,7 +113,9 @@ public final class SDLogger implements ILogger {
 		try {
 			currentHandler = new SDHandler();
 			logger.addHandler(currentHandler);
-			logger.info("openend at " + new Date());
+			// durch withThread(), damit jede Zeile dasselbe Format hat und ein
+			// Parser nicht zwei Formen kennen muss
+			logger.log(Level.INFO, withThread("openend at " + new Date()));
 		} catch (IOException e) {
 			currentHandler = null;
 			Log.e(ADBLogger.TAG, "set sdlogger failed", e);
@@ -124,17 +165,30 @@ public final class SDLogger implements ILogger {
 
 	public void debug(String s) {
 		Log.i(ADBLogger.TAG, s);
-		logger.fine(s);
+		logger.log(Level.FINE, withThread(s));
 	}
 
 	public void error(String s, Throwable x) {
-		logger.log(Level.WARNING, s, x);
+		logger.log(Level.WARNING, withThread(s), x);
 		Log.e(ADBLogger.TAG, s, x);
 	}
 
 	public void info(String s) {
-		logger.log(Level.FINE, s);
+		logger.log(Level.FINE, withThread(s));
 		Log.i(ADBLogger.TAG, s);
+	}
+
+	/**
+	 * Der Thread-Name wird hier genommen, nicht im Formatter. Der laeuft heute
+	 * zwar auf dem aufrufenden Thread, weil {@code StreamHandler.publish}
+	 * synchron ist - das ist aber eine Eigenschaft des Handlers und keine
+	 * Zusage. Ein untergeschobener asynchroner Handler wuerde jede Zeile still
+	 * falsch beschriften, und das ist der eine Fehler, den ein Diagnose-Log
+	 * nicht machen darf. In logcat steht der Name nicht: das hat seine eigene
+	 * tid-Spalte.
+	 */
+	private static String withThread(String s) {
+		return "[" + Thread.currentThread().getName() + "] " + s;
 	}
 
 	public void close() {
@@ -153,6 +207,9 @@ public final class SDLogger implements ILogger {
 
 	private static final int MAX_FILE = 3;
 	private static final int FILE_SIZE = 500 * 1024;
+	// gedeckelt, weil das Log rotiert: ein voller Android-Stacktrace ist
+	// schnell 40 Zeilen, und die obersten sagen alles, was man braucht
+	private static final int MAX_TRACE = 12;
 	private final java.util.logging.Logger logger = java.util.logging.Logger
 			.getLogger(LOG_NAME);
 	private final File logdir;
