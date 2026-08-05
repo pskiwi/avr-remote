@@ -37,13 +37,13 @@ $ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/app-debu
 
 `local.properties` is deliberately untracked — the SDK path comes from `ANDROID_HOME`.
 
-**There is almost no test coverage.** `src/test` holds six JVM test classes —
-`http/HTTPSupportTest` (7 cases), `http/Series08ParserTest` (6), `core/ThreadHandlerTest` (5),
-`models/ModelConfiguratorTest` (3), `ReceiverStatusTest` (3) and `http/AVRXMLInfoParserTest` (1),
-JUnit 4 being the only dependency in the project — and there is no `src/androidTest` at all.
-`./gradlew test` runs those twenty-five cases and nothing else (twice, in fact: once per build
-variant), so do not report a change as verified because the build passed; verify on a device or
-emulator instead. Four limits are worth knowing before writing more tests:
+**There is almost no test coverage.** `src/test` holds six JVM test classes on JUnit 4, the only
+dependency in the project — `http/HTTPSupportTest`, `http/Series08ParserTest`,
+`core/ThreadHandlerTest`, `models/ModelConfiguratorTest`, `ReceiverStatusTest` and
+`http/AVRXMLInfoParserTest` — and there is no `src/androidTest` at all. `./gradlew test` runs a few
+dozen cases and nothing else (twice, in fact: once per build variant), so do not report a change as
+verified because the build passed; verify on a device or emulator instead. Four limits are worth
+knowing before writing more tests:
 
 - These run on the desktop JVM, not on Android's OkHttp-backed stack. Anything Android-specific —
   the implicit `Accept-Encoding: gzip`, chunked request bodies — cannot be pinned here, only
@@ -63,17 +63,14 @@ emulator instead. Four limits are worth knowing before writing more tests:
   resolves its paths against both the module and the root directory, because the working directory
   depends on how the run was started.
 - `core/ThreadHandlerTest` asserts on wall-clock time, as does `Series08ParserTest`'s
-  `largeLineStaysFast`: it pins that tearing the reconnect thread down does not block its caller,
-  which is the UI thread via
-  `ActiveHandler.contextResumed()` → `forceReconnect()`. The threshold sits between "no wait" and
-  the `join(1000)` it replaced (measured 1003 ms), so keep that margin if you touch it. It reaches
+  `largeLineStaysFast`. Its threshold sits between "no wait" and the `join(1000)` it replaced
+  (measured 1003 ms), so keep that margin if you touch it. It reaches
   `ResilentConnector.ThreadHandler` because that nested class is package-private for exactly this
   reason — the enclosing class cannot be built from a JVM test at all, because its constructor wants
   an `EnableManager` and that one builds a `Handler` in a field initialiser. Same trick as
-  `ModelConfigurator.createModel(String)`. Note what
-  it does *not* cover: that a detached thread publishes nothing after `stop()` returns. That is the
-  load-bearing half of the argument, it lives in `Reconnector.run()`'s `isCurrent()` checks and
-  `publishConnector()`, and no JVM test reaches it — read those before touching either.
+  `ModelConfigurator.createModel(String)`. What it does *not* cover is the load-bearing half of the
+  argument — that a detached thread publishes nothing after `stop()` returns — and no JVM test
+  reaches that; see [CONNECTION.md](CONNECTION.md) → *The generation counter*.
 
 **A log a user sent in** (`log/SDLogger` writes it, `log/FeedbackReporter` mails it) has one
 header line per entry and carries a `#seq` and a thread name. Sort by `#seq`, never by timestamp
@@ -87,27 +84,14 @@ Release builds are only signed when a keystore is configured; otherwise the buil
 an unusable `app-release-unsigned.apk`. Conditions and setup: [RELEASE.md](RELEASE.md).
 
 Debug builds show a greyed-out line with branch, short commit hash and commit time above the status
-bar (`R.id.textBuildInfo` in `tabhost.xml`, switched visible in `AVRRemote.onCreate`). The value comes
-from `BuildConfig.BUILD_INFO`, which `app/build.gradle` fills by calling `git` at configuration time —
-**only in the `debug` build type**; `defaultConfig` sets it to the empty string and that is what
-release keeps, which is what makes the line disappear there. Commit time, not build time, so the field
-stays stable between builds of the same commit; a `+` after the hash means the working tree was dirty.
-Three things there are deliberate:
-
-- `providers.exec`, not `ProcessBuilder`. Starting a process directly makes the configuration
-  incompatible with the configuration cache — the build then *aborts* with "external process started"
-  the moment anyone passes `--configuration-cache`, rather than degrading. Note the exec spec takes no
-  `errorOutput`: a value source rejects an arbitrary stream and the whole provider fails to be created,
-  which silently empties `BUILD_INFO`. Gradle discards the stderr anyway.
-- On detached HEAD only `GITHUB_REF_NAME` is consulted, and the branch is left out entirely when that
-  is unset. `git name-rev` would fill it, but with whatever ref happens to reach the commit —
-  `tags/v1.0~1` (a *different* commit, and the `~1` is then stripped by the charset filter), a foreign
-  branch, or `undefined`. No branch beats a wrong one.
-- The value is filtered to `[A-Za-z0-9._/+: -]` because it is pasted into generated Java source. Keep
-  the `-` last in that character class.
-
-Every `git` call falls back to an empty string (no git binary, no repo, git failing for any reason),
-and an empty `BUILD_INFO` just means no line — the build must never fail over this.
+bar (`R.id.textBuildInfo` in `tabhost.xml`, switched visible in `AVRRemote.onCreate`), fed from
+`BuildConfig.BUILD_INFO`. **The `buildInfo` block at the top of `app/build.gradle` explains
+itself** in its comments — why `providers.exec` rather
+than `ProcessBuilder`, why a detached HEAD falls back to `GITHUB_REF_NAME` instead of `git name-rev`,
+why the value is charset-filtered, and why no `git` failure may break the build. Read the comments
+there before changing any of it. One thing not said there: the exec spec deliberately takes no
+`errorOutput`, because a value source rejects an arbitrary stream and the whole provider then fails
+to be created, silently emptying `BUILD_INFO`.
 
 ## Architecture
 
@@ -142,9 +126,8 @@ The flags and their cascade: [CONNECTION.md](CONNECTION.md).
 `IStateFilter` decides which screen currently receives state updates, so background activities do not
 fight over the display listener.
 
-`core/display/` parses the receiver's on-screen display into `DisplayLine`s. `NetDisplay` (1182
-lines), `TunerDisplay` (1059) and `BDDisplay` (393) are three separate parsers for different input
-types.
+`core/display/` parses the receiver's on-screen display into `DisplayLine`s. `NetDisplay`,
+`TunerDisplay` and `BDDisplay` are three separate, large parsers for different input types.
 
 Up to 4 zones and up to 3 receivers are supported; the receiver index threads through
 `AVRSettings.getAVRModel(ctx, receiverNr)` and the `receiverSuffix()` preference-key convention.
@@ -152,11 +135,10 @@ Up to 4 zones and up to 3 receivers are supported; the receiver index threads th
 ### Receiver models — reflection registry
 
 `models/` holds **60 receiver classes**, one per receiver family, each overriding capability
-predicates (`hasZones()`, `hasQuick()`, `getSupportedLevels()`, `supportsDAB()`, …). The directory
-has 67 `.java` files — the other seven are infrastructure: `AbstractModel`, `AbstractMarantzAV`,
-`IAVRModel`, `ModelArea`, `ModelConfigurator` and the two `DynamicEQ*` enums. All 60 reach
-`AbstractModel`, but only 33 extend it directly; the rest go through `AbstractMarantzAV` or another
-model class (`AVR990 extends AVR3310`, `AVCA1HDA extends AVR5308`, …).
+predicates (`hasZones()`, `hasQuick()`, `getSupportedLevels()`, `supportsDAB()`, …). The other seven
+files in that directory are infrastructure: `AbstractModel`, `AbstractMarantzAV`, `IAVRModel`,
+`ModelArea`, `ModelConfigurator` and the two `DynamicEQ*` enums. All 60 reach `AbstractModel`, some
+directly and some through `AbstractMarantzAV` or another model class (`AVR990 extends AVR3310`, …).
 
 `ModelConfigurator.update()` resolves the model **by reflection** from the user's preference string:
 
