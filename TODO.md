@@ -130,6 +130,16 @@ blocks the current build, which is green.
       as buttons that stay greyed out until the next status change repairs them. Cheaper to fix than
       it looks: `fireListener()` only copies the status and `Handler.post()`s it, so a `synchronized`
       on `setStatus()` would cover a few field writes and a post, never the UI fanout itself.
+- [ ] **`EnableManager.setStatus()` forgets `Zone4` when it clears.** The `Power` case of the
+      remove-fallthrough resets `Zone1`, `Zone2` and `Zone3` and stops there
+      (`EnableManager.java:131-136`), but `Zone4` is a real flag with a real zone behind it
+      (`core/Zone.java:25`). On a four-zone receiver its controls therefore stay enabled after the
+      connection drops, while zones 1–3 grey out — so it is visibly inconsistent, not just
+      theoretical. One line, but check first whether any four-zone model is actually reachable in
+      `@array/modelNames` before calling it user-visible.
+- [ ] `ResilentConnector.java:159` logs `Reconnector:Reconnector:connection to [...] closed` — the
+      prefix is doubled. Cosmetic, but anyone grepping a log against
+      [CONNECTION.md](CONNECTION.md) trips over it.
 - [ ] **`AVRTargetTester.PING_TIMEOUT` is 250 ms, which a phone waking from standby cannot meet.**
       Wi-Fi power save puts the receiver out of reach for the first moments after the user picks the
       phone up, so `checkAddress()` reports "not reachable" for a device that is plainly there — the

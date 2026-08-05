@@ -75,53 +75,16 @@ emulator instead. Four limits are worth knowing before writing more tests:
   load-bearing half of the argument, it lives in `Reconnector.run()`'s `isCurrent()` checks and
   `publishConnector()`, and no JVM test reaches it — read those before touching either.
 
-**Reading a log a user sent in** (`log/SDLogger` writes it, `log/FeedbackReporter` mails it). One
-line looks like this, and a message can run over several lines — anything not matching the header is
-a continuation:
-
-```
-2026-08-04  20:22:07.667 #0 - INFO : [main] openend at Tue Aug 04 20:22:07 GMT+02:00 2026
-```
-
-**Sort by `#seq`, never by timestamp or line order.** Neither of those is the order the events
-happened in: `java.util.logging` stamps the time when the `LogRecord` is built but writes later, so
-threads overtake each other — the field log from 2026-08-03 has 7 inversions in its 2488 header
-lines, one of them right where it mattered. (Count header lines only. A naive line-wise check counts
-the 184 continuation lines too and reports 99, which is wrong.) Sorting by the timestamp does not
-repair it either, because it only has millisecond resolution and 65 % of those lines share a
-millisecond with another. `#seq` comes from `LogRecord`, assigned in the constructor from the same
-instant as the time, and it is the one total order **within one process run** — on two runs from a
-Pixel 8 it removed every inversion (9 and 4 respectively, 0 after sorting).
-
-`#seq` restarts at `#0` in each process, and one log file usually holds several runs appended, so
-**split on the `openend at` lines before sorting**. Sorting a whole file by `#seq` interleaves the
-runs and produces garbage: on that same file it turned 13 inversions into 259. The counter can also
-have gaps — it is JVM-global and a rotation boundary cuts the file mid-stream — though in practice
-nothing else in the process uses `java.util.logging`, and one of those runs was gapless from `#0` to
-`#689`.
-
-The thread name is captured in `SDLogger.withThread()` at log time rather than in the formatter, so
-it stays right no matter which thread does the writing. Seen so far: `main`, `receiver`, `sender`,
-`StateCheckThread`, `LoadXMLStatus`, `StopConnector-Timer` and `ResilentThreadHandler-<n>`, where
-`<n>` is the `generation` counter from `ResilentConnector` and several can be alive at once. logcat
-has no such field because it carries its own tid column. What those names mean for a connection
-problem, and what a healthy and a broken sequence look like: [CONNECTION.md](CONNECTION.md).
-
-An exception is followed by its type, message and up to `MAX_TRACE` frames of stack, indented with
-tabs, `Caused by:` per cause. Before 1.6.1 the formatter dropped the `Throwable` entirely, so older
-logs carry only the message — `reading macros.txt failed` there could be the harmless
-`FileNotFoundException` it usually is, or anything else.
-
-`ReceiverStatus.toString()` walks `StatusFlag.values()` rather than its own map, so the flags always
-appear in the same order and two status lines can be diffed as text. Over the map they could not:
-3 of the 11 flag sets in that field log show up in more than one order, two of them in three.
+**A log a user sent in** (`log/SDLogger` writes it, `log/FeedbackReporter` mails it) has one
+header line per entry and carries a `#seq` and a thread name. Sort by `#seq`, never by timestamp
+or line order, and split runs on `openend at` first — the reasoning, and how to read a connection
+problem out of one, is in [CONNECTION.md](CONNECTION.md) → *Reading a log*.
 
 Lint runs with `abortOnError = false`, so lint *errors* do not fail the build — check
 `app/build/reports/lint-results-debug.html` explicitly when it matters.
 
-Release builds are signed only when `~/keystore.properties` exists or the `KEY_ALIAS` /
-`KEY_PASSWORD` / `STORE_FILE` / `STORE_PASSWORD` env vars are set; otherwise
-`app-release-unsigned.apk` is produced and cannot be installed — see [RELEASE.md](RELEASE.md).
+Release builds are only signed when a keystore is configured; otherwise the build silently produces
+an unusable `app-release-unsigned.apk`. Conditions and setup: [RELEASE.md](RELEASE.md).
 
 Debug builds show a greyed-out line with branch, short commit hash and commit time above the status
 bar (`R.id.textBuildInfo` in `tabhost.xml`, switched visible in `AVRRemote.onCreate`). The value comes
@@ -165,18 +128,16 @@ ResilentConnector (daemon thread, reconnect loop)  ->  Connector (socket)
         -> IGUIExecutor (Handler.post) ->  main thread
 ```
 
-`ResilentConnector` runs a long-lived reconnect loop on a plain daemon thread owned by
-`AVRApplication` — **not** a Service. Killing or backgrounding the app kills the connection. How
-that loop behaves, who tears it down and what Doze does to it: [CONNECTION.md](CONNECTION.md).
+The reconnect loop behind that first arrow, who tears it down and what Doze does to it:
+[CONNECTION.md](CONNECTION.md).
 
 `AVRApplication` is the central object graph: `getAvrState()`, `getConnector()`, `getEnableManager()`,
 `getModelConfigurator()`, `getDisplayManager()`, `getRenameService()`, `getMacroManager()` and more.
 Activities reach everything through `(AVRApplication) getApplication()`.
 
-`EnableManager` drives view enablement from a small set of `StatusFlag`s (`Logging`, `WLAN`,
-`Reachable`, `Connected`, `Power`, `Zone1`–`Zone4`). This is why most buttons are greyed out until a
-receiver is actually connected — worth knowing when testing without hardware. The flags cascade into
-each other, see [CONNECTION.md](CONNECTION.md).
+`EnableManager` drives view enablement from a small set of `StatusFlag`s, which is why most buttons
+are greyed out until a receiver is actually connected — worth knowing when testing without hardware.
+The flags and their cascade: [CONNECTION.md](CONNECTION.md).
 
 `IStateFilter` decides which screen currently receives state updates, so background activities do not
 fight over the display listener.
@@ -243,9 +204,8 @@ Consequences:
 - **Within Java 11, write modern Java.** The code dates from 2010 and mostly predates it, but new and
   touched code should not imitate that. In particular use **try-with-resources** rather than the
   manual `try { … } finally { x.close(); }` pattern — `http/HTTPSupport` is the reference. The old
-  pattern is still in 12 places (`core/Connector`, `core/MacroManager`, `log/FeedbackReporter`,
-  the three `http/Series08*Parser`, `core/RenameService`, `scan/AVRTargetTester`);
-  converting one is welcome when you are editing that code anyway, but do not sweep the tree as a
+  pattern survives in a dozen places (inventory in [TODO.md](TODO.md)); converting one is welcome
+  when you are editing that code anyway, but do not sweep the tree as a
   side errand — and note `core/Connector.java:168` is not convertible at all, it closes the socket
   only on the failure path (`if (!ok)`). The other reason to keep the manual form is when
   an exception from `close()` must be swallowed deliberately — see
@@ -271,16 +231,8 @@ Three things are easy to forget and all are required at `targetSdk 36`:
 3. If the activity requests a runtime permission, gate the request on
    `savedInstanceState == null` — these activities are recreated on every rotation.
 
-## Known-broken, pre-existing
+## Known-broken, and what comes next
 
-Do not treat these as regressions; they predate the SDK 36 upgrade. Fixes are tracked in
-[TODO.md](TODO.md) → *Broken today*:
-
-- The custom-background picker (`AVRSettings`) stores the URI without
-  `takePersistableUriPermission()`, so it does not survive a restart.
-
-## Next SDK step
-
-Local Network Protection becomes mandatory at **Android 17 (SDK 37)** and hits the core of the app —
-the subnet sweep and the receiver sockets. See [CONNECTION.md](CONNECTION.md) → *Next platform
-deadline* and [TODO.md](TODO.md) for the deprecated `WifiManager` calls to replace in the same pass.
+Both live in [TODO.md](TODO.md): behaviour that is already broken and predates the SDK 36 upgrade
+(do not report it as a regression), and the next platform deadline, Local Network Protection at
+Android 17. The connection side of that deadline is in [CONNECTION.md](CONNECTION.md).
