@@ -12,6 +12,11 @@ housekeeping items, each with file and line. Read it before proposing work of yo
 like an oversight is usually already listed there with the reason it was left alone. When you finish
 one of the items, tick its checkbox in the same commit.
 
+**[CONNECTION.md](CONNECTION.md) is the reference for everything network-facing** — the two
+transports, the reconnect loop and its generation counter, who decides when to hang up, and what
+Doze does to all of it. Read it before touching `core/ResilentConnector`, `core/Connector`,
+`ActiveHandler` or `http/HTTPSupport`; the non-obvious parts there are answers to field bugs.
+
 **[RELEASE.md](RELEASE.md) is the release procedure** — where the version lives, how signing is
 wired up, the tag convention, and the Play Console checklist with its deadlines. The one thing worth
 knowing before reading it: the `v*` tag workflow publishes to **GitHub Releases only**; there is no
@@ -99,7 +104,8 @@ The thread name is captured in `SDLogger.withThread()` at log time rather than i
 it stays right no matter which thread does the writing. Seen so far: `main`, `receiver`, `sender`,
 `StateCheckThread`, `LoadXMLStatus`, `StopConnector-Timer` and `ResilentThreadHandler-<n>`, where
 `<n>` is the `generation` counter from `ResilentConnector` and several can be alive at once. logcat
-has no such field because it carries its own tid column.
+has no such field because it carries its own tid column. What those names mean for a connection
+problem, and what a healthy and a broken sequence look like: [CONNECTION.md](CONNECTION.md).
 
 An exception is followed by its type, message and up to `MAX_TRACE` frames of stack, indented with
 tabs, `Caused by:` per cause. Before 1.6.1 the formatter dropped the `Throwable` entirely, so older
@@ -144,28 +150,12 @@ and an empty `BUILD_INFO` just means no line — the build must never fail over 
 
 ### Two independent transports
 
-1. **Telnet, port 23** — the real control channel. `core/Connector` holds a raw socket, writes
-   commands terminated with `\r`, and parses incoming lines into `InData`.
-2. **HTTP** — `http/AVRHTTPClient` scrapes the receiver's own web UI (`*.asp`, XML endpoints) for
-   things the telnet protocol does not expose: input/zone names, quick-select presets, NET audio
-   search. `http/Series08*` parse the 2008-series variant. Every request goes through
-   `http/HTTPSupport` (`HttpURLConnection`, GET and form POST, nothing else); its three callers are
-   `http/AVRHTTPClient`, `http/Series08Reader` and — easy to miss — `core/display/NetDisplay`.
-   Three things there are deliberate and load-bearing against the receivers' 2008-era GoAhead
-   webservers, and all three look removable to someone who does not know why they exist:
+Telnet on port 23 is the real control channel (`core/Connector`); HTTP on port 80 scrapes the
+receiver's own web UI for what telnet does not expose — input and zone names, quick-select presets,
+NET audio search (`http/AVRHTTPClient`, `http/Series08*`, all through `http/HTTPSupport`).
 
-   - `Accept-Encoding: identity` — the old Apache client never asked for gzip, Android does.
-   - `setFixedLengthStreamingMode` — so the request body is never sent chunked.
-   - `CookieHandler.setDefault(new CookieManager())` in `AVRApplication.onCreate`. The receivers
-     tested so far send no `Set-Cookie` at all, so this looks pointless — but `Series08Reader`
-     fetches `r_option1.asp` purely to establish state that the following `d_option1.asp` reads
-     back, and the Apache client it replaced carried a cookie store. Without a handler
-     `HttpURLConnection` shares nothing between requests, and the failure would be silent (empty
-     quick-select names). `readSeries08Info()` clears the store per run, because the old store was
-     per-client and did not outlive one read.
-
-   Receivers speak plain HTTP, so `android:usesCleartextTraffic="true"` in the manifest is
-   load-bearing too — removing it kills the whole scraping path.
+**[CONNECTION.md](CONNECTION.md) is the reference for both**, and worth reading before touching
+either: several things in `HTTPSupport` and in the reconnect loop look removable and are not.
 
 ### State flow
 
@@ -176,7 +166,8 @@ ResilentConnector (daemon thread, reconnect loop)  ->  Connector (socket)
 ```
 
 `ResilentConnector` runs a long-lived reconnect loop on a plain daemon thread owned by
-`AVRApplication` — **not** a Service. Killing or backgrounding the app kills the connection.
+`AVRApplication` — **not** a Service. Killing or backgrounding the app kills the connection. How
+that loop behaves, who tears it down and what Doze does to it: [CONNECTION.md](CONNECTION.md).
 
 `AVRApplication` is the central object graph: `getAvrState()`, `getConnector()`, `getEnableManager()`,
 `getModelConfigurator()`, `getDisplayManager()`, `getRenameService()`, `getMacroManager()` and more.
@@ -184,7 +175,8 @@ Activities reach everything through `(AVRApplication) getApplication()`.
 
 `EnableManager` drives view enablement from a small set of `StatusFlag`s (`Logging`, `WLAN`,
 `Reachable`, `Connected`, `Power`, `Zone1`–`Zone4`). This is why most buttons are greyed out until a
-receiver is actually connected — worth knowing when testing without hardware.
+receiver is actually connected — worth knowing when testing without hardware. The flags cascade into
+each other, see [CONNECTION.md](CONNECTION.md).
 
 `IStateFilter` decides which screen currently receives state updates, so background activities do not
 fight over the display listener.
@@ -289,8 +281,6 @@ Do not treat these as regressions; they predate the SDK 36 upgrade. Fixes are tr
 
 ## Next SDK step
 
-Local Network Protection becomes mandatory for apps targeting **Android 17 (SDK 37)**. That directly
-hits `scan/AVRScanner` (subnet sweep) and the raw receiver sockets — i.e. the core of the app. At
-`targetSdk 36` it does not apply yet, but plan for a runtime local-network permission before raising
-the target further. See [TODO.md](TODO.md) → *Next platform deadline: targetSdk 37* for the deprecated
-`WifiManager` calls to replace in the same pass.
+Local Network Protection becomes mandatory at **Android 17 (SDK 37)** and hits the core of the app —
+the subnet sweep and the receiver sockets. See [CONNECTION.md](CONNECTION.md) → *Next platform
+deadline* and [TODO.md](TODO.md) for the deprecated `WifiManager` calls to replace in the same pass.
