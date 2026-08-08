@@ -73,13 +73,10 @@ public final class AVRTargetTester {
 
 	private static boolean testPort(InetAddress ia, int port) {
 		try {
-			final Socket socket = new Socket();
-			try {
+			try (Socket socket = new Socket()) {
 				socket
 						.connect(new InetSocketAddress(ia, port),
 								CONNECT_TIMEOUT);
-			} finally {
-				socket.close();
 			}
 			return true;
 

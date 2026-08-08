@@ -156,7 +156,7 @@ public final class ResilentConnector implements ISender {
 						fireConnected(newConnector, true);
 					}
 					newConnector.waitUntilClosed();
-					Logger.info("Reconnector:Reconnector:connection to ["
+					Logger.info("Reconnector:connection to ["
 							+ connectionConfig + "] closed");
 
 					if (!isCurrent()) {
@@ -414,7 +414,11 @@ public final class ResilentConnector implements ISender {
 	// closeAndClearConnector() - die muessen gegeneinander atomar sein,
 	// Sichtbarkeit allein reicht dort nicht.
 	private volatile IConnector connector = IConnector.NULL_CONNECTOR;
-	private ConnectionConfiguration connectionConfig = ConnectionConfiguration.UNDEFINED;
+	// volatile: geschrieben auf dem UI-Thread (reconfigure/forceReconnect),
+	// gelesen von jedem laufenden Reconnect-Thread. Ohne das kann ein Thread
+	// nach einem IP-Wechsel weiter die alte Adresse anwählen, bis er von selbst
+	// endet.
+	private volatile ConnectionConfiguration connectionConfig = ConnectionConfiguration.UNDEFINED;
 	private final ThreadHandler threadHandler = new ThreadHandler();
 	private final AtomicInteger generation = new AtomicInteger();
 	private static int[] RECONNECT_DELAY = { 1, 2, 4, 8, 16 };

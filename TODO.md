@@ -93,11 +93,16 @@ blocks the current build, which is green.
       not the first, which is what the old greedy `.*` did — but those tests were written from the
       code, not from a real page. One run against a 2008-series receiver settles it: check that
       input names, zone names and quick-select names all still appear.
-- [ ] Same area, latent NPE: `Series08Reader` has no length check on the response body where
+- [x] Same area, latent NPE: `Series08Reader` has no length check on the response body where
       `AVRHTTPClient` has one. `Series08InputParser.findLine` returns null when the marker line is
       missing and the constructor then runs `OPTION_PATTERN.matcher(null)`. An empty or 404 answer
       triggers it. Pre-existing rather than a regression — but the Apache removal made the asymmetry
       between the two readers visible, and only one side got the guard.
+      → The constructor now falls back to `""`, so a missing marker yields an empty input list
+      instead of a crash. Deliberately not the length check `AVRHTTPClient` has: that one rejects a
+      short body outright, whereas here an unparseable page and a page with no inputs are the same
+      answer to the caller. Still unverified against a 2008-series receiver, like everything else
+      in this path.
 - [ ] Same area, cookie lifetime: the store is cleared per Series08 read
       (`Series08Reader.readSeries08Info`), whereas the old `DefaultHttpClient` was per
       `AVRHTTPClient` instance, so it also covered the multi-zone path. Exact parity would clear it
@@ -136,7 +141,7 @@ blocks the current build, which is green.
       screen-off. On the timer path `StopConnectorTask.run()` skips the stop when an activity is
       active again (`cancelCurrentTask()` only wins that race sometimes) and, because that check is
       not atomic against a resume landing right after it, reconnects itself if one did.
-- [ ] **`ResilentConnector.connectionConfig` is a plain field read across threads.** Written on the
+- [x] **`ResilentConnector.connectionConfig` is a plain field read across threads.** Written on the
       UI thread in `reconfigure()` and `forceReconnect()`, read by every reconnect thread — the
       `checkAddress()` calls and half the log lines in `Reconnector.run()`. Without `volatile` there
       is no guarantee a running thread ever sees a new address, so after an IP change the old thread
@@ -144,7 +149,7 @@ blocks the current build, which is green.
       short-lived and `stopConnector()` interrupts them anyway, which is probably why it has never
       surfaced. One keyword to fix. Left alone in the PR that removed the `join`, because that PR
       had no business touching it — but note the same PR made concurrent readers *certain* rather
-      than occasional, so the odds moved.
+      than occasional, so the odds moved. → `volatile`, with the reason in a comment at the field.
 - [ ] **`EnableManager.setStatus()` is an unsynchronised read-modify-write.** It copies
       `connectionStatus`, mutates it through the deliberate `switch` fallthrough, compares and fires
       the listeners (`EnableManager.java:109`). Callers now include the UI thread, the
@@ -153,14 +158,17 @@ blocks the current build, which is green.
       as buttons that stay greyed out until the next status change repairs them. Cheaper to fix than
       it looks: `fireListener()` only copies the status and `Handler.post()`s it, so a `synchronized`
       on `setStatus()` would cover a few field writes and a post, never the UI fanout itself.
-- [ ] **`EnableManager.setStatus()` forgets `Zone4` when it clears.** The `Power` case of the
+- [x] **`EnableManager.setStatus()` forgets `Zone4` when it clears.** The `Power` case of the
       remove-fallthrough resets `Zone1`, `Zone2` and `Zone3` and stops there
       (`EnableManager.java:131-136`), but `Zone4` is a real flag with a real zone behind it
       (`core/Zone.java:25`). On a four-zone receiver its controls therefore stay enabled after the
       connection drops, while zones 1–3 grey out — so it is visibly inconsistent, not just
       theoretical. One line, but check first whether any four-zone model is actually reachable in
       `@array/modelNames` before calling it user-visible.
-- [ ] `ResilentConnector.java:159` logs `Reconnector:Reconnector:connection to [...] closed` — the
+      → It is: `AVR5308`, `AVR4308`, `AVR4810` and `AVR5805` return 4 from `getZoneCount()`, and
+      `ModelConfiguratorTest` pins every model class to a `@array/modelNames` entry, so all four are
+      selectable. User-visible, therefore, and now one `reset(StatusFlag.Zone4)` longer.
+- [x] `ResilentConnector.java:159` logs `Reconnector:Reconnector:connection to [...] closed` — the
       prefix is doubled. Cosmetic, but anyone grepping a log against
       [CONNECTION.md](CONNECTION.md) trips over it.
 - [ ] **`AVRTargetTester.PING_TIMEOUT` is 250 ms, which a phone waking from standby cannot meet.**
@@ -187,19 +195,32 @@ blocks the current build, which is green.
       without the `versionCode` bump the release notes never open, `AVRSettings.isShowChangeLog()`
       compares it against the `AVRLastVersionCode` preference. The whole procedure is written down
       in [RELEASE.md](RELEASE.md) now.
-- [ ] **12 manual `try { … } finally { close(); }` blocks left** in `core/Connector`,
+- [x] **12 manual `try { … } finally { close(); }` blocks left** in `core/Connector`,
       `core/MacroManager`, `core/RenameService`, `scan/AVRTargetTester`, the three
       `http/Series08*Parser` and `log/FeedbackReporter`. try-with-resources is the
-      convention now (see CLAUDE.md); `http/HTTPSupport` is the reference. Worth converting in
-      passing rather than as its own sweep — `log/SDLogger` came for free with the FileProvider
-      work above, `log/FeedbackReporter` was not touched there.
-- [ ] `misc/add-copyright.sh` still uses the pre-Gradle path (`../src/**/*.java` instead of
+      convention now (see CLAUDE.md); `http/HTTPSupport` is the reference.
+      → All converted except `core/Connector.java:168`, which CLAUDE.md already flags as not
+      convertible — it closes the socket only on the failure path. Two of them were doing slightly
+      less than they looked: `MacroManager.doSave()` wrote its `# saved` header *before* the inner
+      try, and `FeedbackReporter.saveCrash()` logged before it, so a throw there leaked the stream.
+      Both now open inside the resource block. `Connector.close()` needed a local (`final Socket
+      toClose = socket`) because Java 9's `try (existingVar)` form takes a local, not a field.
+- [x] `misc/add-copyright.sh` still uses the pre-Gradle path (`../src/**/*.java` instead of
       `app/src/main/...`), so it currently matches nothing.
-- [ ] `misc/createicons.sh` looks obsolete and should probably just be deleted: it writes 46 plain
+      → Deleted instead of fixed; it is not needed any more. Worth recording what the attempted fix
+      turned up, because the same trap sits in any script here: the path was only half the problem.
+      `shopt -s globstar` does not exist in bash 3.2, which is what macOS ships, and there `**`
+      collapses to one directory level. And the header check `grep -q '* Copyright …'` relies on a
+      leading `*` being a literal — true for GNU and BSD grep, but `ugrep` rejects it as an empty
+      expression and fails *every* file. Once the glob was fixed, that combination would have
+      prepended the licence header to all 168 files a second time. `misc/file-copyright.txt` was
+      the script's input and is now referenced by nothing.
+- [x] `misc/createicons.sh` looks obsolete and should probably just be deleted: it writes 46 plain
       red placeholder squares (`convert -size 32x32 canvas:red …`) to `res/...` relative to the
       **current** directory. Run from `misc/` or the repo root it only creates a stray `res/` tree;
       run from `app/src/main` it would overwrite the real icons with red squares. `misc/mkicons.sh`
       is the maintained script and already uses the Gradle path (`TGT=../app/src/main/res`).
+      → Deleted.
 - [x] **Play-Store icon still showed the old 2010 raster.** The 512×512 export now exists as
       `misc/play-store-icon-512.png`, rendered from `misc/play-store-icon.svg` — the same artwork as
       `assets/icon.svg` plus a black `<rect>` covering the full viewBox, so the corners the round
@@ -214,10 +235,12 @@ blocks the current build, which is green.
       **Still open: uploading it in the Play Console**, which cannot be automated — it is tracked as
       a checkbox in [RELEASE.md](RELEASE.md) instead. `res/drawable/icon_small.png` (32×32) is the
       last leftover of the old icon and is referenced nowhere.
-- [ ] Lint reports 48 unused resources and 30 missing German translations.
-      `res/values-v14/dimension.xml` holds a single `widget_margin`, a left-over override of
-      `res/values/dimension.xml:27` from an app widget that no longer exists; lint also flags the
-      whole `-v14` qualifier as pointless at minSdk 24.
+- [ ] Lint reports 48 unused resources and 30 missing German translations. The `res/values-v14/`
+      part of that is done: the folder held a single `widget_margin`, a left-over override from an
+      app widget that no longer exists, and lint flagged the whole `-v14` qualifier as pointless at
+      minSdk 24 anyway. Both definitions are gone with it. Its neighbour `widget_button_width`
+      (`res/values/dimension.xml`) is unreferenced too and was left alone — that belongs to the
+      unused-resource sweep, not to this.
 - [ ] `allowBackup="true"` without `dataExtractionRules`. Not a bug — the API 31 default backs
       everything up, including receiver IPs in the SharedPreferences — but an explicit rule would be
       cleaner. Note this got wider when the log moved to `getExternalFilesDir(null)`: that directory
@@ -231,12 +254,13 @@ blocks the current build, which is green.
       above minSdk, so the notification channel really is conditional. Lint's remaining
       `ObsoleteSdkInt` is `res/values-v14`, a folder qualifier rather than a version check, and is
       the item above.
-- [ ] Two things noticed in `StatusbarManager` while doing that, both pre-existing and both left
-      alone: the field `private Notification notification;` is never read or written — the only
-      notification in play is the local in `updateNotification()` — and `createNotificationChannel`
-      runs on every call rather than once. The latter is harmless (creating an existing channel id
-      only updates the name; importance can only be lowered and the sound is ignored after
-      creation), but it belongs in `AVRApplication.onCreate`.
+- [ ] One thing left of the two noticed in `StatusbarManager`: `createNotificationChannel` runs on
+      every call rather than once. Harmless (creating an existing channel id only updates the name;
+      importance can only be lowered and the sound is ignored after creation), but it belongs in
+      `AVRApplication.onCreate`. The other one is done — the field `private Notification
+      notification;` was never read or written, the only notification in play being the local in
+      `updateNotification()`, and it is gone. The `android.app.Notification` import stays, that
+      local still needs it.
 - [ ] **`ScreenInfo` measures the window, not the display.** The class builds its diagonal from
       `getDefaultDisplay().getMetrics()` (`ScreenInfo.java:28-33`), and every caller hands it an
       Activity — so in multi-window the numbers describe the activity's window, which is exactly why
@@ -274,25 +298,29 @@ blocks the current build, which is green.
       | 15 | `PreferenceActivity.findPreference()` / `getPreferenceScreen()` / `addPreferencesFromResource()` | 7 | `AVRSettings`, `PreferenceSummaryUpdater` |
       | 15 | `Display.getWidth()` / `getHeight()` | 4 | `AVRRemote` |
       | 15 | `LayoutParams.FILL_PARENT` | 3 | `LevelActivity`, `ScreenMenu` |
-      | 15 | `Build.VERSION.SDK` | 1 | `log/FeedbackReporter.java:164` |
+      | 15 | ~~`Build.VERSION.SDK`~~ | 1 | `log/FeedbackReporter.java:164` — done |
       | 16 | `Configuration.ORIENTATION_SQUARE` | 1 | `AVRRemote.java:357` |
       | 22 | `Resources.getDrawable()` | 8 | `AVRTheme`, `IconManager`, `OnScreenDisplayActivity` |
       | 23 | `AlertDialog.Builder.setInverseBackgroundForced()` | 6 | 4 files |
       | 29/30 | `android.preference.*` (31× `PreferenceManager`), `AsyncTask`, `TabHost`, `ListActivity`, `ExpandableListActivity`, 12× `new Handler()` | 61 | this item |
       | 31 | `WifiManager.getDhcpInfo()`, `ConnectivityManager.getAllNetworks()` | 4 | `scan/WiFiInfo` — the targetSdk 37 item |
-      | 34 | `Class.newInstance()` | 1 | `models/ModelConfigurator.java:85` |
+      | 34 | ~~`Class.newInstance()`~~ | 1 | `models/ModelConfigurator.java:85` — done |
 
       `TabActivity` is the oldest thing in the app by a wide margin — deprecated in Android 3.2, so
       **15 years**. It cannot be picked off on its own: it and the API 29/30 block are the same
       AppCompat migration, which is why the age does not translate into urgency.
-- [ ] Three from that table are one-liners and independent of the migration, worth doing whenever
-      the file is open anyway: `Build.VERSION.SDK` → `SDK_INT` (it sits in the crash report users
-      send in), and `Class.newInstance()` → `getDeclaredConstructor().newInstance()` in the
-      reflection registry — contained, because every failure there already falls back to
-      `AVRGeneric`. The third, `Configuration.ORIENTATION_SQUARE`, is not dead code: the app
-      computes the orientation itself from display width and height and returns that constant, so
-      the branch can still fire on a square window. It is the *constant* that is obsolete — the
-      platform has not reported it since Android 4.1.
+- [ ] One left of the three one-liners from that table, and it is the one that is not merely
+      mechanical: `Configuration.ORIENTATION_SQUARE` (`AVRRemote.java:357`) is **not** dead code.
+      The app computes the orientation itself from display width and height and returns that
+      constant, so the branch can still fire on a square window. It is the *constant* that is
+      obsolete — the platform has not reported it since Android 4.1 — so replacing it means
+      deciding what a square window should mean here, not just swapping a name.
+      Done: `Build.VERSION.SDK` → `SDK_INT` (it sits in the crash report users send in), and
+      `Class.newInstance()` → `getDeclaredConstructor().newInstance()` in the reflection registry.
+      The second one is worth a note for the next reader: it now throws `NoSuchMethodException` for
+      a model class without a no-arg constructor, where the old call threw `InstantiationException`.
+      Both land in the same `catch (Exception)` → `AVRGeneric`, and `ModelConfiguratorTest` drives
+      all 60 models plus the unknown-name case through it.
 - [ ] The custom-background picker stores the picked URI (`AVRSettings.java:92`, listener registered
       at `:62`) without `takePersistableUriPermission()`, so it does not survive a restart. Note the
       fix is not just an added call: the picker uses `ACTION_PICK`, and persistable permissions need

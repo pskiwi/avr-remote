@@ -88,7 +88,6 @@ public final class StatusbarManager {
 
 	private Class<?> appClass=AVRRemote.class;
 	private NotificationManager notificationManager;
-	private Notification notification;
 
 	private final AVRApplication app;
 	private static final int NOTIFICATION_ID = 1;

@@ -52,14 +52,11 @@ public final class FeedbackReporter {
 
 	public void saveCrash() {
 		try {
-			final FileOutputStream trace = ctx.openFileOutput(STACK_TRACE,
-					Context.MODE_PRIVATE);
-			Logger.info("save crash data...");
-			try {
+			try (FileOutputStream trace = ctx.openFileOutput(STACK_TRACE,
+					Context.MODE_PRIVATE)) {
+				Logger.info("save crash data...");
 				trace.write((createInfoString(ctx, CRASH_HEADER) + createCrashInfo())
 						.getBytes());
-			} finally {
-				trace.close();
 			}
 			Logger.info("save crash data ok.");
 		} catch (IOException x) {
@@ -161,7 +158,7 @@ public final class FeedbackReporter {
 
 		out.println("-----------------------");
 		out.println("Model   : " + android.os.Build.MODEL);
-		out.println("SDK     : " + Build.VERSION.SDK);
+		out.println("SDK     : " + Build.VERSION.SDK_INT);
 		out.println("Version : " + android.os.Build.VERSION.RELEASE);
 		out.println("Inc     : " + Build.VERSION.INCREMENTAL);
 
@@ -199,16 +196,13 @@ public final class FeedbackReporter {
 		out.println("Macros:");
 		out.println("-------");
 		try {
-			final BufferedReader r = new BufferedReader(new InputStreamReader(
-					ctx.openFileInput(MacroManager.MACRO_FILE)));
-			try {
+			try (BufferedReader r = new BufferedReader(new InputStreamReader(
+					ctx.openFileInput(MacroManager.MACRO_FILE)))) {
 				String l;
 				int nr = 1;
 				while ((l = r.readLine()) != null) {
 					out.println(nr + ":[" + l + "]");
 				}
-			} finally {
-				r.close();
 			}
 		} catch (Exception e) {
 			out.println("Macro file:" + e);
@@ -218,8 +212,7 @@ public final class FeedbackReporter {
 
 	public String createCrashInfo() {
 		final StringWriter result = new StringWriter();
-		final PrintWriter out = new PrintWriter(result);
-		try {
+		try (PrintWriter out = new PrintWriter(result)) {
 			out.println("Thread id : " + thread.getId() + "/ name : "
 					+ thread.getName());
 			xpt.printStackTrace(out);
@@ -233,8 +226,6 @@ public final class FeedbackReporter {
 			out.println("Last log entries:");
 			out.println(Logger.getLastLogEntries());
 			out.println("-----------------------");
-		} finally {
-			out.close();
 		}
 
 		return result.toString();

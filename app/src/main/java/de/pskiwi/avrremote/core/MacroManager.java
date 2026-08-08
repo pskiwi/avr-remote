@@ -85,15 +85,12 @@ public final class MacroManager {
 	private void doSave() {
 		try {
 			Logger.info("saving macros ...");
-			final PrintWriter out = new PrintWriter(avrApplication
-					.openFileOutput(MACRO_FILE, 0));
-			out.println("# saved : " + new Date());
-			try {
+			try (PrintWriter out = new PrintWriter(avrApplication
+					.openFileOutput(MACRO_FILE, 0))) {
+				out.println("# saved : " + new Date());
 				for (Macro m : macros) {
 					m.save(out);
 				}
-			} finally {
-				out.close();
 			}
 			Logger.info("saving macros ok.");
 		} catch (Exception e) {
@@ -103,9 +100,8 @@ public final class MacroManager {
 
 	public void read() {
 		try {
-			final BufferedReader r = new BufferedReader(new InputStreamReader(
-					avrApplication.openFileInput(MACRO_FILE)));
-			try {
+			try (BufferedReader r = new BufferedReader(new InputStreamReader(
+					avrApplication.openFileInput(MACRO_FILE)))) {
 				String line;
 				Macro macro = null;
 				macros.clear();
@@ -134,8 +130,6 @@ public final class MacroManager {
 					}
 				}
 
-			} finally {
-				r.close();
 			}
 		} catch (Exception e) {
 			Logger.error("reading " + MACRO_FILE + " failed", e);

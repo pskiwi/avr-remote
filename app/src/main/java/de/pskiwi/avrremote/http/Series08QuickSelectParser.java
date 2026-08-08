@@ -70,8 +70,7 @@ public final class Series08QuickSelectParser {
 	}
 
 	public void parse() throws IOException {
-		final BufferedReader r = new BufferedReader(new InputStreamReader(in));
-		try {
+		try (BufferedReader r = new BufferedReader(new InputStreamReader(in))) {
 			int toFind = 1;
 			String line;
 			while ((line = findLine(r, toFind)) != null) {
@@ -81,8 +80,6 @@ public final class Series08QuickSelectParser {
 				}
 				toFind++;
 			}
-		} finally {
-			r.close();
 		}
 	}
 

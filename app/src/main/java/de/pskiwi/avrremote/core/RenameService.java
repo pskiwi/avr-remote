@@ -227,9 +227,8 @@ public final class RenameService {
 			if (!dirty) {
 				return;
 			}
-			final FileOutputStream fileos = ctx.openFileOutput(RENAMES_XML,
-					Context.MODE_PRIVATE);
-			try {
+			try (FileOutputStream fileos = ctx.openFileOutput(RENAMES_XML,
+					Context.MODE_PRIVATE)) {
 
 				// we create a XmlSerializer in order to write xml data
 				final XmlSerializer serializer = Xml.newSerializer();
@@ -247,9 +246,6 @@ public final class RenameService {
 
 				// write xml data into the FileOutputStream
 				serializer.flush();
-				// finally we close the file stream
-			} finally {
-				fileos.close();
 			}
 			dirty = false;
 		} catch (Exception x) {

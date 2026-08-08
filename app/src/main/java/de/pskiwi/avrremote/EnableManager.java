@@ -133,6 +133,7 @@ public final class EnableManager {
 				connectionStatus.reset(StatusFlag.Zone1);
 				connectionStatus.reset(StatusFlag.Zone2);
 				connectionStatus.reset(StatusFlag.Zone3);
+				connectionStatus.reset(StatusFlag.Zone4);
 				break;
 			default:
 				connectionStatus.unset(s);

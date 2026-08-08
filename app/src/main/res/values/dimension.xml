@@ -28,7 +28,6 @@
     <dimen name="button_corners">0dip</dimen>
     <dimen name="button_stroke">5dip</dimen>
     
-    <dimen name="widget_margin">4dip</dimen>
     <dimen name="widget_button_width">45dip</dimen>
     
      <dimen name="donation_bottom_margin" >65dp</dimen>
