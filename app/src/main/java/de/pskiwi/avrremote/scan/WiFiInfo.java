@@ -51,20 +51,41 @@ public class WiFiInfo {
 	}
 
 	/**
-	 * Ist das aktive Netz ein WLAN?
+	 * Ist ein WLAN verbunden ?
 	 *
 	 * Ersetzt getNetworkInfo(TYPE_WIFI).isConnected(): der Aufruf ist seit API
-	 * 23 deprecated und liefert null, sobald kein WLAN verbunden ist — genau
-	 * dann, wenn der WifiManager-Broadcast eintrifft. In AVRApplication.onReceive
-	 * hat das den Prozess mitgenommen (Play Console, 1.5.1, Android 17).
+	 * 23 deprecated und liefert null, sobald kein WLAN verbunden ist - also
+	 * genau in dem Zustand, den der WifiManager-Broadcast meldet. In
+	 * AVRApplication.onReceive hat das den Prozess mitgenommen (Play Console,
+	 * 1.5.1, Android 17). Die Frage bleibt dieselbe wie vorher, nur die Antwort
+	 * kommt aus NetworkCapabilities und kann nicht mehr null sein.
 	 *
-	 * Gefragt wird nach dem *aktiven* Netz, nicht nach irgendeinem verbundenen
-	 * WLAN: Sockets ohne Network-Bindung — Telnet, HTTP und der Subnetz-Scan —
-	 * gehen über das Default-Netz, ein daneben verbundenes WLAN nützt ihnen
-	 * nichts.
+	 * Zuerst das aktive Netz, weil das der Normalfall ist und getActiveNetwork()
+	 * als einziger der beiden Aufrufe nicht deprecated ist. Der Fallback ist
+	 * aber nicht optional: ein WLAN ohne Internet - Router mit totem WAN,
+	 * Captive Portal, bewusst isoliertes AV-Netz - bleibt neben aktivem
+	 * Mobilfunk verbunden, ohne Default-Netz zu sein. Der Receiver ist dann
+	 * trotzdem da, und AVRScanner.scan() verweigert bei "false" den Suchlauf
+	 * komplett.
+	 *
+	 * Achtung beim Lesen eines Logs: getActiveNetwork() liefert auch dann null,
+	 * wenn dem Prozess der Netzzugriff entzogen wurde (Data Saver, App-Standby),
+	 * nicht nur wenn kein Netz da ist.
 	 */
 	public static boolean isWiFiConnected(ConnectivityManager connectivity) {
-		final Network network = connectivity.getActiveNetwork();
+		if (isWiFi(connectivity, connectivity.getActiveNetwork())) {
+			return true;
+		}
+		for (Network network : connectivity.getAllNetworks()) {
+			if (isWiFi(connectivity, network)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static boolean isWiFi(ConnectivityManager connectivity,
+			Network network) {
 		if (network == null) {
 			return false;
 		}

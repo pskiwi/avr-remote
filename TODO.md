@@ -28,9 +28,13 @@ blocks the current build, which is green.
       state the `WifiManager` broadcast reports, so the receiver crashed on the event it exists to
       handle. The lines were unchanged since the initial commit, so 1.6.0 was affected identically.
       Both call sites now go through `WiFiInfo.isWiFiConnected(ConnectivityManager)`, which asks
-      `NetworkCapabilities.hasTransport(TRANSPORT_WIFI)` about the **active** network — unbound
-      sockets (telnet, HTTP, the subnet sweep) use the default network, so a second, non-default
-      Wi-Fi would be a false positive for every caller here.
+      `NetworkCapabilities.hasTransport(TRANSPORT_WIFI)` — about the active network first, then
+      about every network. The question is unchanged from the old API; only the answer can no
+      longer be null. Checking *only* the active network was the first attempt and is wrong: a
+      Wi-Fi without internet (dead WAN, captive portal, an isolated AV network) stays connected
+      alongside cellular without being the default, and `AVRScanner.java:117` refuses the whole
+      scan on a `false`. `getAllNetworks()` is itself deprecated (API 31), which is why it is the
+      fallback rather than the whole answer — it goes when the `NetworkCallback` item below lands.
 
 ## Next platform deadline: targetSdk 37
 
@@ -40,10 +44,14 @@ blocks the current build, which is green.
       [CONNECTION.md](CONNECTION.md).
 - [ ] Same area, do it in one pass: `scan/WiFiInfo` still takes netmask and local IP for the sweep
       from `WifiManager.getDhcpInfo()`, deprecated since API 31 → `LinkProperties.getLinkAddresses()`
-      via `NetworkCapabilities`. The `getNetworkInfo(TYPE_WIFI)` half of this item is done, ahead of
-      the deadline and not by choice — it was crashing in the field, see *Broken today*. What is
-      still legacy about it is the trigger: the `WifiManager` broadcast, where a `NetworkCallback`
-      belongs.
+      and `getRoutes()`, via `ConnectivityManager.getLinkProperties(Network)`. The
+      `getNetworkInfo(TYPE_WIFI)` half of this item is done, ahead of the deadline and not by choice
+      — it was crashing in the field, see *Broken today*. Two things there are still legacy and want
+      the same pass: the trigger is a `WifiManager` broadcast where a `NetworkCallback` belongs, and
+      the fallback in `isWiFiConnected` uses `getAllNetworks()`, deprecated since API 31 as well. A
+      callback holding the current Wi-Fi `Network` would replace all three at once — and would hand
+      the scan and the sockets a `Network` to bind to, which is what the Local Network Protection
+      item above needs anyway.
 
 ## Structural
 
