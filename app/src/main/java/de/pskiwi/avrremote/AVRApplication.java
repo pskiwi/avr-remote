@@ -54,6 +54,7 @@ import de.pskiwi.avrremote.log.LogMode;
 import de.pskiwi.avrremote.log.Logger;
 import de.pskiwi.avrremote.log.SDLogger;
 import de.pskiwi.avrremote.models.ModelConfigurator;
+import de.pskiwi.avrremote.scan.WiFiInfo;
 
 /** Global State */
 public final class AVRApplication extends Application {
@@ -62,8 +63,8 @@ public final class AVRApplication extends Application {
 
 		public void onReceive(Context context, Intent intent) {
 			Logger.info("Broadcast " + intent);
-			final boolean newConnected = connectivityManager.getNetworkInfo(
-					ConnectivityManager.TYPE_WIFI).isConnected();
+			final boolean newConnected = WiFiInfo
+					.isWiFiConnected(connectivityManager);
 			enableManager.setStatus(StatusFlag.WLAN, newConnected);
 			Logger.info("AVRApplication.Wifi connected:" + newConnected + " "
 					+ activeHandler + " " + enableManager);

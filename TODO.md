@@ -21,6 +21,16 @@ blocks the current build, which is green.
       never having had a caller.
 - [x] Once both are done, drop `WRITE_EXTERNAL_STORAGE` from the manifest — it has been a no-op
       since Android 11.
+- [x] **`ConnectivityManager.getNetworkInfo(TYPE_WIFI)` returned null and killed the process.**
+      Play Console, 1.5.1 (versionCode 124), Pixel 8 Pro on Android 17 Beta: NPE in
+      `AVRApplication$1.onReceive` → `RuntimeException` out of `LoadedApk$ReceiverDispatcher`. The
+      deprecated overload returns null when no Wi-Fi network is connected — which is exactly the
+      state the `WifiManager` broadcast reports, so the receiver crashed on the event it exists to
+      handle. The lines were unchanged since the initial commit, so 1.6.0 was affected identically.
+      Both call sites now go through `WiFiInfo.isWiFiConnected(ConnectivityManager)`, which asks
+      `NetworkCapabilities.hasTransport(TRANSPORT_WIFI)` about the **active** network — unbound
+      sockets (telnet, HTTP, the subnet sweep) use the default network, so a second, non-default
+      Wi-Fi would be a false positive for every caller here.
 
 ## Next platform deadline: targetSdk 37
 
@@ -28,11 +38,12 @@ blocks the current build, which is green.
       core of this app: the subnet sweep in `scan/AVRScanner` and the raw sockets to the receiver.
       Needs the new local-network runtime permission and a rationale UI. Background:
       [CONNECTION.md](CONNECTION.md).
-- [ ] Same area, do it in one pass: `scan/WiFiInfo` relies on `WifiManager.getDhcpInfo()` (netmask
-      and local IP for the sweep) and `ConnectivityManager.getNetworkInfo(TYPE_WIFI)`, plus
-      `AVRApplication.java:63`. Both deprecated — `getDhcpInfo()` since API 31, the
-      `getNetworkInfo(int)` overload used here already since API 23 → `NetworkCallback` and
-      `NetworkCapabilities`.
+- [ ] Same area, do it in one pass: `scan/WiFiInfo` still takes netmask and local IP for the sweep
+      from `WifiManager.getDhcpInfo()`, deprecated since API 31 → `LinkProperties.getLinkAddresses()`
+      via `NetworkCapabilities`. The `getNetworkInfo(TYPE_WIFI)` half of this item is done, ahead of
+      the deadline and not by choice — it was crashing in the field, see *Broken today*. What is
+      still legacy about it is the trigger: the `WifiManager` broadcast, where a `NetworkCallback`
+      belongs.
 
 ## Structural
 

@@ -22,6 +22,8 @@ import java.net.InetAddress;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.DhcpInfo;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.wifi.WifiManager;
 import de.pskiwi.avrremote.log.Logger;
 
@@ -45,8 +47,32 @@ public class WiFiInfo {
 	}
 
 	private boolean isWiFiConnected() {
-		return connectivity.getNetworkInfo(ConnectivityManager.TYPE_WIFI)
-				.isConnected();
+		return isWiFiConnected(connectivity);
+	}
+
+	/**
+	 * Ist das aktive Netz ein WLAN?
+	 *
+	 * Ersetzt getNetworkInfo(TYPE_WIFI).isConnected(): der Aufruf ist seit API
+	 * 23 deprecated und liefert null, sobald kein WLAN verbunden ist — genau
+	 * dann, wenn der WifiManager-Broadcast eintrifft. In AVRApplication.onReceive
+	 * hat das den Prozess mitgenommen (Play Console, 1.5.1, Android 17).
+	 *
+	 * Gefragt wird nach dem *aktiven* Netz, nicht nach irgendeinem verbundenen
+	 * WLAN: Sockets ohne Network-Bindung — Telnet, HTTP und der Subnetz-Scan —
+	 * gehen über das Default-Netz, ein daneben verbundenes WLAN nützt ihnen
+	 * nichts.
+	 */
+	public static boolean isWiFiConnected(ConnectivityManager connectivity) {
+		final Network network = connectivity.getActiveNetwork();
+		if (network == null) {
+			return false;
+		}
+		final NetworkCapabilities capabilities = connectivity
+				.getNetworkCapabilities(network);
+		return capabilities != null
+				&& capabilities
+						.hasTransport(NetworkCapabilities.TRANSPORT_WIFI);
 	}
 
 	public String getErrorCause() {
