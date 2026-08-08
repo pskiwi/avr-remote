@@ -39,12 +39,13 @@ $ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/app-debu
 
 `local.properties` is deliberately untracked — the SDK path comes from `ANDROID_HOME`.
 
-**There is almost no test coverage.** `src/test` holds six JVM test classes on JUnit 4, the only
+**There is almost no test coverage.** `src/test` holds nine JVM test classes on JUnit 4, the only
 dependency in the project — `http/HTTPSupportTest`, `http/Series08ParserTest`,
-`core/ThreadHandlerTest`, `models/ModelConfiguratorTest`, `ReceiverStatusTest` and
+`core/ThreadHandlerTest`, `core/InDataTest`, `core/display/NetDisplayTest`,
+`core/display/TunerDisplayTest`, `models/ModelConfiguratorTest`, `ReceiverStatusTest` and
 `http/AVRXMLInfoParserTest` — and there is no `src/androidTest` at all. `./gradlew test` runs a few
 dozen cases and nothing else (twice, in fact: once per build variant), so do not report a change as
-verified because the build passed; verify on a device or emulator instead. Four limits are worth
+verified because the build passed; verify on a device or emulator instead. Six limits are worth
 knowing before writing more tests:
 
 - These run on the desktop JVM, not on Android's OkHttp-backed stack. Anything Android-specific —
@@ -64,6 +65,24 @@ knowing before writing more tests:
   (it covers both variants — verified by watching `testReleaseUnitTest` re-run too). It also
   resolves its paths against both the module and the root directory, because the working directory
   depends on how the run was started.
+- Real device output belongs in `src/test/resources`, not next to the source or read from disk.
+  `Series08ParserTest` parses two captured AVR-3808 pages from
+  `src/test/resources/de/pskiwi/avrremote/http/` through `getResourceAsStream`; Gradle puts that
+  directory on the test classpath and tracks it as a task input by itself, so it needs neither an
+  `inputs.file` entry nor the module/root path dance above. Keep such captures byte-exact — one of
+  the two has CRLF line endings and both pad their values with spaces, and the tests exist to pin
+  what the parsers do with that.
+- **A static initialiser that touches `android.os.Build` locks the whole class out of JVM tests.**
+  The stub `android.jar` leaves those fields null, so the initialiser throws and every test using
+  the class dies with `ExceptionInInitializerError` — including classes that merely *use* it, which
+  makes the cause hard to see. `core/InData` had exactly that: an `EXTENDED_DEBUG` field calling
+  `EmulationDetector.isEmulator()`, for a debug string. It is now read inside `toDebugString()`
+  instead, which is what makes `core/InDataTest` and `core/display/NetDisplayTest` possible at all —
+  `NetDisplay.DisplayStatusReader` takes an `InData`. Constructors and field initialisers of Android
+  types are fine (`NetDisplay` builds a `Handler` in a field initialiser and still constructs on a
+  JVM); it is *reading* `Build` that fails. So the display classes need no keep-alive trick: the
+  test builds `new NetDisplay(null, null, DisplayType.NETWORK)` and reaches the inner
+  `DisplayStatusReader` directly, because for `NETWORK` the constructor touches neither argument.
 - `core/ThreadHandlerTest` asserts on wall-clock time, as does `Series08ParserTest`'s
   `largeLineStaysFast`. Its threshold sits between "no wait" and the `join(1000)` it replaced
   (measured 1003 ms), so keep that margin if you touch it. It reaches
