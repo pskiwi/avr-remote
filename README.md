@@ -5,7 +5,7 @@ Android remote control for Denon and Marantz receivers.
 
 
 This application is not affiliated with Denon or Marantz. 
-Denon and Marantz are registered trademarks of D&M Holdings, Inc. 
+Denon and Marantz are trademarks of their respective owners. 
 
 ![Check build](https://github.com/pskiwi/avr-remote/workflows/Check%20build/badge.svg)
 
