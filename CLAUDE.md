@@ -7,10 +7,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Android remote control for Denon and Marantz AV receivers (`de.pskiwi.avrremote`, GPL v3).
 Talks to receivers on the local network — there is no backend and no account.
 
-**[TODO.md](TODO.md) is the backlog** — known-broken behaviour, the next platform deadline, and the
-housekeeping items, each with file and line. Read it before proposing work of your own; what looks
+**[TODO.md](TODO.md) is the backlog** — the next platform deadline, the structural items and the
+housekeeping, each with file and line. Read it before proposing work of your own; what looks
 like an oversight is usually already listed there with the reason it was left alone. When you finish
-one of the items, tick its checkbox in the same commit.
+an item, **delete it** in the same commit rather than ticking it — the file only stays readable
+because closed items do not accumulate, and the git history is where "what was done and why" lives.
+If a closed item established something a live item still relies on, fold that into the live item.
 
 **[CONNECTION.md](CONNECTION.md) is the reference for everything network-facing** — the two
 transports, the reconnect loop and its generation counter, who decides when to hang up, and what
@@ -185,11 +187,9 @@ Consequences:
   — Java 11 syntax only.
 - **Within Java 11, write modern Java.** The code dates from 2010 and mostly predates it, but new and
   touched code should not imitate that. In particular use **try-with-resources** rather than the
-  manual `try { … } finally { x.close(); }` pattern — `http/HTTPSupport` is the reference. The old
-  pattern survives in a dozen places (inventory in [TODO.md](TODO.md)); converting one is welcome
-  when you are editing that code anyway, but do not sweep the tree as a
-  side errand — and note `core/Connector.java:168` is not convertible at all, it closes the socket
-  only on the failure path (`if (!ok)`). The other reason to keep the manual form is when
+  manual `try { … } finally { x.close(); }` pattern — `http/HTTPSupport` is the reference. The tree
+  was converted in August 2026 and `core/Connector.java:168` is the only manual block left: it is
+  not convertible at all, it closes the socket only on the failure path (`if (!ok)`). The other reason to keep the manual form is when
   an exception from `close()` must be swallowed deliberately — see
   `HTTPSupportTest.serveOneRequest`, where letting it propagate would fake a test failure.
   This does **not** extend to the UI bases above: those are a migration, not a style choice.
@@ -213,8 +213,7 @@ Three things are easy to forget and all are required at `targetSdk 36`:
 3. If the activity requests a runtime permission, gate the request on
    `savedInstanceState == null` — these activities are recreated on every rotation.
 
-## Known-broken, and what comes next
+## What comes next
 
-Both live in [TODO.md](TODO.md): behaviour that is already broken and predates the SDK 36 upgrade
-(do not report it as a regression), and the next platform deadline, Local Network Protection at
-Android 17. The connection side of that deadline is in [CONNECTION.md](CONNECTION.md).
+The next platform deadline is Local Network Protection at Android 17, and it is the first item in
+[TODO.md](TODO.md). The connection side of it is in [CONNECTION.md](CONNECTION.md).

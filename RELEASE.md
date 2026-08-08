@@ -87,7 +87,8 @@ the alias CI actually signs with comes from the `KEY_ALIAS` secret and cannot be
      The 1.6.0 replacement of Apache HttpClient could only be tested against the hardware that was
      available; a user on an untested model needs to know that a missing input name is worth
      reporting.
-3. **Tick the items** in [TODO.md](TODO.md) that this release closes.
+3. **Remove the items** in [TODO.md](TODO.md) that this release closes — that file records open work
+   only, the history records what was done.
 4. **Commit, tag, push.** The tag convention is `v<versionName>`:
 
    ```sh

@@ -161,12 +161,13 @@ process had survived — `openend at` appears only at the app's own restart.
 greyed out until a receiver is actually connected — worth knowing when testing without hardware.
 
 The flags are not independent. `setStatus()` cascades through a deliberate `switch` fallthrough:
-clearing `Reachable` also clears `Connected`, `Power` and zones 1–3. **One missed ping response
+clearing `Reachable` also clears `Connected`, `Power` and all four zones. **One missed ping response
 greys out nearly the whole UI** — which is what makes the `PING_TIMEOUT` observation above more than
 cosmetic. Setting cascades the other way: `Power` implies `Connected` implies `Reachable`.
 
-`Zone4` is missing from that reset — see [TODO.md](TODO.md). It is a real flag with a real zone
-behind it, so on a four-zone receiver those controls stay enabled after the connection drops.
+`Zone4` was missing from that reset until August 2026, so on a four-zone receiver — `AVR5308`,
+`AVR4308`, `AVR4810`, `AVR5805` — those controls stayed enabled after the connection dropped while
+zones 1–3 greyed out. Worth knowing when reading an older log.
 
 ## Reading a log
 
