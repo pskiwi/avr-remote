@@ -201,7 +201,7 @@ public final class FeedbackReporter {
 				String l;
 				int nr = 1;
 				while ((l = r.readLine()) != null) {
-					out.println(nr + ":[" + l + "]");
+					out.println(nr++ + ":[" + l + "]");
 				}
 			}
 		} catch (Exception e) {
