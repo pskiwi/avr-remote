@@ -44,7 +44,7 @@ dependency in the project — `http/HTTPSupportTest`, `http/Series08ParserTest`,
 `core/ThreadHandlerTest`, `models/ModelConfiguratorTest`, `ReceiverStatusTest` and
 `http/AVRXMLInfoParserTest` — and there is no `src/androidTest` at all. `./gradlew test` runs a few
 dozen cases and nothing else (twice, in fact: once per build variant), so do not report a change as
-verified because the build passed; verify on a device or emulator instead. Four limits are worth
+verified because the build passed; verify on a device or emulator instead. Five limits are worth
 knowing before writing more tests:
 
 - These run on the desktop JVM, not on Android's OkHttp-backed stack. Anything Android-specific —
@@ -64,6 +64,13 @@ knowing before writing more tests:
   (it covers both variants — verified by watching `testReleaseUnitTest` re-run too). It also
   resolves its paths against both the module and the root directory, because the working directory
   depends on how the run was started.
+- Real device output belongs in `src/test/resources`, not next to the source or read from disk.
+  `Series08ParserTest` parses two captured AVR-3808 pages from
+  `src/test/resources/de/pskiwi/avrremote/http/` through `getResourceAsStream`; Gradle puts that
+  directory on the test classpath and tracks it as a task input by itself, so it needs neither an
+  `inputs.file` entry nor the module/root path dance above. Keep such captures byte-exact — one of
+  the two has CRLF line endings and both pad their values with spaces, and the tests exist to pin
+  what the parsers do with that.
 - `core/ThreadHandlerTest` asserts on wall-clock time, as does `Series08ParserTest`'s
   `largeLineStaysFast`. Its threshold sits between "no wait" and the `join(1000)` it replaced
   (measured 1003 ms), so keep that margin if you touch it. It reaches

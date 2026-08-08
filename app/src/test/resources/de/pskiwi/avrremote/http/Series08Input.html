@@ -1,0 +1,154 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+<HEAD>
+<META http-equiv="Pragma" content="no-cache" />
+<META http-equiv="Cache-Control" content="no-cache, must-revalidate" />
+<META http-equiv="Expires" content="-1" />
+<META http-equiv="Content-Type" CONTENT="text/html; charset=utf-8">
+<TITLE>Source Select</TITLE>
+</HEAD>
+<script language="javaScript1.2">
+<!--
+	var val;
+	function refreshHref() {
+		location.href = this.location.href;
+	}
+	function listBox() {
+		inputsetupSubmit();
+	}
+	function radioBtn() {
+		inputsetupSubmit();
+	}
+	function buttonFuncRenameSet() {
+		document.inputsetup.setFuncRename.value = "on";
+		inputsetupSubmit();
+	}
+	function buttonClickSet(Kind) {
+		if(Kind=="Analog"){
+			document.inputsetup.setSourceLevelAnalog.value = "on";
+		}
+		if(Kind=="Digital"){
+			document.inputsetup.setSourceLevelDigital.value = "on";
+		}
+		inputsetupSubmit();
+	}
+	function buttonFuncRenameDefault() {
+		document.inputsetup.setFuncRenameDefault.value = "Default";
+		inputsetupSubmit();
+	}
+	function buttonClickDn(Kind) {
+		if(Kind=="Analog"){
+			if((isNaN(document.inputsetup.textSourceLevelAnalog.value)) ||
+			   (document.inputsetup.textSourceLevelAnalog.value =='')){
+				val = 0;
+			}else{
+				val = eval(document.inputsetup.textSourceLevelAnalog.value);
+			}
+			val = val - 1.0;
+			if(val < -12.0){
+				val = -12 ;
+			}
+			if(val > 12.0){
+				val = 12 ;
+			}
+			document.inputsetup.textSourceLevelAnalog.value = val;
+			document.inputsetup.setSourceLevelAnalog.value = "<";
+		}
+		if(Kind=="Digital"){
+			if((isNaN(document.inputsetup.textSourceLevelDigital.value)) ||
+			   (document.inputsetup.textSourceLevelDigital.value =='')){
+				val = 0;
+			}else{
+				val = eval(document.inputsetup.textSourceLevelDigital.value);
+			}
+			val = val - 1.0;
+			if(val < -12.0){
+				val = -12 ;
+			}
+			if(val > 12.0){
+				val = 12 ;
+			}
+			document.inputsetup.textSourceLevelDigital.value = val;
+			document.inputsetup.setSourceLevelDigital.value = "<";
+		}
+	}
+	function buttonClickUp(Kind) {
+		if(Kind=="Analog"){
+			if((isNaN(document.inputsetup.textSourceLevelAnalog.value)) ||
+			   (document.inputsetup.textSourceLevelAnalog.value =='')){
+				val = 0;
+			}else{
+				val = eval(document.inputsetup.textSourceLevelAnalog.value);
+			}
+			val = val + 1.0;
+			if(val < -12.0){
+				val = -12 ;
+			}
+			if(val > 12.0){
+				val = 12 ;
+			}
+			document.inputsetup.textSourceLevelAnalog.value = val;
+			document.inputsetup.setSourceLevelAnalog.value = ">";
+		}
+		if(Kind=="Digital"){
+			if((isNaN(document.inputsetup.textSourceLevelDigital.value)) ||
+			   (document.inputsetup.textSourceLevelDigital.value =='')){
+				val = 0;
+			}else{
+				val = eval(document.inputsetup.textSourceLevelDigital.value);
+			}
+			val = val + 1.0;
+			if(val < -12.0){
+				val = -12 ;
+			}
+			if(val > 12.0){
+				val = 12 ;
+			}
+			document.inputsetup.textSourceLevelDigital.value = val;
+			document.inputsetup.setSourceLevelDigital.value = ">";
+		}
+	}
+	function inputsetupSubmit() {
+		document.inputsetup.submit();
+	}
+// -->
+</script>
+
+<BODY text='#FFFFFF' bgcolor='#333333' link='#FFFFFF' vlink='#FFFFFF' alink='#FFFFFF'>
+<FORM name="inputsetup" action="s_inputsetup.asp" method="POST" target="inputsetup2">
+
+
+
+<TABLE cellspacing="0" cellpadding="0" border="0" >
+	<TR>
+      <TD><FONT size="4"><B>SOURCE SELECT</B></FONT></TD>
+		<TD align="right"><INPUT type="button" value="ReLoad" onClick="refreshHref()"></TD>
+	</TR>
+</TABLE>
+<HR size="5">
+
+<TABLE>
+	<TR> 
+		<TD><B>Source</B></TD>
+		<TD> <select size='1' name='listInputFunction' onchange='listBox()'STYLE='COLOR:#F5F5F5; background-color:#333333'><option value='TUNER'>TUNER   </option><option value='HDP'>Mediacen</option><option value='TV/CBL'>TV/CBL  </option><option value='DVR'>Wii     </option><option value='NET/USB' selected>NET/USB </option></select></TD>
+	</TR>
+</TABLE>
+<HR size="5">
+		<TABLE><TR><TD><B><a href='../../NETAUDIO/r_netaudio.asp' target='_top'>Play</a></B></TD></TR></TABLE><HR size='5'>
+		
+		
+		
+		
+		
+		<TABLE><TR><TD><B>Playback Mode</B></TD></TR><TR><TD><B>&nbsp;&nbsp;USB Select</B></TD><TD><INPUT type='radio' name='radioUsbSelect' value='FRO' onClick='radioBtn()' checked>Front<INPUT type='radio' name='radioUsbSelect' value='REA' onClick='radioBtn()'>Rear</TD></TR></TABLE>
+		<TABLE><TR><TD><B>&nbsp;&nbsp;Repeat</B></TD><TD><INPUT type='radio' name='radioUsbRepeat' value='ALL' onClick='radioBtn()'>All<INPUT type='radio' name='radioUsbRepeat' value='ONE' onClick='radioBtn()'>One<INPUT type='radio' name='radioUsbRepeat' value='OFF' onClick='radioBtn()' checked>Off</TD></TR></TABLE>
+		<TABLE><TR><TD><B>&nbsp;&nbsp;Random</B></TD><TD><INPUT type='radio' name='radioUsbRandom' value='ON' onClick='radioBtn()'>On<INPUT type='radio' name='radioUsbRandom' value='OFF' onClick='radioBtn()' checked>Off</TD></TR></TABLE>
+		<TABLE><TR><TD><B>&nbsp;&nbsp;Direct Play</B></TD><TD><INPUT type='radio' name='radioUsbDirectPlay' value='FAV' onClick='radioBtn()'>Favorite<INPUT type='radio' name='radioUsbDirectPlay' value='MUS' onClick='radioBtn()' checked>Music</TD></TR></TABLE><HR size='5'>
+		
+		
+		<TABLE><TR><TD><B>Input Mode</B></TD><TABLE><TR><TD><B>&nbsp;&nbsp;Input Mode</B></TD><TD><select size='1' name='listInputMode' onchange='listBox()'STYLE='COLOR:#F5F5F5; background-color:#333333'><option value='AUTO' selected>Auto</option><option value='EXT.IN-1'>Ext.IN</option></select></TD></TR></TABLE><HR size='5'>
+		<TABLE><TR><TD><B>Rename</B></TD><TD><INPUT type='text' name='textFuncRename' value="NET/USB" size='12' maxlength='8'>&nbsp;<INPUT type='button' name='setbtnFuncRename' value='Set' onClick='buttonFuncRenameSet()'><INPUT type='hidden' name='setFuncRename' value='off'>&nbsp;<INPUT type='button' name='setbtnFuncRenameDefault' value='Def' onClick='buttonFuncRenameDefault()'><INPUT type='hidden' name='setFuncRenameDefault' value='off'></TD></TR></TABLE><HR size='5'>
+		<TABLE><TR><TD><B>Other</B></TD></TR><TR><TD><B>&nbsp;&nbsp;Video Select</B></TD><TD><select size='1' name='listVideoSelect' onchange='listBox()'STYLE='COLOR:#F5F5F5; background-color:#333333'><option value='SOURCE' selected>SOURCE</option><option value='HDP'>Mediacen</option><option value='TV/CBL'>TV/CBL  </option><option value='DVR'>Wii     </option></select></TD></TR></TABLE><TABLE><TR><TD><B>&nbsp;&nbsp;Source Level</B></TD><TD><INPUT type='button' name='buttonInFuncLevDn' value='&lt;' onClick='buttonClickDn("Digital")'>&nbsp;<INPUT type='text' name='textSourceLevelDigital' size='4' maxlength='3' style='text-align:right;' value='0'>dB&nbsp;<INPUT type='button' name='buttonInFuncLevUp' value='&gt;' onClick='buttonClickUp("Digital")'>&nbsp;<INPUT type='button' name='setbtnInFuncLev' value='Set' onClick='buttonClickSet("Digital")'><INPUT type='hidden' name='setSourceLevelDigital' value='off'></TD></TR></TABLE><HR size='5'>
+</FORM>
+</BODY>
+</HTML>
