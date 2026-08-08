@@ -40,9 +40,15 @@ one still depends on has been folded into the live one.
 
 ## Structural
 
-- [ ] **Test coverage is six JVM classes and no instrumentation tests.** The cheapest places to add
+- [ ] **Test coverage is eight JVM classes and no instrumentation tests.** The cheapest places to add
       more are `models/` (pure capability logic, no Android types) and `core/ZoneState.java`
-      (1237 lines).
+      (1237 lines). `core/display/` is now half done: `NetDisplayTest` covers the line reader, but
+      `TunerDisplay` (1059 lines) and `BDDisplay` have nothing. Both *do* construct on a JVM —
+      `TunerDisplay.createFM(null, null)` and `new BDDisplay(null)` were tried and work — so the
+      obstacle is only that nobody has written the cases. `TunerDisplay.TunerFrequency` is the
+      obvious start: `convertFrequency` splits FM from AM at 50000, which the 2007 protocol paper
+      words as "(>050000 is AM.)" — note it puts exactly 050000 on the AM side where the paper reads
+      as FM, an edge the tuner never actually sits on.
 - [ ] **`http/AVRXMLInfoParser` only works on Android and cannot be unit-tested.** `startElement` and
       `endElement` read `localName`, which a standard `SAXParserFactory` leaves empty because it is
       not namespace-aware by default — on a JVM the parser silently collects nothing. Android's

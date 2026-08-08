@@ -118,7 +118,13 @@ public final class InData {
 	}
 
 	public String toDebugString() {
-		final int max = EXTENDED_DEBUG ? count : (count > MAX_DEBUG ? MAX_DEBUG
+		// Erst hier abgefragt, nicht in einem Klassenfeld: EmulationDetector
+		// liest android.os.Build, und das ist auf einer nackten JVM null. Als
+		// static-Initialisierer hätte InData sich damit aus jedem Unit-Test
+		// ausgesperrt, für eine reine Debug-Ausgabe. EmulationDetector rechnet
+		// selbst nur einmal, das hier ist ein Feldzugriff.
+		final boolean extendedDebug = EmulationDetector.isEmulator();
+		final int max = extendedDebug ? count : (count > MAX_DEBUG ? MAX_DEBUG
 				: count);
 		return toBaseDebug() + toHexDebug(max);
 	}
@@ -148,7 +154,6 @@ public final class InData {
 	private int offset;
 	private final char[] data;
 	private final int count;
-	private static boolean EXTENDED_DEBUG = EmulationDetector.isEmulator();
 	private final static int MAX_DEBUG = 15;
 
 }
