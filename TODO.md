@@ -22,11 +22,15 @@ blocks the current build, which is green.
 - [x] Once both are done, drop `WRITE_EXTERNAL_STORAGE` from the manifest — it has been a no-op
       since Android 11.
 - [x] **`ConnectivityManager.getNetworkInfo(TYPE_WIFI)` returned null and killed the process.**
-      Play Console, 1.5.1 (versionCode 124), Pixel 8 Pro on Android 17 Beta: NPE in
-      `AVRApplication$1.onReceive` → `RuntimeException` out of `LoadedApk$ReceiverDispatcher`. The
-      deprecated overload returns null when no Wi-Fi network is connected — which is exactly the
-      state the `WifiManager` broadcast reports, so the receiver crashed on the event it exists to
-      handle. The lines were unchanged since the initial commit, so 1.6.0 was affected identically.
+      Play Console, 1.5.1 (versionCode 124), Pixel 8 Pro on Android 17 **Beta**: NPE in
+      `AVRApplication$1.onReceive` → `RuntimeException` out of `LoadedApk$ReceiverDispatcher`, which
+      takes the process with it. The lines were unchanged since the initial commit, so 1.6.0 was
+      affected identically. **The null itself did not reproduce** on a Pixel 8 with the finished
+      Android 17 (SDK 37) — not across three Wi-Fi off/on cycles, not in airplane mode, and not with
+      Data Saver on a metered Wi-Fi with the app in the background; the deprecated call returned an
+      object every time. So the triggering condition is still unknown: either a state those runs did
+      not hit, or beta behaviour that did not ship. Fixed anyway — the API is documented to be
+      allowed to return null, and nothing here may dereference it blindly.
       Both call sites now go through `WiFiInfo.isWiFiConnected(ConnectivityManager)`, which asks
       `NetworkCapabilities.hasTransport(TRANSPORT_WIFI)` — about the active network first, then
       about every network. The question is unchanged from the old API; only the answer can no

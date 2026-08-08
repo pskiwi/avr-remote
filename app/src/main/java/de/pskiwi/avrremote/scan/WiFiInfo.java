@@ -54,11 +54,16 @@ public class WiFiInfo {
 	 * Ist ein WLAN verbunden ?
 	 *
 	 * Ersetzt getNetworkInfo(TYPE_WIFI).isConnected(): der Aufruf ist seit API
-	 * 23 deprecated und liefert null, sobald kein WLAN verbunden ist - also
-	 * genau in dem Zustand, den der WifiManager-Broadcast meldet. In
-	 * AVRApplication.onReceive hat das den Prozess mitgenommen (Play Console,
-	 * 1.5.1, Android 17). Die Frage bleibt dieselbe wie vorher, nur die Antwort
-	 * kommt aus NetworkCapabilities und kann nicht mehr null sein.
+	 * 23 deprecated und darf null liefern. In AVRApplication.onReceive hat er
+	 * das getan und den Prozess mitgenommen (Play Console, 1.5.1, Pixel 8 Pro,
+	 * Android 17 *Beta*). Unter welcher Bedingung, ist offen - auf einem Pixel 8
+	 * mit dem fertigen Android 17 war es nicht zu reproduzieren: nicht beim
+	 * WLAN-Toggle, nicht im Flugmodus, nicht mit Data Saver auf einem metered
+	 * WLAN im Hintergrund. Dort kam immer ein Objekt zurück. Also entweder ein
+	 * Zustand, den diese Tests nicht getroffen haben, oder Beta-Verhalten, das
+	 * es nicht ins Release geschafft hat. Die Frage bleibt hier dieselbe wie
+	 * vorher, nur die Antwort kommt aus NetworkCapabilities und kann nicht null
+	 * sein.
 	 *
 	 * Zuerst das aktive Netz, weil das der Normalfall ist und getActiveNetwork()
 	 * als einziger der beiden Aufrufe nicht deprecated ist. Der Fallback ist
