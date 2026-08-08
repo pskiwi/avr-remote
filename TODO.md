@@ -21,6 +21,24 @@ blocks the current build, which is green.
       never having had a caller.
 - [x] Once both are done, drop `WRITE_EXTERNAL_STORAGE` from the manifest — it has been a no-op
       since Android 11.
+- [x] **`ConnectivityManager.getNetworkInfo(TYPE_WIFI)` returned null and killed the process.**
+      Play Console, 1.5.1 (versionCode 124), Pixel 8 Pro on Android 17 **Beta**: NPE in
+      `AVRApplication$1.onReceive` → `RuntimeException` out of `LoadedApk$ReceiverDispatcher`, which
+      takes the process with it. The lines were unchanged since the initial commit, so 1.6.0 was
+      affected identically. **The null itself did not reproduce** on a Pixel 8 with the finished
+      Android 17 (SDK 37) — not across three Wi-Fi off/on cycles, not in airplane mode, and not with
+      Data Saver on a metered Wi-Fi with the app in the background; the deprecated call returned an
+      object every time. So the triggering condition is still unknown: either a state those runs did
+      not hit, or beta behaviour that did not ship. Fixed anyway — the API is documented to be
+      allowed to return null, and nothing here may dereference it blindly.
+      Both call sites now go through `WiFiInfo.isWiFiConnected(ConnectivityManager)`, which asks
+      `NetworkCapabilities.hasTransport(TRANSPORT_WIFI)` — about the active network first, then
+      about every network. The question is unchanged from the old API; only the answer can no
+      longer be null. Checking *only* the active network was the first attempt and is wrong: a
+      Wi-Fi without internet (dead WAN, captive portal, an isolated AV network) stays connected
+      alongside cellular without being the default, and `AVRScanner.java:117` refuses the whole
+      scan on a `false`. `getAllNetworks()` is itself deprecated (API 31), which is why it is the
+      fallback rather than the whole answer — it goes when the `NetworkCallback` item below lands.
 
 ## Next platform deadline: targetSdk 37
 
@@ -28,11 +46,16 @@ blocks the current build, which is green.
       core of this app: the subnet sweep in `scan/AVRScanner` and the raw sockets to the receiver.
       Needs the new local-network runtime permission and a rationale UI. Background:
       [CONNECTION.md](CONNECTION.md).
-- [ ] Same area, do it in one pass: `scan/WiFiInfo` relies on `WifiManager.getDhcpInfo()` (netmask
-      and local IP for the sweep) and `ConnectivityManager.getNetworkInfo(TYPE_WIFI)`, plus
-      `AVRApplication.java:63`. Both deprecated — `getDhcpInfo()` since API 31, the
-      `getNetworkInfo(int)` overload used here already since API 23 → `NetworkCallback` and
-      `NetworkCapabilities`.
+- [ ] Same area, do it in one pass: `scan/WiFiInfo` still takes netmask and local IP for the sweep
+      from `WifiManager.getDhcpInfo()`, deprecated since API 31 → `LinkProperties.getLinkAddresses()`
+      and `getRoutes()`, via `ConnectivityManager.getLinkProperties(Network)`. The
+      `getNetworkInfo(TYPE_WIFI)` half of this item is done, ahead of the deadline and not by choice
+      — it was crashing in the field, see *Broken today*. Two things there are still legacy and want
+      the same pass: the trigger is a `WifiManager` broadcast where a `NetworkCallback` belongs, and
+      the fallback in `isWiFiConnected` uses `getAllNetworks()`, deprecated since API 31 as well. A
+      callback holding the current Wi-Fi `Network` would replace all three at once — and would hand
+      the scan and the sockets a `Network` to bind to, which is what the Local Network Protection
+      item above needs anyway.
 
 ## Structural
 

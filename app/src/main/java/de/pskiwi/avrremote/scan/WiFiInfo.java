@@ -22,6 +22,8 @@ import java.net.InetAddress;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.DhcpInfo;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.wifi.WifiManager;
 import de.pskiwi.avrremote.log.Logger;
 
@@ -45,8 +47,58 @@ public class WiFiInfo {
 	}
 
 	private boolean isWiFiConnected() {
-		return connectivity.getNetworkInfo(ConnectivityManager.TYPE_WIFI)
-				.isConnected();
+		return isWiFiConnected(connectivity);
+	}
+
+	/**
+	 * Ist ein WLAN verbunden ?
+	 *
+	 * Ersetzt getNetworkInfo(TYPE_WIFI).isConnected(): der Aufruf ist seit API
+	 * 23 deprecated und darf null liefern. In AVRApplication.onReceive hat er
+	 * das getan und den Prozess mitgenommen (Play Console, 1.5.1, Pixel 8 Pro,
+	 * Android 17 *Beta*). Unter welcher Bedingung, ist offen - auf einem Pixel 8
+	 * mit dem fertigen Android 17 war es nicht zu reproduzieren: nicht beim
+	 * WLAN-Toggle, nicht im Flugmodus, nicht mit Data Saver auf einem metered
+	 * WLAN im Hintergrund. Dort kam immer ein Objekt zurück. Also entweder ein
+	 * Zustand, den diese Tests nicht getroffen haben, oder Beta-Verhalten, das
+	 * es nicht ins Release geschafft hat. Die Frage bleibt hier dieselbe wie
+	 * vorher, nur die Antwort kommt aus NetworkCapabilities und kann nicht null
+	 * sein.
+	 *
+	 * Zuerst das aktive Netz, weil das der Normalfall ist und getActiveNetwork()
+	 * als einziger der beiden Aufrufe nicht deprecated ist. Der Fallback ist
+	 * aber nicht optional: ein WLAN ohne Internet - Router mit totem WAN,
+	 * Captive Portal, bewusst isoliertes AV-Netz - bleibt neben aktivem
+	 * Mobilfunk verbunden, ohne Default-Netz zu sein. Der Receiver ist dann
+	 * trotzdem da, und AVRScanner.scan() verweigert bei "false" den Suchlauf
+	 * komplett.
+	 *
+	 * Achtung beim Lesen eines Logs: getActiveNetwork() liefert auch dann null,
+	 * wenn dem Prozess der Netzzugriff entzogen wurde (Data Saver, App-Standby),
+	 * nicht nur wenn kein Netz da ist.
+	 */
+	public static boolean isWiFiConnected(ConnectivityManager connectivity) {
+		if (isWiFi(connectivity, connectivity.getActiveNetwork())) {
+			return true;
+		}
+		for (Network network : connectivity.getAllNetworks()) {
+			if (isWiFi(connectivity, network)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static boolean isWiFi(ConnectivityManager connectivity,
+			Network network) {
+		if (network == null) {
+			return false;
+		}
+		final NetworkCapabilities capabilities = connectivity
+				.getNetworkCapabilities(network);
+		return capabilities != null
+				&& capabilities
+						.hasTransport(NetworkCapabilities.TRANSPORT_WIFI);
 	}
 
 	public String getErrorCause() {
