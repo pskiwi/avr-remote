@@ -203,8 +203,12 @@ blocks the current build, which is green.
       convertible — it closes the socket only on the failure path. Two of them were doing slightly
       less than they looked: `MacroManager.doSave()` wrote its `# saved` header *before* the inner
       try, and `FeedbackReporter.saveCrash()` logged before it, so a throw there leaked the stream.
-      Both now open inside the resource block. `Connector.close()` needed a local (`final Socket
-      toClose = socket`) because Java 9's `try (existingVar)` form takes a local, not a field.
+      Both now open inside the resource block. Note on `Connector.close()`: `try (socket)` on the
+      final *field* is legal — JLS 14.20.3 allows a field access as a resource, not just a local —
+      so no helper variable is needed. One behaviour detail there, harmless but worth knowing when
+      reading a log: a throwing `close()` used to *replace* the shutdown exception, and is now
+      suppressed under it, while the handler logs only `e.toString()`. A close failure that
+      coincides with a shutdown failure therefore no longer shows up.
 - [x] `misc/add-copyright.sh` still uses the pre-Gradle path (`../src/**/*.java` instead of
       `app/src/main/...`), so it currently matches nothing.
       → Deleted instead of fixed; it is not needed any more. Worth recording what the attempted fix
@@ -235,7 +239,7 @@ blocks the current build, which is green.
       **Still open: uploading it in the Play Console**, which cannot be automated — it is tracked as
       a checkbox in [RELEASE.md](RELEASE.md) instead. `res/drawable/icon_small.png` (32×32) is the
       last leftover of the old icon and is referenced nowhere.
-- [ ] Lint reports 48 unused resources and 30 missing German translations. The `res/values-v14/`
+- [ ] Lint reports 47 unused resources and 30 missing German translations. The `res/values-v14/`
       part of that is done: the folder held a single `widget_margin`, a left-over override from an
       app widget that no longer exists, and lint flagged the whole `-v14` qualifier as pointless at
       minSdk 24 anyway. Both definitions are gone with it. Its neighbour `widget_button_width`
@@ -251,9 +255,9 @@ blocks the current build, which is green.
       gate, always true at minSdk 24 (lint: `ObsoleteSdkInt`). Removed, and worth recording why it
       was more than clutter — the `if` had no `else`, so had it ever been false the method would
       have posted no notification at all and said nothing. The inner `>= O` check stays; API 26 is
-      above minSdk, so the notification channel really is conditional. Lint's remaining
-      `ObsoleteSdkInt` is `res/values-v14`, a folder qualifier rather than a version check, and is
-      the item above.
+      above minSdk, so the notification channel really is conditional. Lint reports no
+      `ObsoleteSdkInt` at all any more — the last one was the `res/values-v14` folder qualifier,
+      which went with the item above.
 - [ ] One thing left of the two noticed in `StatusbarManager`: `createNotificationChannel` runs on
       every call rather than once. Harmless (creating an existing channel id only updates the name;
       importance can only be lowered and the sound is ignored after creation), but it belongs in
