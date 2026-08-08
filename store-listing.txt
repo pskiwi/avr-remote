@@ -1,0 +1,136 @@
+Play-Store-Eintrag für AVR-Remote, beide Sprachen des Stores. Eingabe für die Console,
+wie version.xml - aber anders als dieses eingecheckt: version.xml gilt für genau ein
+Release und ist danach wertlos, dieser Text steht jahrelang im Store und soll beim
+nächsten Mal als Ausgangspunkt dienen statt neu geschrieben zu werden.
+
+Grund für die Neufassung, August 2026: Google hat den alten Eintrag beanstandet, "Die
+Funktionen Ihrer App werden in Ihrem Store-Eintrag nicht deutlich beschrieben". Das traf
+zu - er bestand aus zwei Sätzen Beschreibung, einer Modellliste und Disclaimern; was die
+App kann, stand nirgends. Daher: Funktionen zuerst, Modellliste ans Ende. Wer hier kürzt,
+sollte an den Funktionen zuletzt sparen, sonst kommt die Beanstandung wieder.
+
+Die Modellliste stammt aus @array/modelNames in res/values/lists.xml, der Liste, die
+ModelConfiguratorTest gegen die 60 Klassen in models/ absichert - nicht aus dem alten
+Eintrag, der sieben Modelle nicht kannte und fünf ohne Bindestrich schrieb. Beim
+Hinzufügen eines Receivers gehört sie mit aktualisiert.
+
+Limits der Console: Kurzbeschreibung 80 Zeichen, vollständige Beschreibung 4000. Zählen
+statt schätzen, die Console schneidet still ab:
+
+  python3 -c "import re,sys; s=open('store-listing.txt',encoding='utf-8').read(); \
+    b=re.split(r'={70,}\n(.+?)\n={70,}\n',s); \
+    [print(b[i], len(b[i+1].strip())) for i in range(1,len(b),2)]"
+
+================================================================================
+en-US - SHORT DESCRIPTION (80)
+================================================================================
+Remote control for Denon and Marantz AV receivers over your own Wi-Fi network
+
+================================================================================
+en-US - FULL DESCRIPTION (4000)
+================================================================================
+Turn your phone into a full remote control for your Denon or Marantz AV receiver. The app talks to the receiver directly over your own Wi-Fi - no account, no registration, no cloud service and no ads.
+
+WHAT YOU CAN CONTROL
+
+• Power, volume and mute - for the main zone and for every additional zone your receiver has, up to four
+• Inputs and surround modes, selected by name instead of by button code
+• Quick Select and Smart Select presets
+• Channel levels - front, centre, subwoofer and surround, individually or linked
+• Audio options: Dynamic EQ, Dynamic Volume, Night Mode, Cinema EQ, tone control, Source Direct, Audio Restorer, Dynamic Bass Boost, sleep timer
+• Video options: video select, HDMI monitor, output resolution and HDMI audio routing
+• Tuner: frequency, presets, and DAB on the models that support it
+
+ON-SCREEN DISPLAY
+
+Browse what the receiver is playing from the phone instead of the TV: network audio, internet radio, USB and iPod, plus FM/DAB, XM and Sirius where the model offers them - including text search and jump-to-letter, which is far quicker than a cursor on the TV screen.
+
+MADE FOR DAILY USE
+
+• Macros: record a sequence of commands and replay it with a single tap
+• Rename inputs and zones so the app shows your names, not "CD" and "DVD"
+• Up to three receivers, switched from inside the app
+• An optional notification puts volume control in the status bar without opening the app
+• Your own background image, text colour and theme
+
+HOW IT CONNECTS
+
+Phone and receiver have to be on the same router. The app finds the receiver by scanning your network, or you enter its IP address yourself. The receiver's network function must be enabled - on many models "network standby" also has to be on, otherwise the receiver cannot be reached while it is switched off. Receivers without a network interface cannot be controlled at all.
+
+Nothing leaves your network. There is no backend and no account.
+
+SUPPORTED MODELS
+
+Denon: AVC-A1HDA, AVP-A1HDCI, AVR-100, AVR-990, AVR-991, AVR-1613, AVR-1713, AVR-1912, AVR-1913, AVR-2112, AVR-2113, AVR-2312, AVR-2313, AVR-3310, AVR-3311, AVR-3312, AVR-3313, AVR-3805, AVR-3806, AVR-3808, AVR-4306, AVR-4308, AVR-4310, AVR-4311, AVR-4520, AVR-4806, AVR-4810, AVR-5308, AVR-5805, AVR-E300, AVR-E400, AVR-X1000, AVR-X2000, AVR-X3000, AVR-X4000, DN-500AV, DNP-720AE
+
+Marantz: AV-7005, AV-7701, AV-8801, NR-1504, NR-1602, NR-1603, NR-1604, SR-5006, SR-5007, SR-5008, SR-6005, SR-6006, SR-6007, SR-6008, SR-7005, SR-7007, SR-7008
+
+Experimental: Denon ASD-51 and RCD-N7, Marantz M-CR603, M-ER803 and NA-7004
+
+Model not in the list? AVR-Generic speaks the common part of the protocol and usually covers power, volume, mute and input selection.
+
+OPEN SOURCE
+
+AVR-Remote is free software under the GPL v3. Source code, issue tracker and older releases:
+https://github.com/pskiwi/avr-remote
+
+This is experimental software - use it at your own risk.
+
+This application is not affiliated with Denon or Marantz. Denon and Marantz are trademarks of their respective owners.
+
+================================================================================
+de-DE - KURZBESCHREIBUNG (80)
+================================================================================
+Fernbedienung für Denon- und Marantz-AV-Receiver über das eigene WLAN
+
+================================================================================
+de-DE - VOLLSTÄNDIGE BESCHREIBUNG (4000)
+================================================================================
+Machen Sie Ihr Telefon zur vollwertigen Fernbedienung für Ihren Denon- oder Marantz-AV-Receiver. Die App spricht direkt über Ihr eigenes WLAN mit dem Gerät – ohne Konto, ohne Registrierung, ohne Cloud-Dienst und ohne Werbung.
+
+WAS SIE STEUERN KÖNNEN
+
+• Ein/Aus, Lautstärke und Stummschaltung – für die Hauptzone und für jede weitere Zone Ihres Receivers, bis zu vier
+• Eingänge und Surround-Modi, ausgewählt über den Namen statt über Tastencodes
+• Quick-Select- und Smart-Select-Presets
+• Kanalpegel – Front, Center, Subwoofer und Surround, einzeln oder gekoppelt
+• Audio-Optionen: Dynamic EQ, Dynamic Volume, Nachtmodus, Cinema EQ, Klangregelung, Source Direct, Audio Restorer, Dynamic Bass Boost, Sleep-Timer
+• Video-Optionen: Video-Select, HDMI-Monitor, Ausgabeauflösung und HDMI-Audio-Routing
+• Tuner: Frequenz, Speicherplätze und DAB bei den Modellen, die es unterstützen
+
+ON-SCREEN-DISPLAY
+
+Sehen und durchsuchen Sie am Telefon, was der Receiver abspielt, statt am Fernseher: Netzwerk-Audio, Internetradio, USB und iPod, dazu FM/DAB, XM und Sirius, soweit das Modell sie bietet – mit Textsuche und Sprung zum Anfangsbuchstaben, was deutlich schneller geht als ein Cursor auf dem Fernsehbild.
+
+FÜR DEN TÄGLICHEN GEBRAUCH
+
+• Makros: eine Befehlsfolge aufzeichnen und mit einem Tippen wiedergeben
+• Eingänge und Zonen umbenennen, damit die App Ihre Namen zeigt und nicht „CD“ und „DVD“
+• Bis zu drei Receiver, umschaltbar in der App
+• Eine optionale Benachrichtigung bringt die Lautstärkeregelung in die Statusleiste, ohne die App zu öffnen
+• Eigenes Hintergrundbild, eigene Textfarbe und eigenes Design
+
+WIE DIE VERBINDUNG ZUSTANDE KOMMT
+
+Telefon und Receiver müssen am selben Router hängen. Die App findet den Receiver, indem sie Ihr Netzwerk durchsucht, oder Sie geben die IP-Adresse selbst ein. Die Netzwerkfunktion des Receivers muss eingeschaltet sein – bei vielen Modellen zusätzlich der Netzwerk-Standby, sonst ist das Gerät im ausgeschalteten Zustand nicht erreichbar. Receiver ohne Netzwerkschnittstelle lassen sich nicht steuern.
+
+Nichts verlässt Ihr Netzwerk. Es gibt keinen Server und kein Konto.
+
+UNTERSTÜTZTE MODELLE
+
+Denon: AVC-A1HDA, AVP-A1HDCI, AVR-100, AVR-990, AVR-991, AVR-1613, AVR-1713, AVR-1912, AVR-1913, AVR-2112, AVR-2113, AVR-2312, AVR-2313, AVR-3310, AVR-3311, AVR-3312, AVR-3313, AVR-3805, AVR-3806, AVR-3808, AVR-4306, AVR-4308, AVR-4310, AVR-4311, AVR-4520, AVR-4806, AVR-4810, AVR-5308, AVR-5805, AVR-E300, AVR-E400, AVR-X1000, AVR-X2000, AVR-X3000, AVR-X4000, DN-500AV, DNP-720AE
+
+Marantz: AV-7005, AV-7701, AV-8801, NR-1504, NR-1602, NR-1603, NR-1604, SR-5006, SR-5007, SR-5008, SR-6005, SR-6006, SR-6007, SR-6008, SR-7005, SR-7007, SR-7008
+
+Experimentell: Denon ASD-51 und RCD-N7, Marantz M-CR603, M-ER803 und NA-7004
+
+Ihr Modell ist nicht dabei? AVR-Generic spricht den gemeinsamen Teil des Protokolls und deckt in der Regel Ein/Aus, Lautstärke, Stummschaltung und Eingangswahl ab.
+
+OPEN SOURCE
+
+AVR-Remote ist freie Software unter der GPL v3. Quellcode, Fehlerverfolgung und ältere Versionen:
+https://github.com/pskiwi/avr-remote
+
+Dies ist experimentelle Software – die Nutzung erfolgt auf eigenes Risiko.
+
+Diese Anwendung steht in keiner Verbindung zu Denon oder Marantz. Denon und Marantz sind Marken ihrer jeweiligen Inhaber.

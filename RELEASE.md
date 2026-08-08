@@ -131,6 +131,31 @@ the alias CI actually signs with comes from the `KEY_ALIAS` secret and cannot be
       (`res/drawable/ic_launcher_foreground.xml`, `app/src/main/assets/icon.svg`, `docs/avr-icon.svg`
       and the store SVG).
 
+### Store listing
+
+Not part of a release — the listing has its own review and can be edited at any time. The text lives
+in [store-listing.txt](store-listing.txt), both languages, short and full description, with the
+character limits and a command to count them. Unlike `version.xml` it is checked in, because it
+stays in the store for years and the next edit should start from it.
+
+Google rejected the listing in August 2026 with *"Die Funktionen Ihrer App werden in Ihrem
+Store-Eintrag nicht deutlich beschrieben"*, and was right: the old text was two sentences, a model
+list and disclaimers, and never said what the app does. The rewrite puts the features first and the
+model list last. Keep that order.
+
+The model list there comes from `@array/modelNames` in `res/values/lists.xml`, not from the previous
+listing — that one had missed seven models and dropped the dashes from five. That makes **four**
+copies of the model list in the tree: `lists.xml`, `README.md`, `docs/index.md` and this file. Only
+the first is pinned by a test (`ModelConfiguratorTest`, against the classes in `models/`); the other
+three drift silently, and two of them had. Regenerate them from `lists.xml` rather than editing by
+hand:
+
+```sh
+python3 -c "import re; s=open('app/src/main/res/values/lists.xml').read(); \
+  m=re.search(r'<string-array name=\"modelNames\".*?</string-array>', s, re.S); \
+  print(', '.join(i.strip() for i in re.findall(r'<item>(.*?)</item>', m.group(0), re.S)))"
+```
+
 ### Recommendations to decline
 
 The Console attaches "recommended actions" to every release. They are generic, they do not know what
