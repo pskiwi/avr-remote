@@ -260,6 +260,39 @@ blocks the current build, which is green.
       `startActivityForResult` → Activity Result API, 12× `new Handler()` → `Handler(Looper)`.
       All deprecated, all still compiles. Worth doing only when the look is to change — at which
       point it is unavoidable, because the pre-Holo platform themes do not allow modern styling.
+- [ ] **What is actually deprecated, by age.** 265 warnings, measured rather than guessed:
+      `./gradlew compileDebugJavaWithJavac --rerun-tasks` with `-Xlint:deprecation` **and
+      `-Xmaxwarns 5000`** — javac stops at 100 by default, which silently hides the tail (that is
+      how the `scan/WiFiInfo` entries went missing on the first run). Feed the warnings through
+      `$ANDROID_HOME/platforms/android-36/data/api-versions.xml`, which carries a `deprecated=`
+      attribute per class, method and field, to get the level each one died in. Constructors are
+      `<init>` there, and a warning naming an inherited method resolves against the declaring class.
+
+      | API | Symbol | Uses | Where |
+      |---|---|---|---|
+      | 13 (2011) | `TabActivity` + its base `ActivityGroup` | 28 | `AVRRemote`, `AboutActivity` |
+      | 15 | `PreferenceActivity.findPreference()` / `getPreferenceScreen()` / `addPreferencesFromResource()` | 7 | `AVRSettings`, `PreferenceSummaryUpdater` |
+      | 15 | `Display.getWidth()` / `getHeight()` | 4 | `AVRRemote` |
+      | 15 | `LayoutParams.FILL_PARENT` | 3 | `LevelActivity`, `ScreenMenu` |
+      | 15 | `Build.VERSION.SDK` | 1 | `log/FeedbackReporter.java:164` |
+      | 16 | `Configuration.ORIENTATION_SQUARE` | 1 | `AVRRemote.java:357` |
+      | 22 | `Resources.getDrawable()` | 8 | `AVRTheme`, `IconManager`, `OnScreenDisplayActivity` |
+      | 23 | `AlertDialog.Builder.setInverseBackgroundForced()` | 6 | 4 files |
+      | 29/30 | `android.preference.*` (31× `PreferenceManager`), `AsyncTask`, `TabHost`, `ListActivity`, `ExpandableListActivity`, 12× `new Handler()` | 61 | this item |
+      | 31 | `WifiManager.getDhcpInfo()`, `ConnectivityManager.getAllNetworks()` | 4 | `scan/WiFiInfo` — the targetSdk 37 item |
+      | 34 | `Class.newInstance()` | 1 | `models/ModelConfigurator.java:85` |
+
+      `TabActivity` is the oldest thing in the app by a wide margin — deprecated in Android 3.2, so
+      **15 years**. It cannot be picked off on its own: it and the API 29/30 block are the same
+      AppCompat migration, which is why the age does not translate into urgency.
+- [ ] Three from that table are one-liners and independent of the migration, worth doing whenever
+      the file is open anyway: `Build.VERSION.SDK` → `SDK_INT` (it sits in the crash report users
+      send in), and `Class.newInstance()` → `getDeclaredConstructor().newInstance()` in the
+      reflection registry — contained, because every failure there already falls back to
+      `AVRGeneric`. The third, `Configuration.ORIENTATION_SQUARE`, is not dead code: the app
+      computes the orientation itself from display width and height and returns that constant, so
+      the branch can still fire on a square window. It is the *constant* that is obsolete — the
+      platform has not reported it since Android 4.1.
 - [ ] The custom-background picker stores the picked URI (`AVRSettings.java:92`, listener registered
       at `:62`) without `takePersistableUriPermission()`, so it does not survive a restart. Note the
       fix is not just an added call: the picker uses `ACTION_PICK`, and persistable permissions need
