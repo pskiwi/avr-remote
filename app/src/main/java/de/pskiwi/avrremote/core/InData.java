@@ -90,8 +90,11 @@ public final class InData {
 			final byte[] raw = new byte[data.length - start];
 			int count = 0;
 			for (int i = start; i < data.length; i++) {
-				raw[i - start] = (byte) (data[i] > 127 ? data[i] - 256
-						: data[i]);
+				// Der Receiver schickt Bytes, die hier je in einem char
+				// stehen. Die Verengung auf byte nimmt die unteren acht Bit -
+				// genau das, was ein früheres "data[i] > 127 ? data[i] - 256"
+				// von Hand tat, denn -256 lässt eben diese Bits unberührt.
+				raw[i - start] = (byte) data[i];
 				if (data[i] != 0) {
 					count++;
 				} else {
