@@ -226,11 +226,9 @@ public final class Connector implements ISender, IConnector {
 	public void close() {
 		Logger.info("close socket ...");
 		try {
-			try {
+			try (socket) {
 				socket.shutdownInput();
 				socket.shutdownOutput();
-			} finally {
-				socket.close();
 			}
 			Logger.info("socket closed:" + socket.isClosed() + " connected:"
 					+ socket.isConnected());

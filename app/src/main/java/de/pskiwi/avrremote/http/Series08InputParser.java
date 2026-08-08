@@ -33,22 +33,23 @@ import de.pskiwi.avrremote.log.Logger;
 public final class Series08InputParser {
 
 	public Series08InputParser(InputStream in) throws IOException {
-		inputs = findLine(in);
+		final String line = findLine(in);
+		// Kein Marker gefunden - leere oder fremde Seite, etwa eine 404. Ohne
+		// das "" liefe matcher(null) in eine NPE. AVRHTTPClient prüft die
+		// Antwortlänge, Series08Reader nicht.
+		inputs = line != null ? line : "";
 		matcher = OPTION_PATTERN.matcher(inputs);
 		Logger.debug(toString());
 	}
 
 	private String findLine(InputStream in) throws IOException {
-		final BufferedReader r = new BufferedReader(new InputStreamReader(in));
-		try {
+		try (BufferedReader r = new BufferedReader(new InputStreamReader(in))) {
 			String line;
 			while ((line = r.readLine()) != null) {
 				if (line.contains(START_MARKER)) {
 					return line;
 				}
 			}
-		} finally {
-			r.close();
 		}
 		return null;
 	}

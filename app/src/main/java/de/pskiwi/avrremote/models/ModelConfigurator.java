@@ -81,8 +81,9 @@ public final class ModelConfigurator {
 			return new AVRGeneric();
 		}
 		try {
-			return (IAVRModel) Class.forName(
-					"de.pskiwi.avrremote.models." + avrModel).newInstance();
+			return (IAVRModel) Class
+					.forName("de.pskiwi.avrremote.models." + avrModel)
+					.getDeclaredConstructor().newInstance();
 		} catch (Exception x) {
 			Logger.error("create " + avrModel + " failed", x);
 			return new AVRGeneric();

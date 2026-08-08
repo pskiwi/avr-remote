@@ -38,8 +38,7 @@ public final class Series08ZoneRenameParser {
 	}
 
 	public void parse() throws IOException {
-		final BufferedReader r = new BufferedReader(new InputStreamReader(in));
-		try {
+		try (BufferedReader r = new BufferedReader(new InputStreamReader(in))) {
 			String line;
 			while ((line = r.readLine()) != null) {
 				// Hier stand ein System.out.println(line). Nicht nach
@@ -65,8 +64,6 @@ public final class Series08ZoneRenameParser {
 							+ "]");
 				}
 			}
-		} finally {
-			r.close();
 		}
 	}
 
