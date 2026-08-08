@@ -8,7 +8,7 @@
 Use it at your own risk!
 
 This application is not affiliated with Denon or Marantz. 
-Denon and Marantz are registered trademarks of D&M Holdings, Inc. 
+Denon and Marantz are trademarks of their respective owners. 
 
 ## FAQ
 
