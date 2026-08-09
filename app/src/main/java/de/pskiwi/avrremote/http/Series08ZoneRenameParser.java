@@ -78,7 +78,7 @@ public final class Series08ZoneRenameParser {
 	}
 
 	public String getZoneName(int zone) {
-		if (zone < 0 || zone > ZONE_KEYS.length) {
+		if (zone < 0 || zone >= ZONE_KEYS.length) {
 			throw new IllegalArgumentException("zone:" + zone);
 		}
 		return map.get(ZONE_KEYS[zone]);

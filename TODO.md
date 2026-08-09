@@ -40,9 +40,19 @@ one still depends on has been folded into the live one.
 
 ## Structural
 
-- [ ] **Test coverage is six JVM classes and no instrumentation tests.** The cheapest places to add
+- [ ] **Test coverage is nine JVM classes and no instrumentation tests.** The cheapest places to add
       more are `models/` (pure capability logic, no Android types) and `core/ZoneState.java`
-      (1237 lines).
+      (1237 lines). `core/display/` is now part done: `NetDisplayTest` covers the line reader and
+      `TunerDisplayTest` the frequency conversion, but the rest of `TunerDisplay` (presets, HD Radio,
+      DAB, the status lines) and all of `BDDisplay` have nothing. Both construct on a JVM
+      (`TunerDisplay.createFM(null, null)`, `new BDDisplay(null)`), but only `TunerDisplay` can be
+      driven from a test as it stands: its `TunerFrequency` is a public inner class, so
+      `outer.new TunerFrequency()` works. **`BDDisplay` cannot** — `BDDisplayStatus` is
+      `private final static` (`BDDisplay.java:38`) and `BDState` is `private final`
+      (`BDDisplay.java:192`), and `getState()` hands back only the `IAVRState` interface. Testing it
+      needs the same widening as `ResilentConnector.ThreadHandler` and
+      `ModelConfigurator.createModel(String)`: make the nested class package-private, and say in a
+      comment that the test is why.
 - [ ] **`http/AVRXMLInfoParser` only works on Android and cannot be unit-tested.** `startElement` and
       `endElement` read `localName`, which a standard `SAXParserFactory` leaves empty because it is
       not namespace-aware by default — on a JVM the parser silently collects nothing. Android's
@@ -54,17 +64,16 @@ one still depends on has been folded into the live one.
       JVM it now rejects **any** XML carrying a DOCTYPE, because `disallow-doctype-decl` applies
       there and on Android it does not (see CLAUDE.md). Receivers never send one, so nothing breaks
       in the app.
-- [ ] **Nothing in the 2008-series path was verified against hardware.** The Apache removal touched
-      all of it and none of it could be exercised — no such receiver was available. Affected:
-      `http/Series08Reader` (the cookie store it clears per run, and the `r_option1.asp` →
-      `d_option1.asp` sequence that depends on shared session state), plus
-      `http/Series08ZoneRenameParser` and `http/Series08QuickSelectParser`, whose `OPTION_PATTERN`
-      went from `matches()` with a wrapping `.*` to `find()` in a loop. `http/Series08ParserTest`
-      pins the behaviour that could have broken — notably that the **last** match in a line wins,
-      not the first, which is what the old greedy `.*` did — but those tests were written from the
-      code, not from a real page. The empty-page guard in `Series08InputParser` is unverified for
-      the same reason. One run against a 2008-series receiver settles all of it: check that input
-      names, zone names and quick-select names all still appear.
+- [ ] **The 2008-series path is only half covered by real data.** Two pages of an AVR-3808 are now
+      captured under `app/src/test/resources/de/pskiwi/avrremote/http/`, and `Series08ParserTest`
+      parses them verbatim — that settles `Series08InputParser` (including its empty-page guard) and
+      `Series08ZoneRenameParser`. What is left has no capture and no test:
+      `http/Series08QuickSelectParser`, whose `d_option1.asp` was never recorded and which is still
+      pinned only by cases derived from the code, and `http/Series08Reader` — the cookie store it
+      clears per run, and the `r_option1.asp` → `d_option1.asp` sequence that depends on shared
+      session state, neither reachable without HTTP. One run against a 2008-series receiver settles
+      both: check that quick-select names appear at all. A capture of `d_option1.asp` would settle
+      the parser half on its own.
 - [ ] Same area, cookie lifetime: the store is cleared per Series08 read
       (`Series08Reader.readSeries08Info`), whereas the old `DefaultHttpClient` was per
       `AVRHTTPClient` instance, so it also covered the multi-zone path. Exact parity would clear it

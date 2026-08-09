@@ -90,8 +90,11 @@ public final class InData {
 			final byte[] raw = new byte[data.length - start];
 			int count = 0;
 			for (int i = start; i < data.length; i++) {
-				raw[i - start] = (byte) (data[i] > 127 ? data[i] - 256
-						: data[i]);
+				// Der Receiver schickt Bytes, die hier je in einem char
+				// stehen. Die Verengung auf byte nimmt die unteren acht Bit -
+				// genau das, was ein früheres "data[i] > 127 ? data[i] - 256"
+				// von Hand tat, denn -256 lässt eben diese Bits unberührt.
+				raw[i - start] = (byte) data[i];
 				if (data[i] != 0) {
 					count++;
 				} else {
@@ -118,7 +121,13 @@ public final class InData {
 	}
 
 	public String toDebugString() {
-		final int max = EXTENDED_DEBUG ? count : (count > MAX_DEBUG ? MAX_DEBUG
+		// Erst hier abgefragt, nicht in einem Klassenfeld: EmulationDetector
+		// liest android.os.Build, und das ist auf einer nackten JVM null. Als
+		// static-Initialisierer hätte InData sich damit aus jedem Unit-Test
+		// ausgesperrt, für eine reine Debug-Ausgabe. EmulationDetector rechnet
+		// selbst nur einmal, das hier ist ein Feldzugriff.
+		final boolean extendedDebug = EmulationDetector.isEmulator();
+		final int max = extendedDebug ? count : (count > MAX_DEBUG ? MAX_DEBUG
 				: count);
 		return toBaseDebug() + toHexDebug(max);
 	}
@@ -148,7 +157,6 @@ public final class InData {
 	private int offset;
 	private final char[] data;
 	private final int count;
-	private static boolean EXTENDED_DEBUG = EmulationDetector.isEmulator();
 	private final static int MAX_DEBUG = 15;
 
 }
