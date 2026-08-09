@@ -92,8 +92,9 @@ public final class Series08ParserTest {
 	}
 
 	/**
-	 * get() ist einmalig: der Suchzeiger bleibt am Ende der Zeile stehen, ein
-	 * zweiter Aufruf liefert nichts mehr. Series08Reader ruft genau einmal auf.
+	 * get() ist einmalig: der Suchzeiger bleibt hinter dem letzten Treffer
+	 * stehen, ein zweiter Aufruf liefert nichts mehr. Series08Reader ruft genau
+	 * einmal auf.
 	 */
 	@Test
 	public void inputParserGetIsSingleShot() throws Exception {

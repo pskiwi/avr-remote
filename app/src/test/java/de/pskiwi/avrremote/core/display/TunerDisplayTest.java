@@ -29,12 +29,13 @@ import de.pskiwi.avrremote.core.InData;
  * control protocol Ver. 5.2 (AVR-3808CI, Juli 2007):
  *
  * <pre>
- * TF  AN****** (6 digits)  --- ****.** kHz at AM band   (&gt;050000 is AM.)
- *                              ****.** MHz at FM band
+ * TF  AN****** (6 digits)  --- ****.** kHz at AM band  (&gt;050000 is AM.)
+ *                              ****.** MHz at FM band  (&lt;050000 is FM.)
  * </pre>
  *
- * Sechs Ziffern, hundertstelgenau, und die Bandgrenze liegt bei 050000 - was
- * darüber liegt ist AM, alles bis dahin FM.
+ * Sechs Ziffern, hundertstelgenau, Bandgrenze bei 050000. Beide Bedingungen
+ * sind strikt notiert, der Grenzwert selbst ist im Papier also gar nicht
+ * vergeben - siehe {@link #theBoundaryValueFallsToAM()}.
  *
  * Nur die Umrechnung ist hier abgedeckt. Der Rest von TunerDisplay - Vorwahlen,
  * HD-Radio, DAB, die Statuszeilen - hat weiterhin keine Tests.
@@ -52,20 +53,33 @@ public final class TunerDisplayTest {
 	}
 
 	/**
-	 * Der Grenzwert selbst gehört noch zu FM: das Papier schreibt
-	 * "&gt;050000 is AM", nicht "&gt;=". Ein echter Tuner steht nie dort - UKW
-	 * endet bei 10800, MW beginnt bei 52200 -, aber die Grenze soll da liegen,
-	 * wo sie beschrieben ist.
+	 * Der Grenzwert 050000 ist im Papier unbestimmt - beide Bedingungen sind
+	 * strikt, "&gt;050000 is AM" und "&lt;050000 is FM", er selbst gehört zu
+	 * keinem der beiden. Hier fällt er auf AM. Das ist eine Setzung, keine
+	 * Vorgabe: ein echter Tuner steht nie dort, UKW endet bei 10800 und MW
+	 * beginnt bei 52200. Der Fall steht hier, damit die Setzung nicht
+	 * unbemerkt hin und her wandert.
 	 */
 	@Test
-	public void theBoundaryItselfIsStillFM() {
-		assertEquals("FM : 500" + sep() + "00 MHz", frequency("050000"));
+	public void theBoundaryValueFallsToAM() {
+		assertEquals("AM : 500" + sep() + "00 kHz", frequency("050000"));
 	}
 
-	/** Ohne verwertbare Zahl bleibt die Anzeige leer statt falsch. */
+	/**
+	 * "CMP" quittiert das Ende eines Suchlaufs und ist keine Frequenz. Es darf
+	 * eine bereits angezeigte Frequenz nicht löschen - deshalb kommt hier erst
+	 * eine echte, dann CMP.
+	 */
 	@Test
-	public void unparsableFrequencyIsIgnored() {
-		assertEquals("", frequency("CMP"));
+	public void completionMessageLeavesTheFrequencyAlone() {
+		final TunerDisplay.TunerFrequency f = tuner();
+		f.update(new InData("10430"));
+		final String before = f.getFrequency();
+
+		f.update(new InData("CMP"));
+
+		assertEquals("FM : 104" + sep() + "30 MHz", before);
+		assertEquals(before, f.getFrequency());
 	}
 
 	/**
@@ -74,10 +88,13 @@ public final class TunerDisplayTest {
 	 * Anzeige-Zuhörer steht auf dem Null-Objekt.
 	 */
 	private static String frequency(String payload) {
-		final TunerDisplay td = TunerDisplay.createFM(null, null);
-		final TunerDisplay.TunerFrequency f = td.new TunerFrequency();
+		final TunerDisplay.TunerFrequency f = tuner();
 		f.update(new InData(payload));
 		return f.getFrequency();
+	}
+
+	private static TunerDisplay.TunerFrequency tuner() {
+		return TunerDisplay.createFM(null, null).new TunerFrequency();
 	}
 
 	/** String.format richtet sich nach der Standardsprache, der Test auch. */

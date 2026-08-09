@@ -43,11 +43,16 @@ one still depends on has been folded into the live one.
 - [ ] **Test coverage is nine JVM classes and no instrumentation tests.** The cheapest places to add
       more are `models/` (pure capability logic, no Android types) and `core/ZoneState.java`
       (1237 lines). `core/display/` is now part done: `NetDisplayTest` covers the line reader and
-      `TunerDisplayTest` the frequency conversion, but the rest of `TunerDisplay` (1059 lines —
-      presets, HD Radio, DAB, the status lines) and all of `BDDisplay` have nothing. Both *do*
-      construct on a JVM — `TunerDisplay.createFM(null, null)` and `new BDDisplay(null)` work, and
-      their public inner classes can be instantiated from a test the same way `TunerDisplayTest`
-      reaches `TunerFrequency` — so the obstacle is only that nobody has written the cases.
+      `TunerDisplayTest` the frequency conversion, but the rest of `TunerDisplay` (presets, HD Radio,
+      DAB, the status lines) and all of `BDDisplay` have nothing. Both construct on a JVM
+      (`TunerDisplay.createFM(null, null)`, `new BDDisplay(null)`), but only `TunerDisplay` can be
+      driven from a test as it stands: its `TunerFrequency` is a public inner class, so
+      `outer.new TunerFrequency()` works. **`BDDisplay` cannot** — `BDDisplayStatus` is
+      `private final static` (`BDDisplay.java:38`) and `BDState` is `private final`
+      (`BDDisplay.java:192`), and `getState()` hands back only the `IAVRState` interface. Testing it
+      needs the same widening as `ResilentConnector.ThreadHandler` and
+      `ModelConfigurator.createModel(String)`: make the nested class package-private, and say in a
+      comment that the test is why.
 - [ ] **`http/AVRXMLInfoParser` only works on Android and cannot be unit-tested.** `startElement` and
       `endElement` read `localName`, which a standard `SAXParserFactory` leaves empty because it is
       not namespace-aware by default — on a JVM the parser silently collects nothing. Android's

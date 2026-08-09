@@ -40,6 +40,13 @@ import org.junit.Test;
  * eine spätere Generation derselben Kommandos. Der Rahmen - Ziffer, Flag-Byte,
  * nullterminierter Text - ist in beiden derselbe, die Bedeutung der einzelnen
  * Zeilennummern nicht (siehe NetDisplayTest).
+ *
+ * Alle Fälle hier benutzen den String-Konstruktor, bei dem data.length und
+ * count übereinstimmen. Im Betrieb kommt der andere zum Zug: Connector reicht
+ * seinen festen Puffer samt getrennter Länge herein. extractLine läuft bis
+ * data.length und nicht bis count, geht also über das Ende der Nutzlast
+ * hinaus - dass dabei nichts Fremdes anfällt, hängt daran, dass der Puffer je
+ * Lesevorgang mit Nullen anfängt. Das ist hier nicht abgedeckt.
  */
 public final class InDataTest {
 

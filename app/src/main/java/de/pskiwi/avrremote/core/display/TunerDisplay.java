@@ -163,11 +163,12 @@ public final class TunerDisplay implements IDisplay {
 				return "" + frequency;
 			}
 			if (freq > 0) {
-				// DENON AVR control protocol Ver. 5.2, TF AN******:
-				// "(>050000 is AM.)" - erst oberhalb von 050000 ist es AM,
-				// 050000 selbst gehört noch zu FM. Praktisch liegt dazwischen
-				// nichts: UKW endet bei 10800, MW beginnt bei 52200.
-				final boolean fm = (freq <= 50000);
+				// DENON AVR control protocol Ver. 5.2, TF AN******: beide
+				// Grenzen sind strikt notiert, "(>050000 is AM.)" und
+				// "(<050000 is FM.)". Der Grenzwert selbst bleibt damit
+				// unbestimmt; hier fällt er auf die AM-Seite. Praktisch liegt
+				// dort nichts: UKW endet bei 10800, MW beginnt bei 52200.
+				final boolean fm = (freq < 50000);
 				return (fm ? "FM" : "AM") + " : "
 						+ String.format("%2.2f ", freq / 100f)
 						+ (fm ? "MHz" : "kHz");

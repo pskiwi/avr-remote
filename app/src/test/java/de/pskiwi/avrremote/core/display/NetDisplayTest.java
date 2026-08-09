@@ -43,16 +43,19 @@ import de.pskiwi.avrremote.core.display.DisplayManager.DisplayType;
  * </pre>
  *
  * Bit1 ist der Wert 1, Bit4 der Wert 8 - genau die Masken, die update()
- * abfragt. Bit2 (Verzeichnis) und Bit8 (Bild) wertet die App zusätzlich aus;
- * für den 3808 sind sie laut Papier "Don't Care", spätere Geräte belegen sie.
+ * abfragt. Bit2 liest die App zusätzlich als Verzeichnis; für den 3808 ist es
+ * laut Papier "Don't Care", spätere Geräte belegen es. Bit8 landet ebenfalls
+ * in LineState, als isPicture(), wird aber von niemandem gelesen - deshalb
+ * steht dafür hier auch kein Fall, er wäre nicht prüfbar.
  *
  * Das Papier beschreibt NSA/IPA, die App spricht NSE/IPE - eine spätere
  * Generation derselben Kommandos, gleicher Rahmen. Wo beide auseinandergehen,
  * gilt hier der Code, und es steht am Testfall dabei: das Papier setzt das
  * Flag-Byte nur auf die Zeilen 1 bis 6, die App liest es auf 1 bis 7.
  *
- * Alle Fälle laufen gegen den Netzwerk-Bildschirm mit seinen acht Zeilen
- * (displayRows=8), also NSE0 bis NSE8.
+ * Alle Fälle laufen gegen den Netzwerk-Bildschirm, also NSE0 bis NSE8. Dessen
+ * displayRows=8 ist der höchste Zeilenindex, nicht die Anzahl - es sind neun
+ * Zeilen.
  */
 public final class NetDisplayTest {
 
@@ -62,8 +65,6 @@ public final class NetDisplayTest {
 	private final static int DIRECTORY = 2;
 	/** Bit4 - "CURSOR SELECT". */
 	private final static int CURSOR = 8;
-	/** Bit8 - Bild; im 3808-Papier "Don't Care". */
-	private final static int PICTURE = 128;
 	/** Keines der ausgewerteten Bits gesetzt. */
 	private final static int NONE = ' ';
 
@@ -72,11 +73,12 @@ public final class NetDisplayTest {
 		final NetDisplay.DisplayStatus s = read("0Internet Radio",
 				line(1, PLAYABLE, "Ein Titel"), line(2, DIRECTORY, "Ein Ordner"),
 				line(3, PLAYABLE | CURSOR, "Unter dem Cursor"),
-				line(4, PICTURE, "Mit Bild"), line(5, NONE, ""),
+				line(4, NONE, "Schlicht"), line(5, NONE, ""),
 				line(6, NONE, ""), line(7, NONE, ""), "8 [   4/  17]");
 
 		assertTrue(s.getDisplayLine(0).isPlayable());
 		assertFalse(s.getDisplayLine(0).isFolder());
+		assertFalse(s.getDisplayLine(0).isCursor());
 
 		assertTrue(s.getDisplayLine(1).isFolder());
 		assertFalse(s.getDisplayLine(1).isPlayable());
@@ -85,6 +87,8 @@ public final class NetDisplayTest {
 		assertTrue(s.getDisplayLine(2).isCursor());
 
 		assertFalse(s.getDisplayLine(3).isPlayable());
+		assertFalse(s.getDisplayLine(3).isFolder());
+		assertFalse(s.getDisplayLine(3).isCursor());
 	}
 
 	/**

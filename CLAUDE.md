@@ -72,17 +72,24 @@ knowing before writing more tests:
   `inputs.file` entry nor the module/root path dance above. Keep such captures byte-exact — one of
   the two has CRLF line endings and both pad their values with spaces, and the tests exist to pin
   what the parsers do with that.
-- **A static initialiser that touches `android.os.Build` locks the whole class out of JVM tests.**
-  The stub `android.jar` leaves those fields null, so the initialiser throws and every test using
-  the class dies with `ExceptionInInitializerError` — including classes that merely *use* it, which
-  makes the cause hard to see. `core/InData` had exactly that: an `EXTENDED_DEBUG` field calling
-  `EmulationDetector.isEmulator()`, for a debug string. It is now read inside `toDebugString()`
-  instead, which is what makes `core/InDataTest` and `core/display/NetDisplayTest` possible at all —
-  `NetDisplay.DisplayStatusReader` takes an `InData`. Constructors and field initialisers of Android
-  types are fine (`NetDisplay` builds a `Handler` in a field initialiser and still constructs on a
-  JVM); it is *reading* `Build` that fails. So the display classes need no keep-alive trick: the
-  test builds `new NetDisplay(null, null, DisplayType.NETWORK)` and reaches the inner
-  `DisplayStatusReader` directly, because for `NETWORK` the constructor touches neither argument.
+- **A static initialiser that touches Android locks the whole class out of JVM tests.** Three
+  different behaviours in the stub `android.jar`, and only the third one throws by itself:
+  constructors are no-ops (`new Handler()` works), **field reads return null or 0**
+  (`Build.PRODUCT` is null), and **method calls throw** `RuntimeException: Method … not mocked`
+  (`SystemClock.uptimeMillis()`, `TextUtils.isEmpty`). `testOptions.unitTests.returnDefaultValues`
+  is not set here, and turning it on would only paper over the third case.
+  So a class dies at load time either when a static initialiser calls an Android method, or when it
+  uses a null that a field read handed back. `core/InData` had the second kind: an `EXTENDED_DEBUG`
+  field calling `EmulationDetector.isEmulator()`, which does `Build.PRODUCT.toUpperCase()` — an NPE
+  inside `<clinit>`. Every test touching `InData` then died with `ExceptionInInitializerError`,
+  including tests of classes that merely *use* it, which makes the cause hard to see (restoring the
+  field kills 20 of the 50 tests). It is now read inside `toDebugString()`, where it is used, and
+  that is what makes `core/InDataTest` and `core/display/NetDisplayTest` possible at all —
+  `NetDisplay.DisplayStatusReader` takes an `InData`. The display classes need no keep-alive trick
+  beyond that: the test builds `new NetDisplay(null, null, DisplayType.NETWORK)` — a `Handler` in a
+  field initialiser is harmless — and reaches the inner `DisplayStatusReader` directly, because for
+  `NETWORK` the constructor touches neither argument. `TunerDisplayTest` reaches `TunerFrequency`
+  the same way.
 - `core/ThreadHandlerTest` asserts on wall-clock time, as does `Series08ParserTest`'s
   `largeLineStaysFast`. Its threshold sits between "no wait" and the `join(1000)` it replaced
   (measured 1003 ms), so keep that margin if you touch it. It reaches
