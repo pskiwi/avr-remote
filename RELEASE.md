@@ -7,7 +7,22 @@ because none of it was recorded anywhere and most of it is not guessable from th
 
 `.github/workflows/releasebuild.yml` triggers on a tag matching `v*`. It builds with JDK 17, signs
 the release APK from the repository secrets, renames it to `avr-remote-<tag>.apk` and attaches it to
-a **GitHub Release**. A tag containing `rc` produces a pre-release.
+a **GitHub Release**, whose description it fills from the release notes (see below). A tag containing
+`rc` produces a pre-release.
+
+The description comes from `app/src/main/assets/whatsnew.html`, the same file the in-app dialog
+renders: `misc/release-notes.py` cuts out the block whose `<b>version</b>` heading matches the tag
+without its leading `v` and turns the `<li>` items into Markdown bullets. So the notes are written
+once, in step 2 below, and the release page cannot drift away from what the app shows. Before this
+was wired up the description stayed empty and had to be pasted in by hand after every release.
+
+**A missing block costs the description, never the release.** The script then prints nothing,
+exits 1, and the workflow falls back to GitHub's generated list of merged pull requests — which is a
+diff summary, not a user-facing one. That is the intended behaviour for an `rc` tag, and a warning
+sign for anything else: by the time the step runs the tag is pushed and the APK is built, so failing
+there would leave a tag with no release at all. The two things that trigger it are notes that were
+never written and a heading that does not match the tag exactly — `<b>v1.6.1</b>` or `<b>1.6.1a</b>`
+for tag `v1.6.1` do not match. Only whitespace inside the `<b>` is tolerated.
 
 **There is no Play Store automation.** No fastlane, no gradle-play-publisher, no service account —
 the Play upload has always been done by hand in the Play Console, and still has to be. The GitHub
@@ -46,12 +61,25 @@ the alias CI actually signs with comes from the `KEY_ALIAS` secret and cannot be
    last one.
 2. **Add release notes** in two places, which say the same thing at different lengths.
 
-   `app/src/main/assets/whatsnew.html` is the in-app dialog — a new `<b>version</b>` block at the top
-   of the list. `AboutActivity` renders the file, and `AVRRemote` opens it automatically on the first
-   start after an update, but only once a receiver is configured: the check at `AVRRemote.java:118`
-   is `getConnectionConfig().isDefined() && AVRSettings.isShowChangeLog(this)`. `isShowChangeLog()`
-   compares `packageInfo.versionCode` against the stored `AVRLastVersionCode` preference, so **an
-   unchanged `versionCode` means nobody ever sees the notes**.
+   `app/src/main/assets/whatsnew.html` is the in-app dialog **and the GitHub release description** —
+   a new `<b>version</b>` block at the top of the list, with the version written exactly as in the
+   tag but without the `v`. `AboutActivity` renders the file, and `AVRRemote` opens it automatically
+   on the first start after an update, but only once a receiver is configured: the check at
+   `AVRRemote.java:118` is `getConnectionConfig().isDefined() && AVRSettings.isShowChangeLog(this)`.
+   `isShowChangeLog()` compares `packageInfo.versionCode` against the stored `AVRLastVersionCode`
+   preference, so **an unchanged `versionCode` means nobody ever sees the notes**.
+
+   **English only.** The app ships two locales, but this file is not one of the localised resources —
+   there is a single `assets/whatsnew.html`, and German readers get the English text in the dialog
+   just as they do on the release page. Adding a German block would show it to everyone, twice. The
+   German wording belongs in `version.xml` below, where the Console splits it by language tag.
+
+   Check what the release page will show, before tagging rather than after — the fallback is silent,
+   and an empty-looking release is the first anyone hears of it:
+
+   ```sh
+   python3 misc/release-notes.py v1.6.1
+   ```
 
    `version.xml` is the Play Store wording, 500 characters per language. It is **not** checked in;
    `.gitignore` covers it, because it is input for the Console rather than part of the app. Its
@@ -96,10 +124,13 @@ the alias CI actually signs with comes from the `KEY_ALIAS` secret and cannot be
    git push origin master --tags
    ```
 
-5. **Watch the build**, then fetch the APK and verify the signature before handing it to anyone:
+5. **Watch the build**, then fetch the APK and verify the signature before handing it to anyone.
+   Read the release description in the same pass: a list of merged pull requests instead of the
+   notes means the block was not found and the fallback took over (see above).
 
    ```sh
    gh run watch
+   gh release view v1.6.0
    gh release download v1.6.0
    $ANDROID_HOME/build-tools/<version>/apksigner verify --print-certs avr-remote-v1.6.0.apk
    ```
