@@ -33,10 +33,23 @@ jobs:
         run: echo "$KEY_JKS" | base64 -d > key.jks; ./gradlew build; rm key.jks
       - name: Rename APK
         run: mv app/build/outputs/apk/release/app-release.apk avr-remote-${{ github.ref_name }}.apk
+      # Release notes come from the tagged version's block in whatsnew.html. If there is none --
+      # an rc tag, or notes not written yet -- the file stays empty and GitHub generates its own
+      # from the merged pull requests. Either way the release must still be created.
+      - name: Build release notes
+        id: notes
+        run: |
+          if python3 misc/release-notes.py "${{ github.ref_name }}" > release-notes.md; then
+            echo "generate=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "generate=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
           name: Release ${{ github.ref_name }}
+          body_path: release-notes.md
+          generate_release_notes: ${{ steps.notes.outputs.generate }}
           draft: false
           prerelease: ${{ contains(github.ref,'rc') }}
           files: avr-remote-${{ github.ref_name }}.apk
