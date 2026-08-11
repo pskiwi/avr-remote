@@ -21,21 +21,37 @@ import sys
 WHATSNEW = pathlib.Path(__file__).resolve().parent.parent / "app/src/main/assets/whatsnew.html"
 
 
+# Markdown means something by characters that are ordinary prose in the source. The receiver
+# families are written "AVR-*13" and "Marantz-SR*7", so an entry naming two of them would come
+# out italicised with the asterisks eaten.
+MARKDOWN_SPECIAL = re.compile(r"([\\`*_\[\]<])")
+
+
 def to_markdown(item):
-	# The bold in "<b>This version needs Android 7.0 or newer.</b>" is the point of that entry,
-	# so carry b/i over instead of dropping them with the rest of the tags. Unescape only after
-	# the tags are gone, or an escaped &lt;b&gt; would turn into one.
-	text = re.sub(r"</?(?:b|strong)>", "**", item)
-	text = re.sub(r"</?(?:i|em)>", "*", text)
-	text = re.sub(r"<[^>]+>", "", text)
-	return " ".join(html.unescape(text).split())
+	# Walk tags and text separately: the text has to be escaped, the markers this adds must not
+	# be. The bold in "<b>This version needs Android 7.0 or newer.</b>" is the point of that
+	# entry, so carry b/i over instead of dropping them with the rest of the tags -- links lose
+	# their href, which is why the entries have to read as prose rather than as "see here".
+	out = []
+	for part in re.split(r"(<[^>]+>)", item):
+		if not part.startswith("<"):
+			out.append(MARKDOWN_SPECIAL.sub(r"\\\1", html.unescape(part)))
+		elif re.fullmatch(r"</?(?:b|strong)>", part, re.I):
+			out.append("**")
+		elif re.fullmatch(r"</?(?:i|em)>", part, re.I):
+			out.append("*")
+	return " ".join("".join(out).split())
 
 
 def extract(source, version):
 	block = re.search(r"<b>\s*" + re.escape(version) + r"\s*</b>\s*<ul>(.*?)</ul>", source, re.S)
 	if block is None:
 		return None
-	return [to_markdown(i) for i in re.findall(r"<li>(.*?)</li>", block.group(1), re.S)]
+	# Hand-written HTML: one entry is spelled <lI>, another never closes its <li>. Splitting on
+	# the opening tag survives both, where a <li>(.*?)</li> pair drops the first silently and
+	# merges the second into its neighbour.
+	items = re.split(r"<li>", block.group(1), flags=re.I)[1:]
+	return [to_markdown(re.split(r"</li>", i, flags=re.I)[0]) for i in items]
 
 
 def main(argv):

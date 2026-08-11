@@ -10,11 +10,21 @@ the release APK from the repository secrets, renames it to `avr-remote-<tag>.apk
 a **GitHub Release**, whose description it fills from the release notes (see below). A tag containing
 `rc` produces a pre-release.
 
-The description comes from `app/src/main/assets/whatsnew.html`, the same file the in-app dialog
-renders: `misc/release-notes.py` cuts out the block whose `<b>version</b>` heading matches the tag
-without its leading `v` and turns the `<li>` items into Markdown bullets. So the notes are written
-once, in step 2 below, and the release page cannot drift away from what the app shows. Before this
-was wired up the description stayed empty and had to be pasted in by hand after every release.
+The description is generated from `app/src/main/assets/whatsnew.html`, the same file the in-app
+dialog renders: `misc/release-notes.py` cuts out the block whose `<b>version</b>` heading matches the
+tag without its leading `v` and turns the `<li>` items into Markdown bullets. So the notes are
+written once, in step 2 below, and both places get them.
+
+**This is a deliberate trade, and it costs.** The workflow used to set no description at all, so the
+1.6.0 and 1.6.1 pages were written by hand afterwards — and written *longer* than the in-app dialog:
+around 3400 and 2400 characters, with an opening paragraph, a warning quote, `### Fixed` / `###
+Changed` headings and the reasoning behind each fix. The generated bullets for 1.6.1 are 863
+characters and flat. What was bought is that nobody has to remember the second step; what was given
+up is that depth. If a release deserves the long form, write it into the release page by hand after
+the workflow has run — but then it lives only there, which is the state this replaced.
+
+The conversion is lossy in one more way worth knowing: a link inside an entry keeps its text and
+loses its `href`, so entries have to read as prose rather than as "see here".
 
 **A missing block costs the description, never the release.** The script then prints nothing,
 exits 1, and the workflow falls back to GitHub's generated list of merged pull requests — which is a
@@ -74,13 +84,6 @@ the alias CI actually signs with comes from the `KEY_ALIAS` secret and cannot be
    just as they do on the release page. Adding a German block would show it to everyone, twice. The
    German wording belongs in `version.xml` below, where the Console splits it by language tag.
 
-   Check what the release page will show, before tagging rather than after — the fallback is silent,
-   and an empty-looking release is the first anyone hears of it:
-
-   ```sh
-   python3 misc/release-notes.py v1.6.1
-   ```
-
    `version.xml` is the Play Store wording, 500 characters per language. It is **not** checked in;
    `.gitignore` covers it, because it is input for the Console rather than part of the app. Its
    shape:
@@ -115,6 +118,12 @@ the alias CI actually signs with comes from the `KEY_ALIAS` secret and cannot be
      The 1.6.0 replacement of Apache HttpClient could only be tested against the hardware that was
      available; a user on an untested model needs to know that a missing input name is worth
      reporting.
+
+   Last, read back what the release page will show — before tagging, not after:
+
+   ```sh
+   python3 misc/release-notes.py v1.6.0
+   ```
 3. **Remove the items** in [TODO.md](TODO.md) that this release closes — that file records open work
    only, the history records what was done.
 4. **Commit, tag, push.** The tag convention is `v<versionName>`:
@@ -159,7 +168,7 @@ the alias CI actually signs with comes from the `KEY_ALIAS` secret and cannot be
       icon shipped in the APK is not used for the listing. Regenerate the PNG from
       `misc/play-store-icon.svg` if the artwork changes — the command is a comment at the top of that
       file, and the artwork has **four** copies in the tree that have to move together
-      (`res/drawable/ic_launcher_foreground.xml`, `app/src/main/assets/icon.svg`, `docs/avr-icon.svg`
+      (`app/src/main/res/drawable/ic_launcher_foreground.xml`, `app/src/main/assets/icon.svg`, `docs/avr-icon.svg`
       and the store SVG).
 
 ### Store listing
@@ -176,10 +185,10 @@ model list last. Keep that order.
 
 The model list there comes from `@array/modelNames` in `res/values/lists.xml`, not from the previous
 listing — that one had missed seven models and dropped the dashes from five. That makes **four**
-copies of the model list in the tree: `lists.xml`, `README.md`, `docs/index.md` and this file. Only
-the first is pinned by a test (`ModelConfiguratorTest`, against the classes in `models/`); the other
-three drift silently, and two of them had. Regenerate them from `lists.xml` rather than editing by
-hand:
+copies of the model list in the tree: `lists.xml`, `README.md`, `docs/index.md` and
+[store-listing.txt](store-listing.txt). Only the first is pinned by a test (`ModelConfiguratorTest`,
+against the classes in `models/`); the other three drift silently, and two of them had. Regenerate
+them from `lists.xml` rather than editing by hand:
 
 ```sh
 python3 -c "import re; s=open('app/src/main/res/values/lists.xml').read(); \
