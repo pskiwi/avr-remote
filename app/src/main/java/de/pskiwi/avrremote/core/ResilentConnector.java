@@ -116,7 +116,7 @@ public final class ResilentConnector implements ISender {
 
 					// Auf jeden Fall versuchen, u.U. ist der Test auf manchen
 					// Modellen nicht eindeutig.
-					IConnector newConnector;
+					final Connector newConnector;
 					try {
 						newConnector = new Connector(connectionConfig,
 								SEND_DELAY, eventListener);
@@ -128,6 +128,39 @@ public final class ResilentConnector implements ISender {
 									reachable);
 						}
 						throw x;
+					}
+
+					// Der Connect allein beweist nichts: der Receiver laesst
+					// nur eine Sitzung zu und nimmt den Socket trotzdem an,
+					// wenn er noch eine alte haelt - z.B. nachdem Android die
+					// App beim Update hart beendet hat und das FIN nie ankam.
+					// Er schweigt dann, und ohne diese Pruefung stuenden alle
+					// Statusflags auf "verbunden", ohne dass je etwas kaeme.
+					if (!newConnector.awaitResponse()) {
+						silentConnects++;
+						if (silentConnects < MAX_SILENT_CONNECTS) {
+							if (isCurrent()) {
+								// erreichbar ist er ja, er antwortet nur nicht
+								enableManager.setStatus(StatusFlag.Reachable,
+										true);
+							}
+							newConnector.close();
+							throw new IOException("no answer from ["
+									+ connectionConfig + "] after connect ("
+									+ silentConnects + ")");
+						}
+						// Nie schlechter als vorher: sollte ein Modell auf die
+						// Probe grundsaetzlich nichts senden, wuerde die
+						// Pruefung sonst jede Verbindung dieses Geraets
+						// dauerhaft verwerfen. Nach MAX_SILENT_CONNECTS
+						// Versuchen gilt sie trotzdem - diese Zeile ist dann
+						// das, was im Log davon uebrigbleibt.
+						Logger.error("Reconnector:receiver ["
+								+ connectionConfig
+								+ "] stays silent, using the connection anyway after "
+								+ silentConnects + " tries", null);
+					} else {
+						silentConnects = 0;
 					}
 
 					if (!publishConnector(epoch, newConnector)) {
@@ -217,6 +250,11 @@ public final class ResilentConnector implements ISender {
 		}
 
 		private int reconnectDelayIndex = 0;
+		// wie oft hintereinander der Receiver nach dem Connect geschwiegen
+		// hat. Gehoert wie reconnectDelayIndex zum Reconnector und nicht zum
+		// ResilentConnector: ein forceReconnect() faengt bewusst wieder bei
+		// null an.
+		private int silentConnects = 0;
 		private final int epoch;
 
 	}
@@ -432,5 +470,8 @@ public final class ResilentConnector implements ISender {
 		RECONNECT_WAIT_TIME = (sum + 2) * 1000;
 	}
 	private static final int SEND_DELAY = 100;
+	// so oft darf ein Connect ohne Antwort verworfen werden, bevor die
+	// Verbindung trotzdem gilt - siehe Reconnector.run()
+	private static final int MAX_SILENT_CONNECTS = 3;
 
 }

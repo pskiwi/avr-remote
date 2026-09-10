@@ -23,6 +23,7 @@ import java.io.Writer;
 import java.net.Socket;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import de.pskiwi.avrremote.log.Logger;
 
@@ -94,6 +95,11 @@ public final class Connector implements ISender, IConnector {
 					}
 					Logger.debug("RECEIVED [" + val.toDebugString() + "] "
 							+ (listener != null ? "" : "unregistered"));
+					if (!val.isEmpty()) {
+						// jedes Datum zählt als Lebenszeichen, nicht nur die
+						// Antwort auf ALIVE_PROBE - siehe awaitResponse()
+						firstDataSignal.countDown();
+					}
 					if (listener != null && val != null && !val.isEmpty()) {
 						listener.received(val);
 					}
@@ -144,8 +150,20 @@ public final class Connector implements ISender, IConnector {
 
 	public Connector(ConnectionConfiguration connectionConfiguration,
 			int sendDelay, IEventListener eventListener) throws Exception {
+		this(connectionConfiguration, sendDelay, eventListener,
+				HANDSHAKE_TIMEOUT);
+	}
+
+	// Paketprivat mit expliziter Wartezeit, damit ConnectorTest den Fall
+	// "Receiver antwortet nicht" in Millisekunden durchspielen kann statt in
+	// Sekunden. Gleiches Muster wie ResilentConnector.ThreadHandler und
+	// ModelConfigurator.createModel(String).
+	Connector(ConnectionConfiguration connectionConfiguration, int sendDelay,
+			IEventListener eventListener, int handshakeTimeout)
+			throws Exception {
 		this.connectionConfiguration = connectionConfiguration;
 		this.sendDelay = sendDelay;
+		this.handshakeTimeout = handshakeTimeout;
 		listener = eventListener;
 		socket = new Socket();
 		socket.setTcpNoDelay(true);
@@ -223,6 +241,23 @@ public final class Connector implements ISender, IConnector {
 		closeSignal.await();
 	}
 
+	/**
+	 * Fragt den Receiver etwas und wartet auf sein erstes Datum. Ein
+	 * geglückter Connect allein sagt nichts: der Receiver erlaubt nur eine
+	 * Sitzung und nimmt den Socket auch dann an, wenn er noch eine alte hält -
+	 * er schweigt danach nur. Ohne diese Prüfung gilt die Verbindung als
+	 * hergestellt, und die Oberfläche bleibt grau, weil nie ein Status kommt.
+	 *
+	 * ALIVE_PROBE ist die Power-Abfrage, weil sie als einzige von jedem Modell
+	 * und in jedem Zustand beantwortet wird - im Standby mit PWSTANDBY.
+	 *
+	 * @return false, wenn innerhalb der Wartezeit nichts kam
+	 */
+	public boolean awaitResponse() throws InterruptedException {
+		doSend(ALIVE_PROBE);
+		return firstDataSignal.await(handshakeTimeout, TimeUnit.MILLISECONDS);
+	}
+
 	public void close() {
 		Logger.info("close socket ...");
 		try {
@@ -272,9 +307,15 @@ public final class Connector implements ISender, IConnector {
 	private final Thread sendThread;
 	private final ConnectionConfiguration connectionConfiguration;
 	private final int sendDelay;
+	private final int handshakeTimeout;
 	private final ArrayBlockingQueue<String> sendQueue = new ArrayBlockingQueue<String>(
 			MAX_QUEUE_SIZE);
 	private final CountDownLatch closeSignal = new CountDownLatch(1);
+	private final CountDownLatch firstDataSignal = new CountDownLatch(1);
 	private static final int AVR_CONNECT_TIMEOUT = 2500;
+	// Im Feld liegen zwischen Connect und erster Antwort Millisekunden;
+	// reichlich Luft für ein WLAN, das gerade aus dem Powersave kommt.
+	private static final int HANDSHAKE_TIMEOUT = 3000;
+	private static final String ALIVE_PROBE = "PW?";
 	private final static int MAX_QUEUE_SIZE = 100;
 }

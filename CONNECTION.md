@@ -90,6 +90,46 @@ Two of those guards need more than a check:
   ping and port timeouts. The guard narrows the window; what actually closes it is
   `publishConnector()` underneath.
 
+## A connect is not a connection
+
+The receiver allows exactly one telnet session. It still accepts the *socket* for a second one and
+then says nothing on it — and it holds a session that no longer exists for as long as it pleases,
+because nothing on the phone closed it. Nothing could: Android kills the process on a package
+update the same way it does on a force-stop, so no `onDestroy`, no `onTerminate` and no `finally`
+runs. The kernel sends the FIN in the app's place — unless the Wi-Fi is asleep, off or out of
+range at that moment, and then the receiver never learns that the session ended. The user updates
+the app, opens it, and the one session is taken by a ghost.
+
+`Socket.connect()` succeeding says nothing about any of that, so the connect is not trusted on its
+own any more.
+
+**The handshake.** `Connector.awaitResponse()` sends `PW?` and waits `HANDSHAKE_TIMEOUT` (3 s) for
+the first data of any kind. `PW?` because every model answers it in every state — a receiver in
+standby replies `PWSTANDBY`, which is where `StatusFlag.Power` comes from in the first place. *Any*
+data counts, not only the reply, so a model that pushes state by itself passes too.
+`Reconnector.run()` calls it before `publishConnector()`, and a failure throws `IOException`
+straight into the backoff that was already there.
+
+It has a safety valve: after `MAX_SILENT_CONNECTS` (3) consecutive silent connects the connection
+is used anyway, and a `Logger.error` line records that it was. 60 model classes and one receiver to
+test against — a check this deep in the connect path must not be able to make a device permanently
+unusable that worked before. The counter sits in the `Reconnector` next to `reconnectDelayIndex`,
+so a `forceReconnect()` deliberately starts over.
+
+In a log a receiver holding a stale session now looks like this, instead of like a healthy start:
+
+```
+#81  [ResilentThreadHandler-2]   Reconnector:build new connection to [192.168.10.30]
+#145 [sender]                    SEND [PW?]
+#146 [ResilentThreadHandler-2]   Reconnector:IOException [192.168.10.30]
+        java.io.IOException: no answer from [192.168.10.30] after connect (1)
+```
+
+The `SEND` line is the sender thread's, not the reconnect thread's — `awaitResponse()` only queues
+the probe. What makes this readable at all is that there is no `RECEIVED` line between the two.
+
+`core/ConnectorTest` covers all of it on the JVM against a fake receiver on a local `ServerSocket`.
+
 ## Who decides when to hang up
 
 `ActiveHandler` is the only owner of the disconnect policy. `AVRApplication.activityResumed()` and

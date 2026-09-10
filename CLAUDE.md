@@ -39,9 +39,9 @@ $ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/app-debu
 
 `local.properties` is deliberately untracked — the SDK path comes from `ANDROID_HOME`.
 
-**There is almost no test coverage.** `src/test` holds nine JVM test classes on JUnit 4, the only
+**There is almost no test coverage.** `src/test` holds ten JVM test classes on JUnit 4, the only
 dependency in the project — `http/HTTPSupportTest`, `http/Series08ParserTest`,
-`core/ThreadHandlerTest`, `core/InDataTest`, `core/display/NetDisplayTest`,
+`core/ThreadHandlerTest`, `core/ConnectorTest`, `core/InDataTest`, `core/display/NetDisplayTest`,
 `core/display/TunerDisplayTest`, `models/ModelConfiguratorTest`, `ReceiverStatusTest` and
 `http/AVRXMLInfoParserTest` — and there is no `src/androidTest` at all. `./gradlew test` runs a few
 dozen cases and nothing else (twice, in fact: once per build variant), so do not report a change as
@@ -90,6 +90,12 @@ knowing before writing more tests:
   field initialiser is harmless — and reaches the inner `DisplayStatusReader` directly, because for
   `NETWORK` the constructor touches neither argument. `TunerDisplayTest` reaches `TunerFrequency`
   the same way.
+  **Deferring the field only moved the NPE from load time to call time**, and `toDebugString()` is
+  called on every line the receiver sends (`Connector.Receiver.run()`). On a JVM that killed the
+  `receiver` thread at the first byte — silently, because the default uncaught handler writes to
+  stderr and nothing in the test asserts on the thread. `EmulationDetector` therefore guards both
+  `Build` reads now; on a device neither can be null, so nothing changes there. Without that guard
+  no test can exercise a receive path at all.
 - `core/ThreadHandlerTest` asserts on wall-clock time, as does `Series08ParserTest`'s
   `largeLineStaysFast`. Its threshold sits between "no wait" and the `join(1000)` it replaced
   (measured 1003 ms), so keep that margin if you touch it. It reaches
@@ -99,6 +105,10 @@ knowing before writing more tests:
   `ModelConfigurator.createModel(String)`. What it does *not* cover is the load-bearing half of the
   argument — that a detached thread publishes nothing after `stop()` returns — and no JVM test
   reaches that; see [CONNECTION.md](CONNECTION.md) → *The generation counter*.
+  `core/ConnectorTest` is on the clock as well. It injects its handshake timeout through a
+  package-private `Connector` constructor, so the suite spends milliseconds where the app waits
+  seconds; its floor is the `Thread.sleep(1000)` in that constructor — one second per test,
+  whatever the timeout says.
 
 **A log a user sent in** (`log/SDLogger` writes it, `log/FeedbackReporter` mails it) has one
 header line per entry and carries a `#seq` and a thread name. Sort by `#seq`, never by timestamp
