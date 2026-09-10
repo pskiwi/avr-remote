@@ -122,13 +122,51 @@ public final class ConnectorTest {
 		assertTrue(connector.awaitResponse());
 	}
 
+	/**
+	 * Der Fall, den es ohne Lese-Timeout gar nicht gäbe: die Verbindung steht
+	 * noch als Socket, aber es bedient sie niemand mehr. Vorher blieb der
+	 * Receiver-Thread dafür für immer in read() stehen.
+	 */
+	@Test
+	public void aConnectionThatGoesSilentIsGivenUp() throws Exception {
+		reply = "PWSTANDBY";
+		connector = connect();
+		assertTrue(connector.awaitResponse());
+
+		// ab hier antwortet der Receiver auf nichts mehr
+		reply = null;
+
+		final Thread waiter = new Thread("waitUntilClosed") {
+			@Override
+			public void run() {
+				try {
+					connector.waitUntilClosed();
+				} catch (InterruptedException x) {
+					Thread.currentThread().interrupt();
+				}
+			}
+		};
+		final long start = System.currentTimeMillis();
+		waiter.start();
+		// begrenzt, damit ein Fehler den Build nicht hängen lässt
+		waiter.join(10000);
+		final long waited = System.currentTimeMillis() - start;
+
+		assertFalse("Verbindung blieb stehen", waiter.isAlive());
+		// nicht vor der Probe aufgeben, sonst wäre eine bloß ruhige
+		// Verbindung nicht von einer toten zu unterscheiden
+		assertTrue("gab schon nach " + waited + "ms auf", waited >= IDLE_PROBE);
+		assertEquals("PW?", received.poll(5, TimeUnit.SECONDS));
+		assertEquals("PW?", received.poll(5, TimeUnit.SECONDS));
+	}
+
 	private Connector connect() throws Exception {
 		return new Connector(new ConnectionConfiguration("127.0.0.1:"
 				+ server.getLocalPort()), SEND_DELAY, new IEventListener() {
 			public void received(InData s) {
 				events.add(s);
 			}
-		}, HANDSHAKE_TIMEOUT);
+		}, HANDSHAKE_TIMEOUT, READ_TIMEOUT, IDLE_PROBE, PROBE_GRACE);
 	}
 
 	/**
@@ -190,4 +228,7 @@ public final class ConnectorTest {
 	// kurz gehalten: der echte Wert von 3000ms wuerde die Suite unnoetig
 	// verlaengern, geprueft wird das Verhalten und nicht die Zahl
 	private static final int HANDSHAKE_TIMEOUT = 300;
+	private static final int READ_TIMEOUT = 100;
+	private static final int IDLE_PROBE = 300;
+	private static final int PROBE_GRACE = 200;
 }

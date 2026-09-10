@@ -105,10 +105,10 @@ knowing before writing more tests:
   `ModelConfigurator.createModel(String)`. What it does *not* cover is the load-bearing half of the
   argument — that a detached thread publishes nothing after `stop()` returns — and no JVM test
   reaches that; see [CONNECTION.md](CONNECTION.md) → *The generation counter*.
-  `core/ConnectorTest` is on the clock as well. It injects its handshake timeout through a
+  `core/ConnectorTest` is on the clock as well. It injects all four of its timings through a
   package-private `Connector` constructor, so the suite spends milliseconds where the app waits
-  seconds; its floor is the `Thread.sleep(1000)` in that constructor — one second per test,
-  whatever the timeout says.
+  seconds and minutes; its floor is the `Thread.sleep(1000)` in that constructor — one second per
+  test, whatever the timings say.
 
 **A log a user sent in** (`log/SDLogger` writes it, `log/FeedbackReporter` mails it) has one
 header line per entry and carries a `#seq` and a thread name. Sort by `#seq`, never by timestamp

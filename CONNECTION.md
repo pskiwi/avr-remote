@@ -100,8 +100,7 @@ runs. The kernel sends the FIN in the app's place — unless the Wi-Fi is asleep
 range at that moment, and then the receiver never learns that the session ended. The user updates
 the app, opens it, and the one session is taken by a ghost.
 
-`Socket.connect()` succeeding says nothing about any of that, so the connect is not trusted on its
-own any more.
+`Socket.connect()` succeeding says nothing about any of that, so two things check what it does not.
 
 **The handshake.** `Connector.awaitResponse()` sends `PW?` and waits `HANDSHAKE_TIMEOUT` (3 s) for
 the first data of any kind. `PW?` because every model answers it in every state — a receiver in
@@ -115,6 +114,21 @@ is used anyway, and a `Logger.error` line records that it was. 60 model classes 
 test against — a check this deep in the connect path must not be able to make a device permanently
 unusable that worked before. The counter sits in the `Reconnector` next to `reconnectDelayIndex`,
 so a `forceReconnect()` deliberately starts over.
+
+**The read watchdog.** The socket carries `setSoTimeout(READ_TIMEOUT)` (5 s), which is a tick rate
+and not a deadline — receivers send nothing on their own, so a quiet connection is normal. After
+`IDLE_PROBE` (60 s) without a single byte the receiver thread sends one `PW?` itself; if
+`PROBE_GRACE` (10 s) passes with no answer it closes the connection and the reconnect loop builds a
+new one. Silence is counted in timeout ticks rather than by the clock, because the question is
+"were we awake and heard nothing" — the clock keeps running through a Doze freeze, the ticks do
+not. This is also the only thing that notices a socket Doze or a network change severed silently:
+`Socket.isConnected()` never will, see *Who decides when to hang up* below.
+
+Two details in the reading loop are load-bearing. A timeout **in the middle of a line** keeps
+waiting instead of giving up, or a stalled message would be lost. And the teardown calls
+`Connector.close()` rather than `socket.close()`, because only that also interrupts the sender —
+otherwise it stays parked in `sendQueue.take()` and outlives the connection it served. That leak
+predates the watchdog; the watchdog just reaches the path often enough for it to matter.
 
 In a log a receiver holding a stale session now looks like this, instead of like a healthy start:
 
@@ -148,7 +162,10 @@ the probe. What makes this readable at all is that there is no `RECEIVED` line b
 The 60 s are a cap, not the window, and the reason for the cap is that the disconnect time may be
 set as high as two hours while `isRunning()` is only worth seconds: it rests on
 `Socket.isConnected()`, which stays `true` forever once a connect succeeded, including for a socket
-Doze severed long ago. The shortcut is for rotation, dialogs and tab switches.
+Doze severed long ago. The shortcut is for rotation, dialogs and tab switches. The read watchdog
+does take such a socket down now, but only some 70 s after it went quiet and only while the
+receiver thread is really running — which in the background is exactly what is not guaranteed. So
+the cap stays.
 
 `StopConnectorTask` also checks whether an activity became active again before it fires, and
 reconnects itself if a resume slipped in between its check and the stop. Both belong to the Doze

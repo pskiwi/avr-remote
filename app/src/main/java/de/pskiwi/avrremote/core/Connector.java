@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -52,22 +53,75 @@ public final class Connector implements ISender, IConnector {
 
 		}
 
+		/**
+		 * Liest ein Zeichen und überbrückt dabei den Lese-Timeout. Der ist
+		 * nicht dazu da, eine Antwort zu erzwingen - von sich aus sendet ein
+		 * Receiver nichts -, sondern damit Schweigen überhaupt auffällt: ohne
+		 * ihn stünde read() für immer, auch auf einem Socket, den das Netz
+		 * längst gekappt hat, ohne dass ein FIN angekommen wäre.
+		 *
+		 * @param count
+		 *            bereits gelesene Zeichen der laufenden Zeile
+		 * @return -1, wenn die Verbindung aufgegeben wird - wie ein Stream-Ende
+		 */
+		private int readChar(int count) throws IOException {
+			while (true) {
+				try {
+					return in.read();
+				} catch (SocketTimeoutException x) {
+					// mitten in einer Zeile weiterwarten, sonst ginge die halb
+					// gelesene Nachricht verloren
+					if (count == 0 && !stillAlive()) {
+						return -1;
+					}
+				}
+			}
+		}
+
+		/**
+		 * Zählt die Stille und klopft einmal an, bevor die Verbindung
+		 * aufgegeben wird. Gezählt wird in Timeout-Schritten, nicht nach Uhr:
+		 * gemeint ist "wir waren wach und haben nichts gehört", und die Uhr
+		 * liefe auch weiter, während Doze den Thread einfriert.
+		 *
+		 * @return false, wenn auch die Probe unbeantwortet blieb
+		 */
+		private boolean stillAlive() {
+			idleMillis += readTimeout;
+			if (idleMillis < idleProbe) {
+				return true;
+			}
+			if (probeSentAt == NO_PROBE) {
+				probeSentAt = idleMillis;
+				Logger.info("nothing received for " + idleMillis
+						+ "ms -> probing");
+				doSend(ALIVE_PROBE);
+				return true;
+			}
+			if (idleMillis - probeSentAt < probeGrace) {
+				return true;
+			}
+			Logger.error("no answer to the probe after " + idleMillis
+					+ "ms -> closing the connection", null);
+			return false;
+		}
+
 		public InData read() throws IOException {
 			final char[] line = new char[MAX_LINE];
-			int ch = in.read();
+			int ch = readChar(0);
 			int count;
 			do {
 				count = 0;
 				while (ch != -1 && !detectCR(line, count, ch)
 						&& count < MAX_LINE) {
 					line[count++] = (char) ch;
-					ch = in.read();
+					ch = readChar(count);
 				}
 				if (count == MAX_LINE) {
 					// read garbage
 					// avr braucht restart ???
 					while (ch != -1 && ch != CR) {
-						ch = in.read();
+						ch = readChar(count);
 					}
 					Logger.error("max input size exeeded ! ["
 							+ new String(line, 0, count) + "]", null);
@@ -88,11 +142,17 @@ public final class Connector implements ISender, IConnector {
 				try {
 					final InData val = read();
 					if (val == null) {
-						socket.close();
+						// close() statt socket.close(): sonst bleibt der
+						// Sender-Thread in take() stehen und überlebt die
+						// Verbindung, die er bedient hat
+						Connector.this.close();
 						closeSignal.countDown();
 						Logger.info("receiver socket closed -> return");
 						return;
 					}
+					// Lebenszeichen - der Stille-Zähler fängt von vorne an
+					idleMillis = 0;
+					probeSentAt = NO_PROBE;
 					Logger.debug("RECEIVED [" + val.toDebugString() + "] "
 							+ (listener != null ? "" : "unregistered"));
 					if (!val.isEmpty()) {
@@ -116,7 +176,12 @@ public final class Connector implements ISender, IConnector {
 			}
 		}
 
+		// nur vom Receiver-Thread gelesen und geschrieben
+		private int idleMillis;
+		private int probeSentAt = NO_PROBE;
+
 		private static final int MAX_LINE = 256;
+		private static final int NO_PROBE = -1;
 	}
 
 	private final class Sender implements Runnable {
@@ -151,22 +216,26 @@ public final class Connector implements ISender, IConnector {
 	public Connector(ConnectionConfiguration connectionConfiguration,
 			int sendDelay, IEventListener eventListener) throws Exception {
 		this(connectionConfiguration, sendDelay, eventListener,
-				HANDSHAKE_TIMEOUT);
+				HANDSHAKE_TIMEOUT, READ_TIMEOUT, IDLE_PROBE, PROBE_GRACE);
 	}
 
-	// Paketprivat mit expliziter Wartezeit, damit ConnectorTest den Fall
-	// "Receiver antwortet nicht" in Millisekunden durchspielen kann statt in
-	// Sekunden. Gleiches Muster wie ResilentConnector.ThreadHandler und
-	// ModelConfigurator.createModel(String).
+	// Paketprivat mit expliziten Zeiten, damit ConnectorTest "der Receiver
+	// antwortet nicht" und "die Verbindung verstummt" in Millisekunden
+	// durchspielen kann statt in Sekunden und Minuten. Gleiches Muster wie
+	// ResilentConnector.ThreadHandler und ModelConfigurator.createModel(String).
 	Connector(ConnectionConfiguration connectionConfiguration, int sendDelay,
-			IEventListener eventListener, int handshakeTimeout)
-			throws Exception {
+			IEventListener eventListener, int handshakeTimeout,
+			int readTimeout, int idleProbe, int probeGrace) throws Exception {
 		this.connectionConfiguration = connectionConfiguration;
 		this.sendDelay = sendDelay;
 		this.handshakeTimeout = handshakeTimeout;
+		this.readTimeout = readTimeout;
+		this.idleProbe = idleProbe;
+		this.probeGrace = probeGrace;
 		listener = eventListener;
 		socket = new Socket();
 		socket.setTcpNoDelay(true);
+		socket.setSoTimeout(readTimeout);
 		socket.connect(connectionConfiguration.getSocketAddress(),
 				AVR_CONNECT_TIMEOUT);
 
@@ -308,6 +377,9 @@ public final class Connector implements ISender, IConnector {
 	private final ConnectionConfiguration connectionConfiguration;
 	private final int sendDelay;
 	private final int handshakeTimeout;
+	private final int readTimeout;
+	private final int idleProbe;
+	private final int probeGrace;
 	private final ArrayBlockingQueue<String> sendQueue = new ArrayBlockingQueue<String>(
 			MAX_QUEUE_SIZE);
 	private final CountDownLatch closeSignal = new CountDownLatch(1);
@@ -316,6 +388,13 @@ public final class Connector implements ISender, IConnector {
 	// Im Feld liegen zwischen Connect und erster Antwort Millisekunden;
 	// reichlich Luft für ein WLAN, das gerade aus dem Powersave kommt.
 	private static final int HANDSHAKE_TIMEOUT = 3000;
+	// Taktrate des Receiver-Threads, wenn nichts hereinkommt - nicht die
+	// Zeit, nach der etwas passiert, das sind IDLE_PROBE und PROBE_GRACE.
+	private static final int READ_TIMEOUT = 5000;
+	// so lange darf es still sein, bevor nachgefragt wird ...
+	private static final int IDLE_PROBE = 60000;
+	// ... und so lange darf die Antwort darauf ausbleiben
+	private static final int PROBE_GRACE = 10000;
 	private static final String ALIVE_PROBE = "PW?";
 	private final static int MAX_QUEUE_SIZE = 100;
 }
