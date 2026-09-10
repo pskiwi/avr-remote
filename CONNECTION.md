@@ -109,6 +109,14 @@ data counts, not only the reply, so a model that pushes state by itself passes t
 `Reconnector.run()` calls it before `publishConnector()`, and a failure throws `IOException`
 straight into the backoff that was already there.
 
+**An interrupt inside that wait has to close the connector by hand.** `forceReconnect()` fires at
+any moment and `awaitResponse()` blocks for seconds, so this is not a corner case. The connector is
+not published at that point, the shared field still holds `NULL_CONNECTOR`, and `stopConnector()`
+therefore closes nothing — the socket and its two daemon threads would stay alive and keep holding
+the one session the next attempt is about to ask for. Before the handshake existed there was
+nothing interruptible between `new Connector(...)` and `publishConnector(...)`; the sleep inside
+the constructor is covered by its own `finally`.
+
 It has a safety valve: after `MAX_SILENT_CONNECTS` (3) consecutive silent connects the connection
 is used anyway, and a `Logger.error` line records that it was. 60 model classes and one receiver to
 test against — a check this deep in the connect path must not be able to make a device permanently
@@ -119,16 +127,34 @@ so a `forceReconnect()` deliberately starts over.
 and not a deadline — receivers send nothing on their own, so a quiet connection is normal. After
 `IDLE_PROBE` (60 s) without a single byte the receiver thread sends one `PW?` itself; if
 `PROBE_GRACE` (10 s) passes with no answer it closes the connection and the reconnect loop builds a
-new one. Silence is counted in timeout ticks rather than by the clock, because the question is
-"were we awake and heard nothing" — the clock keeps running through a Doze freeze, the ticks do
-not. This is also the only thing that notices a socket Doze or a network change severed silently:
+new one. This is the only thing that notices a socket Doze or a network change severed silently:
 `Socket.isConnected()` never will, see *Who decides when to hang up* below.
 
-Two details in the reading loop are load-bearing. A timeout **in the middle of a line** keeps
-waiting instead of giving up, or a stalled message would be lost. And the teardown calls
-`Connector.close()` rather than `socket.close()`, because only that also interrupts the sender —
-otherwise it stays parked in `sendQueue.take()` and outlives the connection it served. That leak
-predates the watchdog; the watchdog just reaches the path often enough for it to matter.
+Silence is counted in timeout ticks rather than by the clock, because the question is "were we
+awake and heard nothing": a frozen thread stops counting, where the clock would run on. That helps
+only where the process really is frozen, though. In a plain Doze window the thread keeps waking
+every tick while the network is suspended, so the ticks accumulate normally and the watchdog takes
+down a connection that might have survived to the next maintenance window — after which the
+reconnect loop retries through its backoff for as long as Doze lasts. Not measured on a device yet;
+with a long disconnect time the screen-off case is the one to watch.
+
+Three rules in the reading loop are load-bearing:
+
+- **A connection that has never said anything is left alone.** `stillAlive()` returns early while
+  `firstDataSignal` has not fired. That case belongs to the valve above, not to the watchdog:
+  without the rule the watchdog would tear down every 70 s exactly what the valve just let through,
+  the valve would let the next one through again — `silentConnects` never resets once it has
+  latched — and a receiver that answers nothing would flap forever, where before it at least held
+  one stable connection that still carried commands.
+- **A timeout in the middle of a line gives up like any other.** The half-read message is lost, and
+  that is right: the connection is being abandoned. Keeping it would mean switching the watchdog
+  off for the rest of the line, and a connection that dies one byte into a message would hang for
+  good. Every byte read resets the idle count, so a slow-but-alive sender is never mistaken for a
+  dead one.
+- **The teardown calls `Connector.close()`, not `socket.close()`**, because only that also
+  interrupts the sender — otherwise it stays parked in `sendQueue.take()` and outlives the
+  connection it served. That leak predates the watchdog; the watchdog just reaches the path often
+  enough for it to matter.
 
 In a log a receiver holding a stale session now looks like this, instead of like a healthy start:
 

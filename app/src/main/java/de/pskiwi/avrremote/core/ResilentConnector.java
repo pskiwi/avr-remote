@@ -136,7 +136,20 @@ public final class ResilentConnector implements ISender {
 					// App beim Update hart beendet hat und das FIN nie ankam.
 					// Er schweigt dann, und ohne diese Pruefung stuenden alle
 					// Statusflags auf "verbunden", ohne dass je etwas kaeme.
-					if (!newConnector.awaitResponse()) {
+					final boolean answered;
+					try {
+						answered = newConnector.awaitResponse();
+					} catch (InterruptedException x) {
+						// Muss hier selbst geschlossen werden: veroeffentlicht
+						// ist der Connector noch nicht, also raeumt ihn auch
+						// stopConnector() nicht ab - und ein liegengebliebener
+						// Socket belegt genau die eine Sitzung, um die es hier
+						// geht. Das Fenster ist real: awaitResponse() wartet
+						// Sekunden, und forceReconnect() unterbricht jederzeit.
+						newConnector.close();
+						throw x;
+					}
+					if (!answered) {
 						silentConnects++;
 						if (silentConnects < MAX_SILENT_CONNECTS) {
 							if (isCurrent()) {

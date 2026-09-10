@@ -27,6 +27,7 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -136,6 +137,88 @@ public final class ConnectorTest {
 		// ab hier antwortet der Receiver auf nichts mehr
 		reply = null;
 
+		final long start = System.currentTimeMillis();
+		// begrenzt, damit ein Fehler den Build nicht hängen lässt
+		final boolean stillOpen = stillOpenAfter(10000);
+		final long waited = System.currentTimeMillis() - start;
+
+		assertFalse("Verbindung blieb stehen", stillOpen);
+		// nicht vor der Probe aufgeben, sonst wäre eine bloß ruhige
+		// Verbindung nicht von einer toten zu unterscheiden
+		assertTrue("gab schon nach " + waited + "ms auf", waited >= IDLE_PROBE);
+		assertEquals("PW?", received.poll(5, TimeUnit.SECONDS));
+		assertEquals("PW?", received.poll(5, TimeUnit.SECONDS));
+	}
+
+	/**
+	 * Der Aufrufer muss den Connector schließen, wenn ihn hier ein Interrupt
+	 * trifft: veröffentlicht ist er zu dem Zeitpunkt noch nicht, also räumt
+	 * ihn sonst niemand ab und er belegt weiter die eine Sitzung des
+	 * Receivers. ResilentConnector.Reconnector tut das - was diesem Test
+	 * verschlossen bleibt, er pinnt nur, dass der Interrupt ankommt.
+	 */
+	@Test
+	public void awaitResponsePassesAnInterruptOn() throws Exception {
+		reply = null;
+		connector = connect();
+
+		final AtomicBoolean interrupted = new AtomicBoolean();
+		final Thread caller = new Thread("awaitResponse") {
+			@Override
+			public void run() {
+				try {
+					connector.awaitResponse();
+				} catch (InterruptedException x) {
+					interrupted.set(true);
+				}
+			}
+		};
+		caller.setDaemon(true);
+		caller.start();
+		Thread.sleep(50);
+		caller.interrupt();
+		caller.join(5000);
+
+		assertTrue("Interrupt kam nicht an", interrupted.get());
+	}
+
+	/**
+	 * Stirbt die Verbindung mitten in einer Zeile, darf das den Watchdog nicht
+	 * abschalten - sonst hinge der Receiver-Thread für immer im Lese-Timeout.
+	 */
+	@Test
+	public void aConnectionThatDiesMidLineIsGivenUpToo() throws Exception {
+		reply = "PWSTANDBY";
+		connector = connect();
+		assertTrue(connector.awaitResponse());
+
+		reply = null;
+		// eine Zeile ohne abschließendes CR, danach Stille
+		sendRaw("MV5");
+
+		assertFalse("Verbindung blieb stehen", stillOpenAfter(10000));
+	}
+
+	/**
+	 * Der Ventilfall aus dem ResilentConnector: eine Verbindung, die noch nie
+	 * etwas gesagt hat, ist nicht "verstummt" - der Watchdog darf sie nicht
+	 * abräumen, sonst flattert ein Receiver, der grundsätzlich nicht
+	 * antwortet, dauerhaft im Takt von IDLE_PROBE + PROBE_GRACE.
+	 */
+	@Test
+	public void aConnectionThatNeverSpokeIsLeftAlone() throws Exception {
+		reply = null;
+		connector = connect();
+		assertFalse(connector.awaitResponse());
+
+		assertTrue("Watchdog hat sie abgeräumt",
+				stillOpenAfter(2 * (IDLE_PROBE + PROBE_GRACE)));
+	}
+
+	/**
+	 * @return true, wenn die Verbindung nach der Wartezeit noch offen ist
+	 */
+	private boolean stillOpenAfter(int millis) throws InterruptedException {
 		final Thread waiter = new Thread("waitUntilClosed") {
 			@Override
 			public void run() {
@@ -146,18 +229,17 @@ public final class ConnectorTest {
 				}
 			}
 		};
-		final long start = System.currentTimeMillis();
+		waiter.setDaemon(true);
 		waiter.start();
-		// begrenzt, damit ein Fehler den Build nicht hängen lässt
-		waiter.join(10000);
-		final long waited = System.currentTimeMillis() - start;
+		waiter.join(millis);
+		return waiter.isAlive();
+	}
 
-		assertFalse("Verbindung blieb stehen", waiter.isAlive());
-		// nicht vor der Probe aufgeben, sonst wäre eine bloß ruhige
-		// Verbindung nicht von einer toten zu unterscheiden
-		assertTrue("gab schon nach " + waited + "ms auf", waited >= IDLE_PROBE);
-		assertEquals("PW?", received.poll(5, TimeUnit.SECONDS));
-		assertEquals("PW?", received.poll(5, TimeUnit.SECONDS));
+	/** Schiebt dem Connector Bytes unterhalb des Protokolls unter. */
+	private void sendRaw(String data) throws IOException {
+		final OutputStream out = accepted.getOutputStream();
+		out.write(data.getBytes("US-ASCII"));
+		out.flush();
 	}
 
 	private Connector connect() throws Exception {
@@ -184,6 +266,7 @@ public final class ConnectorTest {
 			}
 			return;
 		}
+		accepted = socket;
 		try {
 			final InputStream in = socket.getInputStream();
 			final OutputStream out = socket.getOutputStream();
@@ -221,6 +304,7 @@ public final class ConnectorTest {
 	private volatile boolean stopping;
 	private volatile IOException failure;
 	private volatile String reply;
+	private volatile Socket accepted;
 	private Connector connector;
 	private final BlockingQueue<String> received = new LinkedBlockingQueue<String>();
 	private final BlockingQueue<InData> events = new LinkedBlockingQueue<InData>();

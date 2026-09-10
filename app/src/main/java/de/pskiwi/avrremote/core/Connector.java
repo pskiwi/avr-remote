@@ -60,18 +60,28 @@ public final class Connector implements ISender, IConnector {
 		 * ihn stünde read() für immer, auch auf einem Socket, den das Netz
 		 * längst gekappt hat, ohne dass ein FIN angekommen wäre.
 		 *
-		 * @param count
-		 *            bereits gelesene Zeichen der laufenden Zeile
+		 * Das gilt mitten in einer Zeile genauso wie am Zeilenanfang. Die halb
+		 * gelesene Nachricht geht dabei verloren, und das ist richtig so: wenn
+		 * die Verbindung aufgegeben wird, ist sie nicht mehr zu retten. Sie
+		 * stehenzulassen hieße, den Watchdog für den Rest der Zeile
+		 * abzuschalten - und eine Verbindung, die nach dem ersten Byte einer
+		 * Zeile stirbt, hinge dann für immer.
+		 *
 		 * @return -1, wenn die Verbindung aufgegeben wird - wie ein Stream-Ende
 		 */
-		private int readChar(int count) throws IOException {
+		private int readChar() throws IOException {
 			while (true) {
 				try {
-					return in.read();
+					final int ch = in.read();
+					if (ch != -1) {
+						// jedes Byte ist ein Lebenszeichen, nicht erst die
+						// vollständige Zeile
+						idleMillis = 0;
+						probeSentAt = NO_PROBE;
+					}
+					return ch;
 				} catch (SocketTimeoutException x) {
-					// mitten in einer Zeile weiterwarten, sonst ginge die halb
-					// gelesene Nachricht verloren
-					if (count == 0 && !stillAlive()) {
+					if (!stillAlive()) {
 						return -1;
 					}
 				}
@@ -81,12 +91,21 @@ public final class Connector implements ISender, IConnector {
 		/**
 		 * Zählt die Stille und klopft einmal an, bevor die Verbindung
 		 * aufgegeben wird. Gezählt wird in Timeout-Schritten, nicht nach Uhr:
-		 * gemeint ist "wir waren wach und haben nichts gehört", und die Uhr
-		 * liefe auch weiter, während Doze den Thread einfriert.
+		 * gemeint ist "wir waren wach und haben nichts gehört", und ein
+		 * eingefrorener Thread zählt dann gar nicht, während die Uhr weiterliefe.
 		 *
 		 * @return false, wenn auch die Probe unbeantwortet blieb
 		 */
 		private boolean stillAlive() {
+			// Zuständig ist der Watchdog für Verbindungen, die verstummt sind.
+			// Eine, die noch nie etwas gesagt hat, gehört dem Ventil in
+			// ResilentConnector: sonst räumt er alle IDLE_PROBE+PROBE_GRACE ab,
+			// was jenes gerade erst durchgelassen hat, und ein Receiver, der
+			// grundsätzlich nicht antwortet, flattert dauerhaft statt wie
+			// vorher eine stabile (wenn auch stumme) Verbindung zu halten.
+			if (firstDataSignal.getCount() > 0) {
+				return true;
+			}
 			idleMillis += readTimeout;
 			if (idleMillis < idleProbe) {
 				return true;
@@ -108,20 +127,20 @@ public final class Connector implements ISender, IConnector {
 
 		public InData read() throws IOException {
 			final char[] line = new char[MAX_LINE];
-			int ch = readChar(0);
+			int ch = readChar();
 			int count;
 			do {
 				count = 0;
 				while (ch != -1 && !detectCR(line, count, ch)
 						&& count < MAX_LINE) {
 					line[count++] = (char) ch;
-					ch = readChar(count);
+					ch = readChar();
 				}
 				if (count == MAX_LINE) {
 					// read garbage
 					// avr braucht restart ???
 					while (ch != -1 && ch != CR) {
-						ch = readChar(count);
+						ch = readChar();
 					}
 					Logger.error("max input size exeeded ! ["
 							+ new String(line, 0, count) + "]", null);
@@ -150,9 +169,6 @@ public final class Connector implements ISender, IConnector {
 						Logger.info("receiver socket closed -> return");
 						return;
 					}
-					// Lebenszeichen - der Stille-Zähler fängt von vorne an
-					idleMillis = 0;
-					probeSentAt = NO_PROBE;
 					Logger.debug("RECEIVED [" + val.toDebugString() + "] "
 							+ (listener != null ? "" : "unregistered"));
 					if (!val.isEmpty()) {
