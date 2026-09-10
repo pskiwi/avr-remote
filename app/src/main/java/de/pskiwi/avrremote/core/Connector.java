@@ -21,8 +21,10 @@ import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import de.pskiwi.avrremote.log.Logger;
 
@@ -51,22 +53,94 @@ public final class Connector implements ISender, IConnector {
 
 		}
 
+		/**
+		 * Liest ein Zeichen und überbrückt dabei den Lese-Timeout. Der ist
+		 * nicht dazu da, eine Antwort zu erzwingen - von sich aus sendet ein
+		 * Receiver nichts -, sondern damit Schweigen überhaupt auffällt: ohne
+		 * ihn stünde read() für immer, auch auf einem Socket, den das Netz
+		 * längst gekappt hat, ohne dass ein FIN angekommen wäre.
+		 *
+		 * Das gilt mitten in einer Zeile genauso wie am Zeilenanfang. Die halb
+		 * gelesene Nachricht geht dabei verloren, und das ist richtig so: wenn
+		 * die Verbindung aufgegeben wird, ist sie nicht mehr zu retten. Sie
+		 * stehenzulassen hieße, den Watchdog für den Rest der Zeile
+		 * abzuschalten - und eine Verbindung, die nach dem ersten Byte einer
+		 * Zeile stirbt, hinge dann für immer.
+		 *
+		 * @return -1, wenn die Verbindung aufgegeben wird - wie ein Stream-Ende
+		 */
+		private int readChar() throws IOException {
+			while (true) {
+				try {
+					final int ch = in.read();
+					if (ch != -1) {
+						// jedes Byte ist ein Lebenszeichen, nicht erst die
+						// vollständige Zeile
+						idleMillis = 0;
+						probeSentAt = NO_PROBE;
+					}
+					return ch;
+				} catch (SocketTimeoutException x) {
+					if (!stillAlive()) {
+						return -1;
+					}
+				}
+			}
+		}
+
+		/**
+		 * Zählt die Stille und klopft einmal an, bevor die Verbindung
+		 * aufgegeben wird. Gezählt wird in Timeout-Schritten, nicht nach Uhr:
+		 * gemeint ist "wir waren wach und haben nichts gehört", und ein
+		 * eingefrorener Thread zählt dann gar nicht, während die Uhr weiterliefe.
+		 *
+		 * @return false, wenn auch die Probe unbeantwortet blieb
+		 */
+		private boolean stillAlive() {
+			// Zuständig ist der Watchdog für Verbindungen, die verstummt sind.
+			// Eine, die noch nie etwas gesagt hat, gehört dem Ventil in
+			// ResilentConnector: sonst räumt er alle IDLE_PROBE+PROBE_GRACE ab,
+			// was jenes gerade erst durchgelassen hat, und ein Receiver, der
+			// grundsätzlich nicht antwortet, flattert dauerhaft statt wie
+			// vorher eine stabile (wenn auch stumme) Verbindung zu halten.
+			if (firstDataSignal.getCount() > 0) {
+				return true;
+			}
+			idleMillis += readTimeout;
+			if (idleMillis < idleProbe) {
+				return true;
+			}
+			if (probeSentAt == NO_PROBE) {
+				probeSentAt = idleMillis;
+				Logger.info("nothing received for " + idleMillis
+						+ "ms -> probing");
+				doSend(ALIVE_PROBE);
+				return true;
+			}
+			if (idleMillis - probeSentAt < probeGrace) {
+				return true;
+			}
+			Logger.error("no answer to the probe after " + idleMillis
+					+ "ms -> closing the connection", null);
+			return false;
+		}
+
 		public InData read() throws IOException {
 			final char[] line = new char[MAX_LINE];
-			int ch = in.read();
+			int ch = readChar();
 			int count;
 			do {
 				count = 0;
 				while (ch != -1 && !detectCR(line, count, ch)
 						&& count < MAX_LINE) {
 					line[count++] = (char) ch;
-					ch = in.read();
+					ch = readChar();
 				}
 				if (count == MAX_LINE) {
 					// read garbage
 					// avr braucht restart ???
 					while (ch != -1 && ch != CR) {
-						ch = in.read();
+						ch = readChar();
 					}
 					Logger.error("max input size exeeded ! ["
 							+ new String(line, 0, count) + "]", null);
@@ -87,13 +161,21 @@ public final class Connector implements ISender, IConnector {
 				try {
 					final InData val = read();
 					if (val == null) {
-						socket.close();
+						// close() statt socket.close(): sonst bleibt der
+						// Sender-Thread in take() stehen und überlebt die
+						// Verbindung, die er bedient hat
+						Connector.this.close();
 						closeSignal.countDown();
 						Logger.info("receiver socket closed -> return");
 						return;
 					}
 					Logger.debug("RECEIVED [" + val.toDebugString() + "] "
 							+ (listener != null ? "" : "unregistered"));
+					if (!val.isEmpty()) {
+						// jedes Datum zählt als Lebenszeichen, nicht nur die
+						// Antwort auf ALIVE_PROBE - siehe awaitResponse()
+						firstDataSignal.countDown();
+					}
 					if (listener != null && val != null && !val.isEmpty()) {
 						listener.received(val);
 					}
@@ -110,7 +192,12 @@ public final class Connector implements ISender, IConnector {
 			}
 		}
 
+		// nur vom Receiver-Thread gelesen und geschrieben
+		private int idleMillis;
+		private int probeSentAt = NO_PROBE;
+
 		private static final int MAX_LINE = 256;
+		private static final int NO_PROBE = -1;
 	}
 
 	private final class Sender implements Runnable {
@@ -144,11 +231,27 @@ public final class Connector implements ISender, IConnector {
 
 	public Connector(ConnectionConfiguration connectionConfiguration,
 			int sendDelay, IEventListener eventListener) throws Exception {
+		this(connectionConfiguration, sendDelay, eventListener,
+				HANDSHAKE_TIMEOUT, READ_TIMEOUT, IDLE_PROBE, PROBE_GRACE);
+	}
+
+	// Paketprivat mit expliziten Zeiten, damit ConnectorTest "der Receiver
+	// antwortet nicht" und "die Verbindung verstummt" in Millisekunden
+	// durchspielen kann statt in Sekunden und Minuten. Gleiches Muster wie
+	// ResilentConnector.ThreadHandler und ModelConfigurator.createModel(String).
+	Connector(ConnectionConfiguration connectionConfiguration, int sendDelay,
+			IEventListener eventListener, int handshakeTimeout,
+			int readTimeout, int idleProbe, int probeGrace) throws Exception {
 		this.connectionConfiguration = connectionConfiguration;
 		this.sendDelay = sendDelay;
+		this.handshakeTimeout = handshakeTimeout;
+		this.readTimeout = readTimeout;
+		this.idleProbe = idleProbe;
+		this.probeGrace = probeGrace;
 		listener = eventListener;
 		socket = new Socket();
 		socket.setTcpNoDelay(true);
+		socket.setSoTimeout(readTimeout);
 		socket.connect(connectionConfiguration.getSocketAddress(),
 				AVR_CONNECT_TIMEOUT);
 
@@ -223,6 +326,23 @@ public final class Connector implements ISender, IConnector {
 		closeSignal.await();
 	}
 
+	/**
+	 * Fragt den Receiver etwas und wartet auf sein erstes Datum. Ein
+	 * geglückter Connect allein sagt nichts: der Receiver erlaubt nur eine
+	 * Sitzung und nimmt den Socket auch dann an, wenn er noch eine alte hält -
+	 * er schweigt danach nur. Ohne diese Prüfung gilt die Verbindung als
+	 * hergestellt, und die Oberfläche bleibt grau, weil nie ein Status kommt.
+	 *
+	 * ALIVE_PROBE ist die Power-Abfrage, weil sie als einzige von jedem Modell
+	 * und in jedem Zustand beantwortet wird - im Standby mit PWSTANDBY.
+	 *
+	 * @return false, wenn innerhalb der Wartezeit nichts kam
+	 */
+	public boolean awaitResponse() throws InterruptedException {
+		doSend(ALIVE_PROBE);
+		return firstDataSignal.await(handshakeTimeout, TimeUnit.MILLISECONDS);
+	}
+
 	public void close() {
 		Logger.info("close socket ...");
 		try {
@@ -272,9 +392,25 @@ public final class Connector implements ISender, IConnector {
 	private final Thread sendThread;
 	private final ConnectionConfiguration connectionConfiguration;
 	private final int sendDelay;
+	private final int handshakeTimeout;
+	private final int readTimeout;
+	private final int idleProbe;
+	private final int probeGrace;
 	private final ArrayBlockingQueue<String> sendQueue = new ArrayBlockingQueue<String>(
 			MAX_QUEUE_SIZE);
 	private final CountDownLatch closeSignal = new CountDownLatch(1);
+	private final CountDownLatch firstDataSignal = new CountDownLatch(1);
 	private static final int AVR_CONNECT_TIMEOUT = 2500;
+	// Im Feld liegen zwischen Connect und erster Antwort Millisekunden;
+	// reichlich Luft für ein WLAN, das gerade aus dem Powersave kommt.
+	private static final int HANDSHAKE_TIMEOUT = 3000;
+	// Taktrate des Receiver-Threads, wenn nichts hereinkommt - nicht die
+	// Zeit, nach der etwas passiert, das sind IDLE_PROBE und PROBE_GRACE.
+	private static final int READ_TIMEOUT = 5000;
+	// so lange darf es still sein, bevor nachgefragt wird ...
+	private static final int IDLE_PROBE = 60000;
+	// ... und so lange darf die Antwort darauf ausbleiben
+	private static final int PROBE_GRACE = 10000;
+	private static final String ALIVE_PROBE = "PW?";
 	private final static int MAX_QUEUE_SIZE = 100;
 }

@@ -90,6 +90,86 @@ Two of those guards need more than a check:
   ping and port timeouts. The guard narrows the window; what actually closes it is
   `publishConnector()` underneath.
 
+## A connect is not a connection
+
+The receiver allows exactly one telnet session. It still accepts the *socket* for a second one and
+then says nothing on it — and it holds a session that no longer exists for as long as it pleases,
+because nothing on the phone closed it. Nothing could: Android kills the process on a package
+update the same way it does on a force-stop, so no `onDestroy`, no `onTerminate` and no `finally`
+runs. The kernel sends the FIN in the app's place — unless the Wi-Fi is asleep, off or out of
+range at that moment, and then the receiver never learns that the session ended. The user updates
+the app, opens it, and the one session is taken by a ghost.
+
+`Socket.connect()` succeeding says nothing about any of that, so two things check what it does not.
+
+**The handshake.** `Connector.awaitResponse()` sends `PW?` and waits `HANDSHAKE_TIMEOUT` (3 s) for
+the first data of any kind. `PW?` because every model answers it in every state — a receiver in
+standby replies `PWSTANDBY`, which is where `StatusFlag.Power` comes from in the first place. *Any*
+data counts, not only the reply, so a model that pushes state by itself passes too.
+`Reconnector.run()` calls it before `publishConnector()`, and a failure throws `IOException`
+straight into the backoff that was already there.
+
+**An interrupt inside that wait has to close the connector by hand.** `forceReconnect()` fires at
+any moment and `awaitResponse()` blocks for seconds, so this is not a corner case. The connector is
+not published at that point, the shared field still holds `NULL_CONNECTOR`, and `stopConnector()`
+therefore closes nothing — the socket and its two daemon threads would stay alive and keep holding
+the one session the next attempt is about to ask for. Before the handshake existed there was
+nothing interruptible between `new Connector(...)` and `publishConnector(...)`; the sleep inside
+the constructor is covered by its own `finally`.
+
+It has a safety valve: after `MAX_SILENT_CONNECTS` (3) consecutive silent connects the connection
+is used anyway, and a `Logger.error` line records that it was. 60 model classes and one receiver to
+test against — a check this deep in the connect path must not be able to make a device permanently
+unusable that worked before. The counter sits in the `Reconnector` next to `reconnectDelayIndex`,
+so a `forceReconnect()` deliberately starts over.
+
+**The read watchdog.** The socket carries `setSoTimeout(READ_TIMEOUT)` (5 s), which is a tick rate
+and not a deadline — receivers send nothing on their own, so a quiet connection is normal. After
+`IDLE_PROBE` (60 s) without a single byte the receiver thread sends one `PW?` itself; if
+`PROBE_GRACE` (10 s) passes with no answer it closes the connection and the reconnect loop builds a
+new one. This is the only thing that notices a socket Doze or a network change severed silently:
+`Socket.isConnected()` never will, see *Who decides when to hang up* below.
+
+Silence is counted in timeout ticks rather than by the clock, because the question is "were we
+awake and heard nothing": a frozen thread stops counting, where the clock would run on. That helps
+only where the process really is frozen, though. In a plain Doze window the thread keeps waking
+every tick while the network is suspended, so the ticks accumulate normally and the watchdog takes
+down a connection that might have survived to the next maintenance window — after which the
+reconnect loop retries through its backoff for as long as Doze lasts. Not measured on a device yet;
+with a long disconnect time the screen-off case is the one to watch.
+
+Three rules in the reading loop are load-bearing:
+
+- **A connection that has never said anything is left alone.** `stillAlive()` returns early while
+  `firstDataSignal` has not fired. That case belongs to the valve above, not to the watchdog:
+  without the rule the watchdog would tear down every 70 s exactly what the valve just let through,
+  the valve would let the next one through again — `silentConnects` never resets once it has
+  latched — and a receiver that answers nothing would flap forever, where before it at least held
+  one stable connection that still carried commands.
+- **A timeout in the middle of a line gives up like any other.** The half-read message is lost, and
+  that is right: the connection is being abandoned. Keeping it would mean switching the watchdog
+  off for the rest of the line, and a connection that dies one byte into a message would hang for
+  good. Every byte read resets the idle count, so a slow-but-alive sender is never mistaken for a
+  dead one.
+- **The teardown calls `Connector.close()`, not `socket.close()`**, because only that also
+  interrupts the sender — otherwise it stays parked in `sendQueue.take()` and outlives the
+  connection it served. That leak predates the watchdog; the watchdog just reaches the path often
+  enough for it to matter.
+
+In a log a receiver holding a stale session now looks like this, instead of like a healthy start:
+
+```
+#81  [ResilentThreadHandler-2]   Reconnector:build new connection to [192.168.10.30]
+#145 [sender]                    SEND [PW?]
+#146 [ResilentThreadHandler-2]   Reconnector:IOException [192.168.10.30]
+        java.io.IOException: no answer from [192.168.10.30] after connect (1)
+```
+
+The `SEND` line is the sender thread's, not the reconnect thread's — `awaitResponse()` only queues
+the probe. What makes this readable at all is that there is no `RECEIVED` line between the two.
+
+`core/ConnectorTest` covers all of it on the JVM against a fake receiver on a local `ServerSocket`.
+
 ## Who decides when to hang up
 
 `ActiveHandler` is the only owner of the disconnect policy. `AVRApplication.activityResumed()` and
@@ -108,7 +188,10 @@ Two of those guards need more than a check:
 The 60 s are a cap, not the window, and the reason for the cap is that the disconnect time may be
 set as high as two hours while `isRunning()` is only worth seconds: it rests on
 `Socket.isConnected()`, which stays `true` forever once a connect succeeded, including for a socket
-Doze severed long ago. The shortcut is for rotation, dialogs and tab switches.
+Doze severed long ago. The shortcut is for rotation, dialogs and tab switches. The read watchdog
+does take such a socket down now, but only some 70 s after it went quiet and only while the
+receiver thread is really running — which in the background is exactly what is not guaranteed. So
+the cap stays.
 
 `StopConnectorTask` also checks whether an activity became active again before it fires, and
 reconnects itself if a resume slipped in between its check and the stop. Both belong to the Doze
