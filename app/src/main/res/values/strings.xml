@@ -56,6 +56,16 @@
 		(If this does not help,
 		switch off power.)
 	</string>
+	<string name="AVRControlPortBusy">
+		<b>The receiver answers, but its control channel is busy.</b>
+		\n
+		A receiver accepts only one control connection at a time, and it is
+		still holding one, from another app, another device, or a session that
+		was never closed.\n
+		What reliably frees it: unplug the receiver for a minute.\n
+		(Standby is often not enough, because the network stays awake - but you
+		can let the app try that first.)
+	</string>
 	<string name="TryAutoRestart">Automatic</string>
 	<string name="TryToConnect">Manual</string>
 
