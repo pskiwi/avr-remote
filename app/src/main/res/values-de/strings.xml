@@ -63,6 +63,16 @@
 		(Falls dies nicht funktioniert, sollten Sie den Receiver
 		komplette aus- und einschalten.)
 	</string>
+	<string name="AVRControlPortBusy">
+		<b>Der Receiver antwortet, aber sein Steuerkanal ist belegt.</b>
+		\n
+		Ein Receiver lässt nur eine Steuerverbindung gleichzeitig zu, und er
+		hält noch eine: von einer anderen App, einem anderen Gerät oder aus
+		einer Sitzung, die nie geschlossen wurde.\n
+		Das hilft zuverlässig: den Receiver eine Minute vom Strom trennen.\n
+		(Standby genügt oft nicht, weil das Netzwerk dabei wach bleibt - Sie
+		können es die App aber zuerst versuchen lassen.)
+	</string>
 	<string name="TryAutoRestart">Automatisch</string>
 	<string name="TryToConnect">Manuell</string>
 
