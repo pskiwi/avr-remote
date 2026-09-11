@@ -169,6 +169,31 @@ cosmetic. Setting cascades the other way: `Power` implies `Connected` implies `R
 `AVR4308`, `AVR4810`, `AVR5805` — those controls stayed enabled after the connection dropped while
 zones 1–3 greyed out. Worth knowing when reading an older log.
 
+### `Reachable` says nothing about port 23
+
+`AVRTargetTester.testAddress()` pings, tests **port 80**, and for the scan also 5000/6666 (or
+8080 + 111 on 2016-and-later models). The control port is never probed. So the app can report a
+receiver as reachable while the one port it needs is refusing — and the *Connectivity Problem*
+dialog then says "the receiver is not responding", which is simply untrue.
+
+That case has its own text since September 2026. `Reconnector` sets `controlPortBusy` when a
+connect fails while ping and port 80 answer, and `ConfigurationAssistant` picks
+`AVRControlPortBusy` over `AVRReset` accordingly: the receiver is there, its one control session is
+taken — by another app, another device, or one that was never closed — and only cutting mains
+power reliably frees it. Standby usually does not, because the network stays awake; that is why
+the dialog's "Automatic" button, which sends an HTTP standby/on cycle, often leaves the user
+exactly where they were (issue #11).
+
+The flag is deliberately a *message* selector and nothing more — it feeds no `StatusFlag` and
+changes no connect behaviour. It also decides whether the dialog appears at all: `checkStatus()`
+routes to `checkReset()` on `Reachable` **or** `controlPortBusy`, because `Reachable` additionally
+demands the UPnP ports, and without that a newer model would get the "configure your IP" dialog
+for an address we had just been talking to.
+
+Why a dialog and not a log line: `debugMode` defaults to `adb`, so there is no file log on a
+normal installation and no way to ask for one after the fact. Whatever the app does not say on
+screen is lost.
+
 ## Reading a log
 
 `log/SDLogger` writes it, `log/FeedbackReporter` mails it. One line looks like this, and a message
