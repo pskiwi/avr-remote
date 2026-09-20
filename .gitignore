@@ -5,3 +5,9 @@ build
 local.properties
 version.xml
 *.log
+.claude/worktrees/
+.claude/settings.local.json
+.DS_Store
+captures/
+*.jks
+*.keystore
