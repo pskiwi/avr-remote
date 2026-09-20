@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Die Reiter-Grafiken der Plattform sind nicht oeffentlich und sehen je nach
+     Android-Version anders aus: ein Tint darueber wurde auf Android 11 orangerot
+     und auf Android 17 gedaempft rot. Deshalb ein eigenes Drawable - der aktive
+     Reiter traegt einen Balken in der Akzentfarbe, alles andere bleibt dunkel. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item android:state_selected="true">
+        <layer-list>
+            <item>
+                <shape>
+                    <gradient
+                        android:startColor="#3A3A3A"
+                        android:endColor="#232323"
+                        android:angle="270" />
+                </shape>
+            </item>
+            <item android:gravity="bottom">
+                <shape>
+                    <size android:height="4dp" />
+                    <solid android:color="@color/accent" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+
+    <item android:state_pressed="true">
+        <shape>
+            <gradient
+                android:startColor="#4A4A4A"
+                android:endColor="#2E2E2E"
+                android:angle="270" />
+        </shape>
+    </item>
+
+    <item>
+        <shape>
+            <gradient
+                android:startColor="#242424"
+                android:endColor="#141414"
+                android:angle="270" />
+        </shape>
+    </item>
+
+</selector>
