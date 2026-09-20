@@ -39,6 +39,38 @@ public final class HTTPSupport {
 		return execute(url, null);
 	}
 
+	/**
+	 * Liefert die URL eine Seite aus? Es zählt nur der Statuscode, der Body
+	 * wird nicht gelesen. Kein HEAD: die betagten Receiver-Webserver
+	 * beantworten zuverlässig nur GET und POST.
+	 *
+	 * Ein unbekannter Pfad beantwortet der GoAhead-Webs der Receiver mit 404
+	 * ("Site or Page Not Found"), nachgemessen an einem Receiver der 08er-
+	 * Serie. Auf dem Server sitzt jede Generation, das Verhalten ist also
+	 * nicht modellspezifisch.
+	 */
+	public static boolean exists(String url) {
+		// vor dem Request loggen, aus demselben Grund wie in execute()
+		Logger.debug("EXISTS [" + url + "] ...");
+		try {
+			final HttpURLConnection connection = (HttpURLConnection) new URL(
+					url).openConnection();
+			try {
+				connection.setConnectTimeout(CONNECT_TIMEOUT);
+				connection.setReadTimeout(READ_TIMEOUT);
+				connection.setRequestProperty("Accept-Encoding", "identity");
+				final int code = connection.getResponseCode();
+				Logger.debug("EXISTS [" + url + "] code:" + code);
+				return code == HttpURLConnection.HTTP_OK;
+			} finally {
+				connection.disconnect();
+			}
+		} catch (IOException e) {
+			Logger.error("EXISTS [" + url + "] failed", e);
+			return false;
+		}
+	}
+
 	/** POST mit application/x-www-form-urlencoded-Body. */
 	public static byte[] postForm(String url, Map<String, String> formParams)
 			throws IOException {

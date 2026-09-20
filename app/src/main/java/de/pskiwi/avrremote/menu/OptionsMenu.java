@@ -38,6 +38,7 @@ import de.pskiwi.avrremote.RenameActivity;
 import de.pskiwi.avrremote.core.ConnectionConfiguration;
 import de.pskiwi.avrremote.core.Zone;
 import de.pskiwi.avrremote.core.ZoneState;
+import de.pskiwi.avrremote.http.HTTPSupport;
 import de.pskiwi.avrremote.log.FeedbackReporter;
 import de.pskiwi.avrremote.log.Logger;
 import de.pskiwi.avrremote.models.ModelConfigurator;
@@ -194,17 +195,45 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 	public void openPDAMenu() {
 		final ConnectionConfiguration connectionConfig = configurator
 				.getConnectionConfig();
-		if (connectionConfig.isDefined()) {
-			final Intent i = new Intent(Intent.ACTION_VIEW);
-
-			String pdaWeb = AVRSettings.getPDAWeb(activity);
-			if (pdaWeb.startsWith("/") && pdaWeb.length() > 1) {
-				pdaWeb = pdaWeb.substring(1);
-			}
-			final Uri uri = Uri.parse(connectionConfig.getBaseURL() + pdaWeb);
-			i.setData(uri);
-			activity.startActivity(i);
+		if (!connectionConfig.isDefined()) {
+			return;
 		}
+		final String baseURL = connectionConfig.getBaseURL();
+
+		String pdaWeb = AVRSettings.getPDAWeb(activity);
+		if (pdaWeb.startsWith("/") && pdaWeb.length() > 1) {
+			pdaWeb = pdaWeb.substring(1);
+		}
+		if (pdaWeb.length() == 0) {
+			openURL(baseURL);
+			return;
+		}
+
+		// Der voreingestellte Pfad /IPHONE/top.asp existiert nur auf den
+		// älteren Receivern; neuere liefern ihn nicht aus, und der Browser
+		// zeigte dann nur eine Fehlerseite (Feedback zum AVR-1912, 09/2026).
+		// Deshalb im Hintergrund prüfen und sonst die Startseite öffnen.
+		final String pageURL = baseURL + pdaWeb;
+		new Thread("CheckReceiverWebsite") {
+			@Override
+			public void run() {
+				final String url = HTTPSupport.exists(pageURL) ? pageURL
+						: baseURL;
+				activity.runOnUiThread(new Runnable() {
+					public void run() {
+						if (showing.isShowing()) {
+							openURL(url);
+						}
+					}
+				});
+			}
+		}.start();
+	}
+
+	private void openURL(String url) {
+		final Intent i = new Intent(Intent.ACTION_VIEW);
+		i.setData(Uri.parse(url));
+		activity.startActivity(i);
 	}
 
 	private void showAbout() {

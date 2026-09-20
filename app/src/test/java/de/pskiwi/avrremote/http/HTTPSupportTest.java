@@ -185,6 +185,26 @@ public final class HTTPSupportTest {
 		assertEquals(responseBody, new String(content, "UTF-8"));
 	}
 
+	/**
+	 * exists() entscheidet, ob der Menüpunkt "Receiver website" den
+	 * eingestellten Pfad oder die Startseite öffnet. Der Body bleibt dabei
+	 * ungelesen, der Statuscode ist alles.
+	 */
+	@Test
+	public void existsIsTrueForOkAndSendsGet() throws Exception {
+		assertTrue(HTTPSupport.exists(baseURL + "/IPHONE/top.asp"));
+
+		assertEquals("GET /IPHONE/top.asp HTTP/1.1", requestLine());
+	}
+
+	/** Der Fall aus dem Feedback: neuere Receiver kennen die Seite nicht. */
+	@Test
+	public void existsIsFalseForNotFound() throws Exception {
+		responseStatus = "404 Not Found";
+
+		assertFalse(HTTPSupport.exists(baseURL + "/IPHONE/top.asp"));
+	}
+
 	private String requestLine() {
 		return request.substring(0, request.indexOf("\r\n"));
 	}
