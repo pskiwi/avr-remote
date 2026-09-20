@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Context;
@@ -148,6 +149,14 @@ public final class AVRScanner {
 			protected List<ScanResult> doInBackground(InetAddress... params) {
 				Logger.setLocation("scan-1a");
 				try {
+					// Erst fragen, dann suchen: SSDP hat die Antwort in
+					// Sekunden, der Sweep braucht Minuten und trifft ohnehin
+					// nur Netze ab /24.
+					final List<ScanResult> viaSSDP = scanSSDP();
+					if (!viaSSDP.isEmpty()) {
+						return viaSSDP;
+					}
+					Logger.info("SSDP found nothing, falling back to sweep");
 					return scanNetwork(ip, prefixLength);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -171,6 +180,22 @@ public final class AVRScanner {
 			}
 		};
 		asyncTask.execute();
+	}
+
+	/**
+	 * Jede Adresse, die auf SSDP geantwortet hat, durch denselben Filter wie der
+	 * Sweep schicken - Drucker, Fernseher und Router antworten genauso.
+	 */
+	private List<ScanResult> scanSSDP() {
+		final List<ScanResult> result = new ArrayList<ScanResult>();
+		for (InetAddress candidate : SSDPDiscovery.search()) {
+			if (AVRTargetTester.testAddress(candidate, false)) {
+				result.add(new ScanResult(candidate));
+			} else {
+				Logger.debug("SSDP: not an AVR " + candidate.getHostAddress());
+			}
+		}
+		return result;
 	}
 
 	private List<ScanResult> scanNetwork(InetAddress i4, int prefixLength)
@@ -223,10 +248,13 @@ public final class AVRScanner {
 		return result;
 	}
 
-	public static void scanIP(final Context ctx,
+	public static void scanIP(final Activity ctx,
 			final IActivityShowing showing, final AVRApplication app,
 			final Runnable runFinished, final int nr) {
 		try {
+			// Der Scan ist ueber das Menue und den Einrichtungs-Assistenten
+			// erreichbar, ohne dass AVRRemote.onCreate gelaufen waere.
+			AVRSettings.requestLocalNetworkPermission(ctx);
 			final IScanResultHandler resultHandler = new AVRScanner.IScanResultHandler() {
 
 				public void finished(final List<ScanResult> result) {

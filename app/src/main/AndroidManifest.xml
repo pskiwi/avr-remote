@@ -16,6 +16,9 @@
     </uses-permission>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" >
     </uses-permission>
+    <!-- Local Network Protection, Pflicht ab Android 17 (targetSdk 37). Ohne sie
+         ist jeder Socket ins lokale Netz tot, nicht nur der Suchlauf. -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application

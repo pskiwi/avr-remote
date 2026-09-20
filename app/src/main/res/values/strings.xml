@@ -120,6 +120,8 @@
 	</string>
 
 
+	<string name="LocalNetworkPermission">AVR-Remote finds and controls your receiver in your local network. Without access to it, neither the search nor the connection works.</string>
+
 	<string name="ScanForReceiver">Scan for receiver</string>
 	<string name="ScanForReceiver2">Scan for 2. receiver</string>
 	<string name="ResetReceiver">Restart receiver(reset)</string>

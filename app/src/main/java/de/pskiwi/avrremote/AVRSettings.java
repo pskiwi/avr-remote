@@ -126,6 +126,46 @@ public final class AVRSettings extends PreferenceActivity implements
 		}
 	}
 
+	/**
+	 * Fragt ACCESS_LOCAL_NETWORK an. Ab Android 17 (targetSdk 37) haelt Local
+	 * Network Protection ohne sie jeden Socket ins lokale Netz auf - also auch
+	 * Telnet 23 und das HTTP-Scraping, nicht nur den Suchlauf. Deshalb sitzt der
+	 * Aufruf beim Start der App und nicht erst am Scan.
+	 *
+	 * Die Begruendung kommt nur, wenn Android sie verlangt - also nach einer
+	 * vorherigen Ablehnung. Beim ersten Mal ist der System-Dialog selbst die
+	 * Frage.
+	 */
+	public static void requestLocalNetworkPermission(final Activity activity) {
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.CINNAMON_BUN) {
+			return;
+		}
+		// Erst hinter der Versionsabfrage lesen: der Compiler setzt die
+		// Konstante zwar ein, aber sonst meldet Lint sie als InlinedApi.
+		final String permission = android.Manifest.permission.ACCESS_LOCAL_NETWORK;
+		if (activity.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) {
+			return;
+		}
+		if (activity.shouldShowRequestPermissionRationale(permission)) {
+			new AlertDialog.Builder(activity)
+					.setTitle(R.string.app_name)
+					.setMessage(R.string.LocalNetworkPermission)
+					.setInverseBackgroundForced(true)
+					.setNeutralButton(R.string.OK,
+							new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog,
+										int which) {
+									activity.requestPermissions(
+											new String[] { permission },
+											REQUEST_ACCESS_LOCAL_NETWORK);
+								}
+							}).show();
+		} else {
+			activity.requestPermissions(new String[] { permission },
+					REQUEST_ACCESS_LOCAL_NETWORK);
+		}
+	}
+
 	@Override
 	protected void onResume() {
 		super.onResume();
@@ -446,6 +486,7 @@ public final class AVRSettings extends PreferenceActivity implements
 	private final static String NOTIFICATION_KEY = "AVRNotification";
 	protected static final int SELECT_IMAGE = 6789;
 	public static final int REQUEST_POST_NOTIFICATIONS = 1;
+	public static final int REQUEST_ACCESS_LOCAL_NETWORK = 2;
 	
 	public static final int MAX_RECEIVERS = 3;
 

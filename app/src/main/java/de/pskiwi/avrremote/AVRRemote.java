@@ -108,6 +108,7 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 		if (savedInstanceState == null) {
 			// nicht bei jeder Drehung erneut anfragen
 			AVRSettings.requestNotificationPermission(this);
+			AVRSettings.requestLocalNetworkPermission(this);
 		}
 
 		Logger.setLocation("AVRRemote-onCreate-2");
@@ -225,11 +226,17 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 	public void onRequestPermissionsResult(int requestCode, String[] permissions,
 			int[] grantResults) {
 		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-		if (requestCode == AVRSettings.REQUEST_POST_NOTIFICATIONS
-				&& grantResults.length > 0
-				&& grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+		if (grantResults.length == 0
+				|| grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+			return;
+		}
+		if (requestCode == AVRSettings.REQUEST_POST_NOTIFICATIONS) {
 			// Benachrichtigung nachziehen, die beim Start noch verworfen wurde
 			getApp().getStatusbarManager().update();
+		} else if (requestCode == AVRSettings.REQUEST_ACCESS_LOCAL_NETWORK) {
+			// Der Verbindungsversuch beim Start lief ohne die Permission und
+			// ist unter Local Network Protection ins Leere gegangen
+			getApp().getConnector().triggerReconnect();
 		}
 	}
 
