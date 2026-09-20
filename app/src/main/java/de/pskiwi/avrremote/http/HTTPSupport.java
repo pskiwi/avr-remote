@@ -40,7 +40,7 @@ public final class HTTPSupport {
 	}
 
 	/**
-	 * Liefert die URL eine Seite aus? Es zählt nur der Statuscode, der Body
+	 * Statuscode der URL, oder -1 wenn der Receiver nicht antwortet. Der Body
 	 * wird nicht gelesen. Kein HEAD: die betagten Receiver-Webserver
 	 * beantworten zuverlässig nur GET und POST.
 	 *
@@ -48,10 +48,15 @@ public final class HTTPSupport {
 	 * ("Site or Page Not Found"), nachgemessen an einem Receiver der 08er-
 	 * Serie. Auf dem Server sitzt jede Generation, das Verhalten ist also
 	 * nicht modellspezifisch.
+	 *
+	 * Umleitungen folgt die Verbindung von sich aus, wie überall sonst in
+	 * dieser Klasse: zurück kommt dann der Code der Zielseite. Das ist auch
+	 * die Absicht - leitet der Pfad auf etwas Gültiges weiter, tut der
+	 * Browser hinterher dasselbe.
 	 */
-	public static boolean exists(String url) {
+	public static int status(String url) {
 		// vor dem Request loggen, aus demselben Grund wie in execute()
-		Logger.debug("EXISTS [" + url + "] ...");
+		Logger.debug("STATUS [" + url + "] ...");
 		try {
 			final HttpURLConnection connection = (HttpURLConnection) new URL(
 					url).openConnection();
@@ -60,14 +65,16 @@ public final class HTTPSupport {
 				connection.setReadTimeout(READ_TIMEOUT);
 				connection.setRequestProperty("Accept-Encoding", "identity");
 				final int code = connection.getResponseCode();
-				Logger.debug("EXISTS [" + url + "] code:" + code);
-				return code == HttpURLConnection.HTTP_OK;
+				Logger.debug("STATUS [" + url + "] code:" + code);
+				return code;
 			} finally {
 				connection.disconnect();
 			}
 		} catch (IOException e) {
-			Logger.error("EXISTS [" + url + "] failed", e);
-			return false;
+			// erwartet, sobald der Receiver aus ist - kein Logger.error, das
+			// bläht nur die Logs auf, die Anwender einschicken
+			Logger.debug("STATUS [" + url + "] failed: " + e);
+			return NO_ANSWER;
 		}
 	}
 
@@ -147,7 +154,11 @@ public final class HTTPSupport {
 	private HTTPSupport() {
 	}
 
+	/** Rückgabe von status(), wenn gar keine Antwort kam. */
+	public static final int NO_ANSWER = -1;
+
 	private static final String FORM_CONTENT_TYPE = "application/x-www-form-urlencoded";
+
 	private static final int CONNECT_TIMEOUT = 5000;
 	private static final int READ_TIMEOUT = 4000;
 }

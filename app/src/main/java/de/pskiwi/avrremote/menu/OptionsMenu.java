@@ -29,6 +29,8 @@ import android.view.View;
 import android.widget.CheckBox;
 import android.widget.PopupMenu;
 
+import java.net.HttpURLConnection;
+
 import de.pskiwi.avrremote.AVRApplication;
 import de.pskiwi.avrremote.AVRSettings;
 import de.pskiwi.avrremote.AboutActivity;
@@ -217,13 +219,18 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 		new Thread("CheckReceiverWebsite") {
 			@Override
 			public void run() {
-				final String url = HTTPSupport.exists(pageURL) ? pageURL
+				// Nur eine klare Absage führt auf die Startseite. Bleibt der
+				// Receiver die Antwort schuldig - aus, oder im Netz gerade
+				// nicht erreichbar -, bleibt es beim eingestellten Pfad:
+				// verwerfen würde eine Einstellung, die der Anwender
+				// ausdrücklich gesetzt hat.
+				final int code = HTTPSupport.status(pageURL);
+				final String url = code == HTTPSupport.NO_ANSWER
+						|| code == HttpURLConnection.HTTP_OK ? pageURL
 						: baseURL;
 				activity.runOnUiThread(new Runnable() {
 					public void run() {
-						if (showing.isShowing()) {
-							openURL(url);
-						}
+						openURL(url);
 					}
 				});
 			}

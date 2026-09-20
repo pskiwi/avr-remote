@@ -186,23 +186,39 @@ public final class HTTPSupportTest {
 	}
 
 	/**
-	 * exists() entscheidet, ob der Menüpunkt "Receiver website" den
+	 * status() entscheidet, ob der Menüpunkt "Receiver website" den
 	 * eingestellten Pfad oder die Startseite öffnet. Der Body bleibt dabei
 	 * ungelesen, der Statuscode ist alles.
 	 */
 	@Test
-	public void existsIsTrueForOkAndSendsGet() throws Exception {
-		assertTrue(HTTPSupport.exists(baseURL + "/IPHONE/top.asp"));
+	public void statusReturnsCodeAndSendsGet() throws Exception {
+		assertEquals(200, HTTPSupport.status(baseURL + "/IPHONE/top.asp"));
 
 		assertEquals("GET /IPHONE/top.asp HTTP/1.1", requestLine());
 	}
 
 	/** Der Fall aus dem Feedback: neuere Receiver kennen die Seite nicht. */
 	@Test
-	public void existsIsFalseForNotFound() throws Exception {
+	public void statusReturnsNotFound() throws Exception {
 		responseStatus = "404 Not Found";
 
-		assertFalse(HTTPSupport.exists(baseURL + "/IPHONE/top.asp"));
+		assertEquals(404, HTTPSupport.status(baseURL + "/IPHONE/top.asp"));
+	}
+
+	/**
+	 * Keine Antwort ist etwas anderes als eine Absage: der Aufrufer behält
+	 * dann den eingestellten Pfad, statt ihn wegen eines abgeschalteten
+	 * Receivers zu verwerfen.
+	 */
+	@Test
+	public void statusIsNoAnswerWhenNothingListens() throws Exception {
+		final ServerSocket closed = new ServerSocket(0, 1, InetAddress
+				.getByName("127.0.0.1"));
+		final int freePort = closed.getLocalPort();
+		closed.close();
+
+		assertEquals(HTTPSupport.NO_ANSWER, HTTPSupport.status("http://"
+				+ "127.0.0.1:" + freePort + "/IPHONE/top.asp"));
 	}
 
 	private String requestLine() {
