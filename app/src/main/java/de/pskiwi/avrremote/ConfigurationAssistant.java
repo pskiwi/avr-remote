@@ -187,7 +187,10 @@ public final class ConfigurationAssistant {
 		// Zwei verschiedene Fehler, die bisher denselben Text bekamen: der
 		// Receiver ist weg, oder er ist da und nur sein Steuerkanal vergeben.
 		// Nur letzteres braucht den Netzstecker.
-		builder.setMessage(ctx.getString(app.getConnector().isControlPortBusy()
+		// getText, nicht getString: beide Texte setzen ihre erste Zeile - die
+		// mit dem Unterschied - in <b>, und getString macht daraus toString()
+		// und wirft die Spans weg. Die Auszeichnung kam also nie an.
+		builder.setMessage(ctx.getText(app.getConnector().isControlPortBusy()
 				? R.string.AVRControlPortBusy
 				: R.string.AVRReset));
 		builder.setInverseBackgroundForced(true);
