@@ -45,11 +45,11 @@ for `android-37` and fails with *"Failed to find target with hash string"*. AGP 
 up to compile SDK 36.1 and warns about 37.2 in every build, which is what
 `android.suppressUnsupportedCompileSdk` in `gradle.properties` silences.
 
-**There is almost no test coverage.** `src/test` holds nine JVM test classes on JUnit 4, the only
+**There is almost no test coverage.** `src/test` holds ten JVM test classes on JUnit 4, the only
 dependency in the project — `http/HTTPSupportTest`, `http/Series08ParserTest`,
 `core/ThreadHandlerTest`, `core/InDataTest`, `core/display/NetDisplayTest`,
-`core/display/TunerDisplayTest`, `models/ModelConfiguratorTest`, `ReceiverStatusTest` and
-`http/AVRXMLInfoParserTest` — and there is no `src/androidTest` at all. `./gradlew test` runs a few
+`core/display/TunerDisplayTest`, `models/ModelConfiguratorTest`, `ReceiverStatusTest`,
+`http/AVRXMLInfoParserTest` and `scan/ScanRangeTest` — and there is no `src/androidTest` at all. `./gradlew test` runs a few
 dozen cases and nothing else (twice, in fact: once per build variant), so do not report a change as
 verified because the build passed; verify on a device or emulator instead. Six limits are worth
 knowing before writing more tests:

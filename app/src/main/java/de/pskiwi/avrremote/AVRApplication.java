@@ -24,15 +24,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import android.app.Activity;
 import android.app.Application;
 import android.app.ProgressDialog;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnCancelListener;
 import android.content.DialogInterface.OnDismissListener;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.net.ConnectivityManager;
-import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.util.Log;
 import de.pskiwi.avrremote.EnableManager.StatusFlag;
@@ -54,17 +49,14 @@ import de.pskiwi.avrremote.log.LogMode;
 import de.pskiwi.avrremote.log.Logger;
 import de.pskiwi.avrremote.log.SDLogger;
 import de.pskiwi.avrremote.models.ModelConfigurator;
-import de.pskiwi.avrremote.scan.WiFiInfo;
+import de.pskiwi.avrremote.scan.LocalNetwork;
 
 /** Global State */
 public final class AVRApplication extends Application {
 
-	private BroadcastReceiver wifiEventReceiver = new BroadcastReceiver() {
+	private final LocalNetwork.IWiFiListener wifiListener = new LocalNetwork.IWiFiListener() {
 
-		public void onReceive(Context context, Intent intent) {
-			Logger.info("Broadcast " + intent);
-			final boolean newConnected = WiFiInfo
-					.isWiFiConnected(connectivityManager);
+		public void wifiChanged(boolean newConnected) {
 			enableManager.setStatus(StatusFlag.WLAN, newConnected);
 			Logger.info("AVRApplication.Wifi connected:" + newConnected + " "
 					+ activeHandler + " " + enableManager);
@@ -116,7 +108,7 @@ public final class AVRApplication extends Application {
 			}
 		});
 
-		connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+		localNetwork = new LocalNetwork(this);
 		Logger.info("init handler ...");
 
 		updateDebugMode();
@@ -150,10 +142,7 @@ public final class AVRApplication extends Application {
 
 		activeHandler = new ActiveHandler(connector);
 
-		IntentFilter filter = new IntentFilter();
-		filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
-		filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
-		registerReceiver(wifiEventReceiver, filter);
+		localNetwork.register(handler, wifiListener);
 
 		statusbarManager = new StatusbarManager(this);
 
@@ -191,6 +180,10 @@ public final class AVRApplication extends Application {
 
 	public ResilentConnector getConnector() {
 		return connector;
+	}
+
+	public LocalNetwork getLocalNetwork() {
+		return localNetwork;
 	}
 
 	public void reconfigure() {
@@ -330,7 +323,7 @@ public final class AVRApplication extends Application {
 	private EnableManager enableManager = new EnableManager();
 	private ActiveHandler activeHandler;
 	private AVRState avrState;
-	private ConnectivityManager connectivityManager;
+	private LocalNetwork localNetwork;
 	private ResilentConnector connector;
 	private ModelConfigurator modelConfigurator;
 
