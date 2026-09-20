@@ -110,7 +110,7 @@
 	     mit abgedunkelt, sonst traegt die Fuellung zu wenig gegen sie ab. -->
 	<style name="AVRSeekBar" parent="@android:style/Widget.SeekBar">
 		<item name="android:progressTint">@color/accent</item>
-		<item name="android:progressBackgroundTint">@color/sliderTrack</item>
+		<item name="android:progressBackgroundTint">@color/surfaceRaised</item>
 	</style>
 
 	<!-- editTextBackground gilt nur, solange Widget.EditText des Geraets dieses

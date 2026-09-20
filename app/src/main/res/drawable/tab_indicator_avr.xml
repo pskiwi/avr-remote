@@ -10,8 +10,8 @@
             <item>
                 <shape>
                     <gradient
-                        android:startColor="#3A3A3A"
-                        android:endColor="#232323"
+                        android:startColor="@color/surfaceRaised"
+                        android:endColor="@color/surfaceLow"
                         android:angle="270" />
                 </shape>
             </item>
@@ -27,8 +27,8 @@
     <item android:state_pressed="true">
         <shape>
             <gradient
-                android:startColor="#4A4A4A"
-                android:endColor="#2E2E2E"
+                android:startColor="@color/surfacePressed"
+                android:endColor="@color/surface"
                 android:angle="270" />
         </shape>
     </item>
@@ -36,8 +36,8 @@
     <item>
         <shape>
             <gradient
-                android:startColor="#242424"
-                android:endColor="#141414"
+                android:startColor="@color/surfaceLow"
+                android:endColor="@color/surfaceSunken"
                 android:angle="270" />
         </shape>
     </item>
