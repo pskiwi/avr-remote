@@ -19,6 +19,7 @@
 	<style name="AVRAlertDialog" parent="@android:style/Theme.Material.Dialog.Alert">
 		<item name="android:colorAccent">@color/accent</item>
 		<item name="android:windowTitleStyle">@style/AVRDialogTitle</item>
+		<item name="android:textAppearanceListItemSmall">@style/AVRListItemText</item>
 	</style>
 
 	<!-- Titel und Eintraege eines Auswahldialogs unterscheiden sich bei Material nur
@@ -51,6 +52,17 @@
 		<item name="android:popupBackground">@color/floating</item>
 	</style>
 
+	<!-- Eine Zeile, die man in einer Liste antippt, hatte je nach Flaeche drei
+	     Groessen: 22sp in den Einstellungen und in der Umbenennen-Liste
+	     (textAppearanceListItem zeigt im pre-Holo-Theme auf textAppearanceLarge),
+	     16sp im Popup-Menue und 16sp in den Dialoglisten, die ihre Groesse aus dem
+	     Material-Dialogtheme holen. Hier ist es eine. textAppearanceLarge muss mit,
+	     weil PreferenceActivity unter einem Legacy-Theme das alte preference.xml
+	     bekommt, und das zeigt direkt darauf statt auf textAppearanceListItem. -->
+	<style name="AVRListItemText" parent="@android:style/TextAppearance.Material.Subhead">
+		<item name="android:textSize">18sp</item>
+	</style>
+
 	<style name="AVRTheme" parent="@android:style/Theme.NoTitleBar">
 		<item name="android:buttonStyle">@style/MyButtonStyle</item>
 		<item name="android:alertDialogTheme">@style/AVRAlertDialog</item>
@@ -58,8 +70,11 @@
 		<item name="android:colorAccent">@color/accent</item>
 		<item name="android:seekBarStyle">@style/AVRSeekBar</item>
 		<item name="android:popupMenuStyle">@style/AVRPopupMenu</item>
-		<item name="android:textAppearanceLargePopupMenu">@android:style/TextAppearance.Material.Widget.PopupMenu.Large</item>
+		<item name="android:textAppearanceLargePopupMenu">@style/AVRListItemText</item>
 		<item name="android:textAppearanceSmallPopupMenu">@android:style/TextAppearance.Material.Widget.PopupMenu.Small</item>
+		<item name="android:textAppearanceListItem">@style/AVRListItemText</item>
+		<item name="android:textAppearanceLarge">@style/AVRListItemText</item>
+		<item name="android:textAppearanceListItemSmall">@style/AVRListItemText</item>
 		<item name="android:editTextStyle">@style/AVREditText</item>
 		<item name="android:editTextBackground">@drawable/edit_text_avr</item>
 		<item name="android:editTextColor">@android:color/primary_text_dark</item>
