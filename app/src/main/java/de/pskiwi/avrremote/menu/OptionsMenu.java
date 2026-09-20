@@ -18,6 +18,7 @@ package de.pskiwi.avrremote.menu;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
@@ -29,6 +30,8 @@ import android.view.View;
 import android.widget.CheckBox;
 import android.widget.PopupMenu;
 
+import java.net.HttpURLConnection;
+
 import de.pskiwi.avrremote.AVRApplication;
 import de.pskiwi.avrremote.AVRSettings;
 import de.pskiwi.avrremote.AboutActivity;
@@ -38,6 +41,7 @@ import de.pskiwi.avrremote.RenameActivity;
 import de.pskiwi.avrremote.core.ConnectionConfiguration;
 import de.pskiwi.avrremote.core.Zone;
 import de.pskiwi.avrremote.core.ZoneState;
+import de.pskiwi.avrremote.http.HTTPSupport;
 import de.pskiwi.avrremote.log.FeedbackReporter;
 import de.pskiwi.avrremote.log.Logger;
 import de.pskiwi.avrremote.models.ModelConfigurator;
@@ -194,17 +198,71 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 	public void openPDAMenu() {
 		final ConnectionConfiguration connectionConfig = configurator
 				.getConnectionConfig();
-		if (connectionConfig.isDefined()) {
-			final Intent i = new Intent(Intent.ACTION_VIEW);
-
-			String pdaWeb = AVRSettings.getPDAWeb(activity);
-			if (pdaWeb.startsWith("/") && pdaWeb.length() > 1) {
-				pdaWeb = pdaWeb.substring(1);
-			}
-			final Uri uri = Uri.parse(connectionConfig.getBaseURL() + pdaWeb);
-			i.setData(uri);
-			activity.startActivity(i);
+		if (!connectionConfig.isDefined()) {
+			return;
 		}
+		final String baseURL = connectionConfig.getBaseURL();
+
+		String pdaWeb = AVRSettings.getPDAWeb(activity);
+		if (pdaWeb.startsWith("/") && pdaWeb.length() > 1) {
+			pdaWeb = pdaWeb.substring(1);
+		}
+		if (pdaWeb.length() == 0) {
+			openURL(baseURL);
+			return;
+		}
+
+		// Der voreingestellte Pfad /IPHONE/top.asp existiert nur auf den
+		// älteren Receivern; neuere liefern ihn nicht aus, und der Browser
+		// zeigte dann nur eine Fehlerseite (Feedback zum AVR-1912, 09/2026).
+		// Deshalb im Hintergrund prüfen und sonst die Startseite öffnen.
+		final String pageURL = baseURL + pdaWeb;
+
+		// Die Prüfung läuft bis in die Timeouts von HTTPSupport, wenn der
+		// Receiver aus ist. Solange nur ein Dialog: ohne ihn wirkt der
+		// Menüpunkt tot, und jeder weitere Tipp öffnete einen Browser mehr.
+		if (websiteProgress != null) {
+			return;
+		}
+		websiteProgress = ProgressDialog.show(activity,
+				activity.getString(R.string.PleaseWait),
+				activity.getString(R.string.OpeningReceiverWebsite), true,
+				false);
+
+		new Thread("CheckReceiverWebsite") {
+			@Override
+			public void run() {
+				// Nur die eine gemessene Absage verwirft den eingestellten
+				// Pfad: der 404 des GoAhead. Keine Antwort, ein Serverfehler
+				// oder eine Passwortabfrage belegen nicht, dass die Seite
+				// fehlt - dann bleibt es bei dem, was der Anwender
+				// ausdrücklich eingestellt hat.
+				final int code = HTTPSupport.status(pageURL);
+				final String url = code == HttpURLConnection.HTTP_NOT_FOUND ? baseURL
+						: pageURL;
+				activity.runOnUiThread(new Runnable() {
+					public void run() {
+						final ProgressDialog progress = websiteProgress;
+						websiteProgress = null;
+						// dismiss() wirft erst, wenn das Fenster der Activity
+						// weg ist. Pausiert ist nicht weg: hier auf
+						// isShowing() zu prüfen ließe den Dialog, der sich
+						// nicht abbrechen lässt, für immer stehen
+						if (!activity.isFinishing()
+								&& !activity.isDestroyed()) {
+							progress.dismiss();
+						}
+						openURL(url);
+					}
+				});
+			}
+		}.start();
+	}
+
+	private void openURL(String url) {
+		final Intent i = new Intent(Intent.ACTION_VIEW);
+		i.setData(Uri.parse(url));
+		activity.startActivity(i);
 	}
 
 	private void showAbout() {
@@ -221,6 +279,9 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 				.getState(ZoneState.PowerState.class);
 		state.switchState();
 	}
+
+	/** Läuft gerade eine Prüfung? Nur vom UI-Thread angefasst. */
+	private ProgressDialog websiteProgress;
 
 	private final Activity activity;
 	private final ModelConfigurator configurator;

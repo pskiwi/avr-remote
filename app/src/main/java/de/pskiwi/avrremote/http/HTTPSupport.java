@@ -39,6 +39,45 @@ public final class HTTPSupport {
 		return execute(url, null);
 	}
 
+	/**
+	 * Statuscode der URL, oder -1 wenn der Receiver nicht antwortet. Der Body
+	 * wird nicht gelesen. Kein HEAD: die betagten Receiver-Webserver
+	 * beantworten zuverlässig nur GET und POST.
+	 *
+	 * Ein unbekannter Pfad beantwortet der GoAhead-Webs der Receiver mit 404
+	 * ("Site or Page Not Found"), nachgemessen an einem Receiver der 08er-
+	 * Serie. Auf dem Server sitzt jede Generation, das Verhalten ist also
+	 * nicht modellspezifisch.
+	 *
+	 * Umleitungen folgt die Verbindung von sich aus, wie überall sonst in
+	 * dieser Klasse: zurück kommt dann der Code der Zielseite. Das ist auch
+	 * die Absicht - leitet der Pfad auf etwas Gültiges weiter, tut der
+	 * Browser hinterher dasselbe.
+	 */
+	public static int status(String url) {
+		// vor dem Request loggen, aus demselben Grund wie in execute()
+		Logger.debug("STATUS [" + url + "] ...");
+		try {
+			final HttpURLConnection connection = (HttpURLConnection) new URL(
+					url).openConnection();
+			try {
+				connection.setConnectTimeout(CONNECT_TIMEOUT);
+				connection.setReadTimeout(READ_TIMEOUT);
+				connection.setRequestProperty("Accept-Encoding", "identity");
+				final int code = connection.getResponseCode();
+				Logger.debug("STATUS [" + url + "] code:" + code);
+				return code;
+			} finally {
+				connection.disconnect();
+			}
+		} catch (IOException e) {
+			// erwartet, sobald der Receiver aus ist - kein Logger.error, das
+			// bläht nur die Logs auf, die Anwender einschicken
+			Logger.debug("STATUS [" + url + "] failed: " + e);
+			return NO_ANSWER;
+		}
+	}
+
 	/** POST mit application/x-www-form-urlencoded-Body. */
 	public static byte[] postForm(String url, Map<String, String> formParams)
 			throws IOException {
@@ -115,7 +154,15 @@ public final class HTTPSupport {
 	private HTTPSupport() {
 	}
 
+	/**
+	 * Rückgabe von status(), wenn gar keine Antwort kam. Denselben Wert
+	 * liefert getResponseCode() von sich aus, wenn es die Statuszeile nicht
+	 * lesen kann - beides heißt "keine brauchbare Antwort".
+	 */
+	public static final int NO_ANSWER = -1;
+
 	private static final String FORM_CONTENT_TYPE = "application/x-www-form-urlencoded";
+
 	private static final int CONNECT_TIMEOUT = 5000;
 	private static final int READ_TIMEOUT = 4000;
 }

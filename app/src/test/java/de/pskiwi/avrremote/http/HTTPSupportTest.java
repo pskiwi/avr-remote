@@ -185,6 +185,42 @@ public final class HTTPSupportTest {
 		assertEquals(responseBody, new String(content, "UTF-8"));
 	}
 
+	/**
+	 * status() entscheidet, ob der Menüpunkt "Receiver website" den
+	 * eingestellten Pfad oder die Startseite öffnet. Der Body bleibt dabei
+	 * ungelesen, der Statuscode ist alles.
+	 */
+	@Test
+	public void statusReturnsCodeAndSendsGet() throws Exception {
+		assertEquals(200, HTTPSupport.status(baseURL + "/IPHONE/top.asp"));
+
+		assertEquals("GET /IPHONE/top.asp HTTP/1.1", requestLine());
+	}
+
+	/** Der Fall aus dem Feedback: neuere Receiver kennen die Seite nicht. */
+	@Test
+	public void statusReturnsNotFound() throws Exception {
+		responseStatus = "404 Not Found";
+
+		assertEquals(404, HTTPSupport.status(baseURL + "/IPHONE/top.asp"));
+	}
+
+	/**
+	 * Keine Antwort ist etwas anderes als eine Absage: der Aufrufer behält
+	 * dann den eingestellten Pfad, statt ihn wegen eines abgeschalteten
+	 * Receivers zu verwerfen.
+	 */
+	@Test
+	public void statusIsNoAnswerWhenNothingListens() throws Exception {
+		final ServerSocket closed = new ServerSocket(0, 1, InetAddress
+				.getByName("127.0.0.1"));
+		final int freePort = closed.getLocalPort();
+		closed.close();
+
+		assertEquals(HTTPSupport.NO_ANSWER, HTTPSupport.status("http://"
+				+ "127.0.0.1:" + freePort + "/IPHONE/top.asp"));
+	}
+
 	private String requestLine() {
 		return request.substring(0, request.indexOf("\r\n"));
 	}
