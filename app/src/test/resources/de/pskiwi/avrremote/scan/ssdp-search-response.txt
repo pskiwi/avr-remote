@@ -1,0 +1,8 @@
+HTTP/1.1 200 OK
+CACHE-CONTROL: max-age=1800
+EXT:
+LOCATION: http://192.168.10.42:8080/description.xml
+SERVER: KnOS/3.2 UPnP/1.0 Denon-Heos/3.34.620
+ST: urn:schemas-upnp-org:device:MediaRenderer:1
+USN: uuid:5f9ec1b3-ed59-79ef-4b12-0005cdf3b4a1::urn:schemas-upnp-org:device:MediaRenderer:1
+

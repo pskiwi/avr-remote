@@ -55,7 +55,11 @@ if (keystorePropertiesFile.canRead()) {
 
 android {
     namespace = "de.pskiwi.avrremote"
-    compileSdk 36
+    // compileSdk 37 = Android 17, wegen ACCESS_LOCAL_NETWORK (gibt es in 36 nicht).
+    // Ein Basis-Paket "platforms;android-37" existiert nicht, nur die Minor-Versionen
+    // 37.0/37.1/37.2 - ohne compileSdkMinor sucht AGP nach "android-37" und findet nichts.
+    compileSdk 37
+    compileSdkMinor 2
 
     defaultConfig {
         applicationId "de.pskiwi.avrremote"

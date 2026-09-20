@@ -19,6 +19,7 @@ package de.pskiwi.avrremote;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.TabActivity;
 import android.content.Context;
 import android.content.Intent;
@@ -108,6 +109,7 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 		if (savedInstanceState == null) {
 			// nicht bei jeder Drehung erneut anfragen
 			AVRSettings.requestNotificationPermission(this);
+			AVRSettings.requestLocalNetworkPermission(this);
 		}
 
 		Logger.setLocation("AVRRemote-onCreate-2");
@@ -225,12 +227,35 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 	public void onRequestPermissionsResult(int requestCode, String[] permissions,
 			int[] grantResults) {
 		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-		if (requestCode == AVRSettings.REQUEST_POST_NOTIFICATIONS
-				&& grantResults.length > 0
-				&& grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-			// Benachrichtigung nachziehen, die beim Start noch verworfen wurde
-			getApp().getStatusbarManager().update();
+		final boolean granted = grantResults.length > 0
+				&& grantResults[0] == PackageManager.PERMISSION_GRANTED;
+		if (requestCode == AVRSettings.REQUEST_POST_NOTIFICATIONS) {
+			if (granted) {
+				// Benachrichtigung nachziehen, die beim Start verworfen wurde
+				getApp().getStatusbarManager().update();
+			}
+		} else if (requestCode == AVRSettings.REQUEST_ACCESS_LOCAL_NETWORK) {
+			if (granted) {
+				// Der Verbindungsversuch beim Start lief ohne die Permission
+				// und ist unter Local Network Protection ins Leere gegangen
+				getApp().getConnector().triggerReconnect();
+			} else if (AVRSettings.isLocalNetworkBlocked(this)) {
+				// Sonst bleibt es beim stillen Nichts: LNP laesst den Socket
+				// nicht scheitern, sondern verschluckt ihn, und die App zeigt
+				// dann "nicht erreichbar" - als waere der Receiver aus.
+				// Gemessen auf einem Pixel 8 mit erzwungenem
+				// RESTRICT_LOCAL_NETWORK: SocketTimeoutException auf Port 23.
+				showLocalNetworkBlockedDialog();
+			}
 		}
+	}
+
+	private void showLocalNetworkBlockedDialog() {
+		Logger.info("local network permission denied - connection will fail");
+		new AlertDialog.Builder(this).setTitle(R.string.ConfigProblem)
+				.setMessage(R.string.LocalNetworkPermission)
+				.setInverseBackgroundForced(true)
+				.setNeutralButton(R.string.OK, null).show();
 	}
 
 	private ZoneState getCurrentFrontState() {

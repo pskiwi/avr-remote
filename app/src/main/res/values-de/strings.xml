@@ -119,6 +119,8 @@
 	<string name="WiFiSettings">WLAN-Einstellungen</string>
 	<string name="ScanningNetwork">Receiver wird gesucht &#8230;</string>
 	<string name="OpeningReceiverWebsite">Receiver Website wird geöffnet &#8230;</string>
+	<string name="LocalNetworkPermission">AVR-Remote findet und steuert den Receiver in Ihrem lokalen Netz. Ohne Zugriff darauf funktioniert weder die Suche noch die Verbindung.</string>
+
 	<string name="NoIpFound">Es konnte kein Receiver gefunden werden.\n
 		Entweder
 		ist er nicht mit Ihrem WLAN verbunden oder die Option Network Standby

@@ -25,6 +25,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 
 import de.pskiwi.avrremote.log.Logger;
+import de.pskiwi.avrremote.scan.LocalNetwork;
 
 public final class Connector implements ISender, IConnector {
 
@@ -148,12 +149,26 @@ public final class Connector implements ISender, IConnector {
 		this.sendDelay = sendDelay;
 		listener = eventListener;
 		socket = new Socket();
-		socket.setTcpNoDelay(true);
-		socket.connect(connectionConfiguration.getSocketAddress(),
-				AVR_CONNECT_TIMEOUT);
 
 		boolean ok = false;
 		try {
+			// vor dem connect(), sonst geht Telnet 23 neben aktivem Mobilfunk
+			// am WLAN vorbei. bindSocket() und nicht getSocketFactory(), damit
+			// dieser Block die einzige Aufraeumstelle bleibt.
+			//
+			// Und deshalb steht er innerhalb des try: bindSocket() erzwingt
+			// den Dateideskriptor (es liest eine Socket-Option, um ihn
+			// anzulegen) und kann danach fehlschlagen - etwa wenn das WLAN
+			// zwischen der Abfrage in LocalNetwork und diesem Aufruf
+			// verschwindet, also genau dann, wenn der Reconnect-Loop laeuft.
+			// Ein gescheitertes connect() raeumt seinen Deskriptor selbst ab
+			// (nachgemessen: 12 fehlschlagende Versuche, fd-Zahl unveraendert),
+			// bindSocket() tut das nicht.
+			LocalNetwork.bind(socket);
+			socket.setTcpNoDelay(true);
+			socket.connect(connectionConfiguration.getSocketAddress(),
+					AVR_CONNECT_TIMEOUT);
+
 			in = socket.getInputStream();
 			out = new OutputStreamWriter(socket.getOutputStream());
 			Thread.sleep(1000);

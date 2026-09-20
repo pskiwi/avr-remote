@@ -26,7 +26,7 @@ Play Store automation and never has been.
 
 ## Build and run
 
-The build needs **JDK 17** and **Android SDK Platform 36**:
+The build needs **JDK 17** and **Android SDK Platform 37.2**:
 
 ```sh
 export JAVA_HOME=/opt/homebrew/opt/openjdk@17          # keg-only formula, not on PATH by default
@@ -39,11 +39,18 @@ $ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/app-debu
 
 `local.properties` is deliberately untracked — the SDK path comes from `ANDROID_HOME`.
 
-**There is almost no test coverage.** `src/test` holds nine JVM test classes on JUnit 4, the only
+`compileSdk 37` needs `compileSdkMinor 2` beside it: there is no base package `platforms;android-37`
+in the SDK repository, only the minor versions `37.0`/`37.1`/`37.2`, and without the minor AGP looks
+for `android-37` and fails with *"Failed to find target with hash string"*. AGP 8.13.0 is only tested
+up to compile SDK 36.1 and warns about 37.2 in every build, which is what
+`android.suppressUnsupportedCompileSdk` in `gradle.properties` silences.
+
+**There is almost no test coverage.** `src/test` holds eleven JVM test classes on JUnit 4, the only
 dependency in the project — `http/HTTPSupportTest`, `http/Series08ParserTest`,
 `core/ThreadHandlerTest`, `core/InDataTest`, `core/display/NetDisplayTest`,
-`core/display/TunerDisplayTest`, `models/ModelConfiguratorTest`, `ReceiverStatusTest` and
-`http/AVRXMLInfoParserTest` — and there is no `src/androidTest` at all. `./gradlew test` runs a few
+`core/display/TunerDisplayTest`, `models/ModelConfiguratorTest`, `ReceiverStatusTest`,
+`http/AVRXMLInfoParserTest`, `scan/ScanRangeTest` and `scan/SSDPDiscoveryTest` — and there is no
+`src/androidTest` at all. `./gradlew test` runs a few
 dozen cases and nothing else (twice, in fact: once per build variant), so do not report a change as
 verified because the build passed; verify on a device or emulator instead. Six limits are worth
 knowing before writing more tests:
@@ -71,7 +78,9 @@ knowing before writing more tests:
   directory on the test classpath and tracks it as a task input by itself, so it needs neither an
   `inputs.file` entry nor the module/root path dance above. Keep such captures byte-exact — one of
   the two has CRLF line endings and both pad their values with spaces, and the tests exist to pin
-  what the parsers do with that.
+  what the parsers do with that. The two SSDP files beside them in `scan/` follow the same rules
+  (CRLF, byte-exact) but are **not** captures: they were built from the UPnP spec, which the test's
+  Javadoc and [TODO.md](TODO.md) both say. Do not cite them as evidence of what a receiver sends.
 - **A static initialiser that touches Android locks the whole class out of JVM tests.** Three
   different behaviours in the stub `android.jar`, and only the third one throws by itself:
   constructors are no-ops (`new Handler()` works), **field reads return null or 0**
@@ -214,13 +223,27 @@ Consequences:
 - **Within Java 11, write modern Java.** The code dates from 2010 and mostly predates it, but new and
   touched code should not imitate that. In particular use **try-with-resources** rather than the
   manual `try { … } finally { x.close(); }` pattern — `http/HTTPSupport` is the reference. The tree
-  was converted in August 2026 and `core/Connector.java:168` is the only manual block left: it is
-  not convertible at all, it closes the socket only on the failure path (`if (!ok)`). The other reason to keep the manual form is when
+  was converted in August 2026 and `core/Connector.java:153` is the only manual block left: it is
+  not convertible at all, it closes the socket only on the failure path (`if (!ok)`) — on success
+  the socket has to outlive the constructor. It covers the whole setup, binding and connect
+  included, and that is deliberate: `Network.bindSocket()` forces the file descriptor into
+  existence and can then fail, whereas a failed `connect()` cleans up after itself (measured).
+  The other reason to keep the manual form is when
   an exception from `close()` must be swallowed deliberately — see
   `HTTPSupportTest.serveOneRequest`, where letting it propagate would fake a test failure.
   This does **not** extend to the UI bases above: those are a migration, not a style choice.
 - `minSdk 24`. Anything newer needs a `Build.VERSION.SDK_INT` guard. Lint reports this as `NewApi`,
   but `abortOnError false` means the build still succeeds — it will only fail on the device.
+  Note `compileSdk` is 37 while `targetSdk` is 36, so constants from newer platforms (for instance
+  `Manifest.permission.ACCESS_LOCAL_NETWORK` and `VERSION_CODES.CINNAMON_BUN`) can be named
+  directly: the compiler inlines them, nothing is looked up at runtime.
+- **Anything that opens a socket into the local network binds it first.** `LocalNetwork.bind(Socket)`,
+  `LocalNetwork.bind(DatagramSocket)` and `LocalNetwork.openConnection(URL)` are the only way in —
+  `core/Connector`, `http/HTTPSupport`, `scan/AVRTargetTester` and `scan/SSDPDiscovery` all go
+  through them. Without the binding the connection takes the default network, which beside active
+  mobile data is not the Wi-Fi, and under Local Network Protection it is refused outright. Never
+  `ConnectivityManager.bindProcessToNetwork()`: it applies process-wide. The reasoning is in
+  [CONNECTION.md](CONNECTION.md).
 - Indentation is tabs. Comments are a mix of German and English.
 - `android.nonFinalResIds=false` in `gradle.properties` is load-bearing: it keeps `R` fields final so
   the `switch`/`case R.id.*` in `menu/OptionsMenu.java` compiles. Do not remove it without rewriting

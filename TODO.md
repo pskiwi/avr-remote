@@ -10,37 +10,70 @@ one still depends on has been folded into the live one.
 
 ## Next platform deadline: targetSdk 37
 
-- [ ] **Local Network Protection becomes mandatory** for apps targeting Android 17. It affects the
-      core of this app: the subnet sweep in `scan/AVRScanner` and the raw sockets to the receiver.
-      Needs the new local-network runtime permission and a rationale UI. Background:
-      [CONNECTION.md](CONNECTION.md).
-- [ ] Same area, do it in one pass: everything network-facing in `scan/WiFiInfo` and
-      `AVRApplication` is still on legacy API.
-      - `WifiManager.getDhcpInfo()` gives netmask and local IP for the sweep. Deprecated since API
-        31 → `LinkProperties.getLinkAddresses()` and `getRoutes()`, via
-        `ConnectivityManager.getLinkProperties(Network)`.
-      - The trigger is a `WifiManager` broadcast where a `NetworkCallback` belongs.
-      - `WiFiInfo.isWiFiConnected()` asks `NetworkCapabilities.hasTransport(TRANSPORT_WIFI)` about
-        the active network first and then about every network, via `getAllNetworks()` — itself
-        deprecated since API 31. The two-step is deliberate and any rewrite has to keep the
-        property: a Wi-Fi without internet (dead WAN, captive portal, an isolated AV network) stays
-        connected alongside cellular without being the default network, and `AVRScanner.java:117`
-        refuses the whole scan on a `false`. Checking only the active network was tried and is
-        wrong for exactly that case.
+The code side is done — `scan/LocalNetwork`, the socket binding, the permission and SSDP discovery
+are in, `compileSdk` is 37, and [CONNECTION.md](CONNECTION.md) describes the result. `targetSdk` is
+still 36, so none of it is in force. What is left is the part no build can answer.
 
-      A callback holding the current Wi-Fi `Network` replaces all three at once — and hands the
-      scan and the sockets a `Network` to bind to, which is what Local Network Protection needs
-      anyway. That is why this is one item and not three.
-- [ ] Watch for another NPE in `AVRApplication$1.onReceive`. The one that came in from the field
-      (1.5.1, Pixel 8 Pro, Android 17 **Beta**) was `getNetworkInfo(TYPE_WIFI)` returning null, and
-      it is fixed; but the null could not be reproduced on a Pixel 8 with the finished Android 17 —
-      not across three Wi-Fi off/on cycles, not in airplane mode, not with Data Saver on a metered
-      Wi-Fi with the app backgrounded. So the trigger is still unknown, and the working theory is
-      that it was beta-only. A second report would disprove that and mean something else is wrong.
+- [ ] **Finish verifying on an Android 17 device, then raise `targetSdk` in a commit of its own.**
+      That order matters: raising it together with anything else means a failure could be either,
+      and the device checks below are the only evidence there is.
+
+      Done so far, on a Pixel 8 with
+      `adb shell am compat enable RESTRICT_LOCAL_NETWORK de.pskiwi.avrremote`: with the permission
+      granted the receiver connects normally; with it revoked the connection is swallowed —
+      `SocketTimeoutException` on port 23, no `SecurityException` — which is what the hints behind
+      `AVRSettings.isLocalNetworkBlocked()` now cover. **Those hints are gated on
+      `targetSdkVersion`, so the `am compat` route does not reach them**; they have been built and
+      never seen. Device state was restored afterwards (`am compat reset`, permission re-granted).
+
+      Still untried: the SSDP scan against a receiver, Wi-Fi off/on driving `StatusFlag.WLAN` and
+      the reconnect, and the case the whole construction exists for — mobile data on plus a Wi-Fi
+      without internet, where connection *and* scan must work and the connection did not before.
+
+- [ ] Before that commit, know what else `targetSdk 37` switches on. All seventeen behaviour
+      changes for apps targeting Android 17 were checked against this code in September 2026, and
+      **only Local Network Protection applies**. The rest, so nobody has to re-derive it:
+
+      | Change | Why it misses this app |
+      |---|---|
+      | RemoteViews memory limit | no `RemoteViews` anywhere; the app widget is long gone |
+      | Lock-free `MessageQueue`, `static final` no longer writable | no `setAccessible`/`getDeclaredField` — the only reflection is `Class.forName` in `ModelConfigurator` |
+      | ECH, Certificate Transparency | the app opens no TLS connection at all; the one `https://` outside the GPL headers is a URL handed to the browser (`menu/OptionsMenu.java:193`) |
+      | Safer native DCL | no native libraries |
+      | Background audio hardening | no `AudioManager`, no `MediaSession` — volume goes to the receiver over telnet |
+      | Orientation/resizability on large screens | no `screenOrientation` in the manifest, so there is no constraint to ignore |
+      | Passwords hidden on physical keyboards | no password fields |
+      | CP2 PII columns, CP2 strict SQL, OTP SMS, `setContentCaptureEnabled`, accessibility IME, `BluetoothSocket.read()` | those APIs are not used |
+
+      One is a judgement rather than a grep: **BAL hardening**. There is a single `PendingIntent`
+      (`StatusbarManager.java:45`, notification → activity, `FLAG_IMMUTABLE`), launched by the user
+      tapping the notification, and the two `startActivity` calls outside an Activity
+      (`ScreenMenu.java:311`, `core/display/NetDisplay.java:1107`) go through an Activity reference
+      from a foreground interaction. No background launch — but that is reasoning, not a test.
+
+      A trial build with `targetSdk 37` is clean and removes exactly one lint entry,
+      `OldTargetApi`. **That proves very little:** AGP 8.13.0 is tested only to compile SDK 36.1,
+      so checks for 37's behaviour changes do not exist in this lint at all. Its silence is not a
+      pass. Changes that apply to *all* apps on Android 17 regardless of target are a different
+      matter — those are already in force, and the app ran normally on the Pixel 8 under Android 17.
+- [ ] **The SSDP parser is pinned against constructed data, not a capture.** The two files under
+      `app/src/test/resources/de/pskiwi/avrremote/scan/` follow the UPnP spec and the known header
+      order of a Denon/HEOS device, but nobody recorded them off a receiver — unlike the AVR-3808
+      pages next door. Replace them with a real capture when one is at hand.
+- [ ] The `NOTIFY` branch is untested against a real device in another sense too: `SSDPDiscovery`
+      only ever looks at replies to its own `M-SEARCH`. If a receiver turns out to answer nothing
+      (no `MulticastLock` — see [CONNECTION.md](CONNECTION.md)), the sweep fallback hides it, and
+      the only sign is `SSDP: 0 device(s) answered` in the log.
+- [ ] The NPE in `AVRApplication$1.onReceive` (1.5.1, Pixel 8 Pro, Android 17 **Beta**) can no
+      longer happen: the `BroadcastReceiver` is gone with the `WifiManager` broadcast, and so is the
+      crash site. The cause was never found — it was `getNetworkInfo(TYPE_WIFI)` returning null, and
+      that null was not reproducible on a Pixel 8 with the finished Android 17 (three Wi-Fi off/on
+      cycles, airplane mode, Data Saver on a metered Wi-Fi in the background). Closed by removal, not
+      by understanding; worth knowing if something similar turns up in `LocalNetwork`.
 
 ## Structural
 
-- [ ] **Test coverage is nine JVM classes and no instrumentation tests.** The cheapest places to add
+- [ ] **Test coverage is eleven JVM classes and no instrumentation tests.** The cheapest places to add
       more are `models/` (pure capability logic, no Android types) and `core/ZoneState.java`
       (1237 lines). `core/display/` is now part done: `NetDisplayTest` covers the line reader and
       `TunerDisplayTest` the frequency conversion, but the rest of `TunerDisplay` (presets, HD Radio,
@@ -103,8 +136,12 @@ one still depends on has been folded into the live one.
       phone up, so `checkAddress()` reports "not reachable" for a device that is plainly there — the
       measurement and what it costs the user is in [CONNECTION.md](CONNECTION.md) → *What Doze does*.
       This may well be part of what users report as "does not reconnect after standby". Worth
-      measuring before changing: `scan/AVRScanner` uses the same constant for its subnet sweep, and
-      raising it there costs scan time, so the two uses probably want separate values.
+      measuring before changing: the same constant serves the subnet sweep, and raising it there
+      costs scan time, so the two uses probably want separate values. The sweep matters less than it
+      did — it only runs when SSDP found nothing — but the constant is also on the path of every
+      SSDP candidate, since those go through `testAddress()` too. Separately: that ping is the one
+      socket operation that cannot be bound to the Wi-Fi at all, so it may be measuring the wrong
+      interface; see [CONNECTION.md](CONNECTION.md).
 
 ## Housekeeping
 
@@ -164,7 +201,7 @@ one still depends on has been folded into the live one.
       `./gradlew compileDebugJavaWithJavac --rerun-tasks` with `-Xlint:deprecation` **and
       `-Xmaxwarns 5000`** — javac stops at 100 by default, which silently hides the tail (that is
       how the `scan/WiFiInfo` entries went missing on the first run). Feed the warnings through
-      `$ANDROID_HOME/platforms/android-36/data/api-versions.xml`, which carries a `deprecated=`
+      `$ANDROID_HOME/platforms/android-37.2/data/api-versions.xml`, which carries a `deprecated=`
       attribute per class, method and field, to get the level each one died in. Constructors are
       `<init>` there, and a warning naming an inherited method resolves against the declaring class.
 
@@ -178,7 +215,6 @@ one still depends on has been folded into the live one.
       | 22 | `Resources.getDrawable()` | 8 | `AVRTheme`, `IconManager`, `OnScreenDisplayActivity` |
       | 23 | `AlertDialog.Builder.setInverseBackgroundForced()` | 6 | 4 files |
       | 29/30 | `android.preference.*` (31× `PreferenceManager`), `AsyncTask`, `TabHost`, `ListActivity`, `ExpandableListActivity`, 12× `new Handler()` | 61 | this item |
-      | 31 | `WifiManager.getDhcpInfo()`, `ConnectivityManager.getAllNetworks()` | 4 | `scan/WiFiInfo` — the targetSdk 37 item |
 
       `TabActivity` is the oldest thing in the app by a wide margin — deprecated in Android 3.2, so
       **15 years**. It cannot be picked off on its own: it and the API 29/30 block are the same

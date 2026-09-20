@@ -298,10 +298,104 @@ Reconnector:connector stopped
 
 So: **a teardown line that is not followed by a new generation starting is the smell.**
 
-## Next platform deadline: targetSdk 37
+## One network callback, and every socket bound to it
 
-Local Network Protection becomes mandatory for apps targeting **Android 17 (SDK 37)**. That
-directly hits `scan/AVRScanner` (subnet sweep) and the raw receiver sockets — i.e. everything on
-this page. At `targetSdk 36` it does not apply yet, but plan for a runtime local-network permission
-before raising the target further. See [TODO.md](TODO.md) for the deprecated `WifiManager` calls to
-replace in the same pass.
+`scan/LocalNetwork` is the only place that knows anything about the local network. It registers one
+`ConnectivityManager.NetworkCallback` in `AVRApplication.onCreate` and from it answers four
+questions: is a Wi-Fi up, which `Network` object is it, what IPv4 address does the device hold in
+it, and — when the answer is no — why not.
+
+Two details there are answers to real failures, not taste:
+
+- **The request carries no `NET_CAPABILITY_INTERNET`.** `NetworkRequest.Builder` defaults to
+  `NOT_RESTRICTED`/`TRUSTED`/`NOT_VPN` only, and `registerNetworkCallback` reports *every* matching
+  network rather than just the default one. That is what keeps a Wi-Fi without internet — dead WAN,
+  captive portal, a deliberately isolated AV network — counted as connected while mobile data is
+  active. The receiver is plainly there in that case; the app used to refuse the whole scan on it.
+  `clearCapabilities()` would be the explicit way to say this and is API 30, above `minSdk 24`.
+- **The listener runs on the main thread**, by `Handler.post()` from inside the callback. The
+  `BroadcastReceiver` this replaced ran in `onReceive` on the main thread, and
+  `EnableManager.setStatus()` is an unsynchronised read-modify-write (see [TODO.md](TODO.md)) — the
+  thread change is not a free ride-along. The `Handler` overload of `registerNetworkCallback` would
+  be the direct way to say it, and is API 26.
+
+Everything that opens a socket to the receiver binds it to that `Network` first —
+`core/Connector` (telnet 23), `http/HTTPSupport` (both entry points, via `Network.openConnection`),
+`scan/AVRTargetTester` and the SSDP socket. Without the binding, `connect()` takes the default
+network, which beside active mobile data is *not* the Wi-Fi, and the receiver is unreachable in
+exactly the case the paragraph above works so hard to recognise. `bindSocket` per socket, never
+`bindProcessToNetwork()` — the latter applies to the whole process, including connections that have
+no business on the local network.
+
+One thing cannot be bound: `InetAddress.isReachable()` offers no way to. The scan's ping may
+therefore still leave over the wrong interface. It is only a fast negative filter ahead of the TCP
+probe on port 80, so the fallback if it misbehaves on a device is to drop it, not to reach for
+`bindProcessToNetwork()`.
+
+### Local Network Protection
+
+The binding is also what Android 17 requires. Local Network Protection becomes mandatory at
+**targetSdk 37** and gates *every* socket into the local network behind
+`ACCESS_LOCAL_NETWORK` — telnet 23 and the HTTP scraping as much as the search. Without it the app
+is not scan-less, it is dead.
+
+The permission is declared in the manifest and requested by
+`AVRSettings.requestLocalNetworkPermission()`, from `AVRRemote.onCreate` (gated on
+`savedInstanceState == null`) and again from `AVRScanner.scanIP()`, because the scan is reachable
+from the options menu and the setup assistant without `AVRRemote` having started. A rationale
+dialog appears only when Android asks for one, i.e. after a previous refusal. On a grant the
+connector is told to reconnect, because the attempt made at startup went nowhere.
+
+**LNP blocks silently.** Measured on a Pixel 8 with the restriction forced on: without the
+permission the socket does not fail, it is swallowed — `InetAddress.isReachable()` says false and
+`connect()` to port 23 ends in a `SocketTimeoutException` after 2.5 s, from the correct source
+address. There is no `SecurityException` to catch and nothing in the failure that names a
+permission. Left alone, the app would show its ordinary "not reachable" state and retry forever,
+which reads as "receiver switched off or wrong IP" — the one diagnosis that sends a user looking in
+entirely the wrong place. Hence two deliberate hints:
+
+- `AVRRemote.onRequestPermissionsResult` shows the reason when the request is *refused*, and
+- `AVRScanner.scan()` refuses to start and says why, instead of letting the user watch a
+  progress dialog for ten seconds before "no receiver found".
+
+Both are gated on `AVRSettings.isLocalNetworkBlocked()`, which asks whether LNP applies **to this
+build** — the device is Android 17 *and* `getApplicationInfo().targetSdkVersion` is 37 — not merely
+whether the permission is missing. At `targetSdk 36` the permission is absent without consequence,
+and warning about it there would be simply wrong. Reading the target from the running package rather
+than from a constant is what makes this arm itself on the day `build.gradle` moves to 37. The one
+thing it does not cover is the `am compat` override above, which is a test tool rather than a state
+a user can be in.
+
+`targetSdk` is still 36, so none of this is in force yet; `compileSdk 37` is what makes the constants
+available. To exercise it before raising the target, force the restriction on an Android 17 device:
+
+```sh
+adb shell am compat enable RESTRICT_LOCAL_NETWORK de.pskiwi.avrremote
+```
+
+### Searching instead of sweeping
+
+`scan/SSDPDiscovery` sends an `M-SEARCH` to `239.255.255.250:1900` (three times, ~800 ms apart,
+collecting for three seconds — UDP is allowed to lose packets) and returns the addresses that
+answered. Every candidate then goes through the existing `AVRTargetTester.testAddress()`, which is
+what keeps printers, TVs and routers — they all answer `ssdp:all` — out of the result, and is why
+nothing else about the scan had to change.
+
+Both searches hand their addresses to the same `AVRScanner.testAll()`, which fans them out over
+`SCAN_THREADS` threads. That matters more for SSDP than it looks: a candidate costs up to four
+connect timeouts, so testing a household's worth of UPnP devices one after another would take
+longer than the whole sweep it is supposed to replace. A hit carries the way it was found
+(`FoundBy.SSDP` or `FoundBy.SWEEP`) into the selection list, because the two say different things —
+SSDP means the device announced itself as a UPnP device, the sweep only means the right ports are
+open.
+
+No `MulticastLock` is needed: replies to `M-SEARCH` come back unicast. A lock only gates *incoming*
+multicast, i.e. unsolicited `NOTIFY`. If a device turns out to receive nothing,
+`WifiManager.createMulticastLock()` is the next step — and `ACCESS_WIFI_STATE`, dropped from the
+manifest when nothing used `WifiManager` any more, comes back with it.
+
+The subnet sweep stays as the fallback: 254 addresses × up to four TCP connects, now driven by the
+prefix length from `LocalNetwork.getIPv4()` rather than by a string comparison against
+`255.255.255.0`, so `/25`…`/30` work instead of being refused. Under LNP a sweep is also precisely
+the behaviour that makes the permission expensive to justify, which is the other reason SSDP goes
+first.

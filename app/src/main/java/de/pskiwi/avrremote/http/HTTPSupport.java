@@ -27,6 +27,7 @@ import java.net.URLEncoder;
 import java.util.Map;
 
 import de.pskiwi.avrremote.log.Logger;
+import de.pskiwi.avrremote.scan.LocalNetwork;
 
 /**
  * GET und POST gegen den Receiver. Ersetzt den früheren Apache-HttpClient, der
@@ -58,8 +59,8 @@ public final class HTTPSupport {
 		// vor dem Request loggen, aus demselben Grund wie in execute()
 		Logger.debug("STATUS [" + url + "] ...");
 		try {
-			final HttpURLConnection connection = (HttpURLConnection) new URL(
-					url).openConnection();
+			final HttpURLConnection connection = (HttpURLConnection) LocalNetwork
+					.openConnection(new URL(url));
 			try {
 				connection.setConnectTimeout(CONNECT_TIMEOUT);
 				connection.setReadTimeout(READ_TIMEOUT);
@@ -89,8 +90,8 @@ public final class HTTPSupport {
 		// vor dem Request loggen: bei Timeout oder Exception taucht die URL
 		// sonst nirgends im Log auf, das FeedbackReporter verschickt
 		Logger.debug(method + " [" + url + "] ...");
-		final HttpURLConnection connection = (HttpURLConnection) new URL(url)
-				.openConnection();
+		final HttpURLConnection connection = (HttpURLConnection) LocalNetwork
+				.openConnection(new URL(url));
 		try {
 			connection.setConnectTimeout(CONNECT_TIMEOUT);
 			connection.setReadTimeout(READ_TIMEOUT);

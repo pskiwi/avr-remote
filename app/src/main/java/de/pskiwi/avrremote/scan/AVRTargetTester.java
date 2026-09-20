@@ -32,6 +32,13 @@ public final class AVRTargetTester {
 	public static boolean testAddress(InetAddress address, boolean cfgTest) {
 		try {
 			// PING
+			// Laesst sich als einziger Schritt hier nicht an ein Network binden -
+			// isReachable() bietet dafuer keinen Weg, und bindProcessToNetwork()
+			// waere die falsche Loesung, weil es prozessweit wirkt und auch den
+			// Verbindungs-Thread traefe. Der Ping kann also neben aktivem
+			// Mobilfunk ueber die falsche Schnittstelle gehen. Er ist nur ein
+			// schneller Negativfilter vor dem TCP-Test auf Port 80; scheitert er
+			// auf dem Geraet systematisch, ersatzlos streichen.
 			final boolean reachable = address
 					.isReachable(cfgTest ? PING_TIMEOUT * 2 : PING_TIMEOUT);
 			if (!reachable) {
@@ -74,6 +81,7 @@ public final class AVRTargetTester {
 	private static boolean testPort(InetAddress ia, int port) {
 		try {
 			try (Socket socket = new Socket()) {
+				LocalNetwork.bind(socket);
 				socket
 						.connect(new InetSocketAddress(ia, port),
 								CONNECT_TIMEOUT);

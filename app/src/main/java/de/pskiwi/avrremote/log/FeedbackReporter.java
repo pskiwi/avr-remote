@@ -40,7 +40,7 @@ import de.pskiwi.avrremote.R;
 import de.pskiwi.avrremote.ScreenInfo;
 import de.pskiwi.avrremote.core.MacroManager;
 import de.pskiwi.avrremote.core.RenameService;
-import de.pskiwi.avrremote.scan.WiFiInfo;
+import de.pskiwi.avrremote.scan.LocalNetwork;
 
 public final class FeedbackReporter {
 
@@ -139,12 +139,12 @@ public final class FeedbackReporter {
 		}
 
 		try {
-			final WiFiInfo wiFiInfo = new WiFiInfo(ctx);
+			final LocalNetwork localNetwork = ((AVRApplication) ctx
+					.getApplicationContext()).getLocalNetwork();
 			out.println("WiFi    : "
-					+ (wiFiInfo.isConnected() ? "connected" : "not connected")
-					+ " (" + wiFiInfo.getErrorCause() + ") "
-					+ wiFiInfo.getAddress().getHostAddress() + "/"
-					+ Integer.toHexString(wiFiInfo.getNetmask()));
+					+ (localNetwork.isConnected() ? "connected"
+							: "not connected") + " ("
+					+ localNetwork.getErrorCause() + ") " + localNetwork);
 		} catch (Exception x) {
 			out.println("Wifi Info not available [" + x.getMessage() + "]");
 		}
