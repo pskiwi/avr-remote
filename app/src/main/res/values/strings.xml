@@ -56,6 +56,14 @@
 		(If this does not help,
 		switch off power.)
 	</string>
+	<string name="AVRControlPortBusy">
+		<b>The receiver answers, but not on its control channel.</b>
+		\n
+		Probably another device or app still holds the one control
+		connection it allows.\n
+		This reliably frees it: unplug the receiver for a minute.\n
+		(Standby is often not enough - but you can let the app try first.)
+	</string>
 	<string name="TryAutoRestart">Automatic</string>
 	<string name="TryToConnect">Manual</string>
 

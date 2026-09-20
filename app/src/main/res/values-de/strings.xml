@@ -63,6 +63,15 @@
 		(Falls dies nicht funktioniert, sollten Sie den Receiver
 		komplette aus- und einschalten.)
 	</string>
+	<string name="AVRControlPortBusy">
+		<b>Der Receiver antwortet, nur auf seinem Steuerkanal nicht.</b>
+		\n
+		Vermutlich hält ein anderes Gerät oder eine andere App noch die eine
+		Steuerverbindung, die er zulässt.\n
+		Das hilft zuverlässig: den Receiver eine Minute vom Strom trennen.\n
+		(Standby genügt oft nicht - Sie können es die App aber zuerst
+		versuchen lassen.)
+	</string>
 	<string name="TryAutoRestart">Automatisch</string>
 	<string name="TryToConnect">Manuell</string>
 

@@ -77,7 +77,13 @@ public final class ConfigurationAssistant {
 	public void checkStatus(ReceiverStatus currentStatus) {
 		if (currentStatus.is(StatusFlag.WLAN) || EmulationDetector.isEmulator()) {
 			Logger.info("checkStatus WLAN/EMU");
-			if (currentStatus.is(StatusFlag.Reachable)) {
+			// isControlPortBusy() zusaetzlich zu Reachable: das Flag stuetzt
+			// sich allein auf Ping und Port 80, waehrend Reachable auch die
+			// UPnP-Ports verlangt. Ein neueres Modell, das die nicht anbietet,
+			// bekaeme sonst den IP-Dialog - obwohl die IP nachweislich stimmt,
+			// wir haben gerade mit dem Geraet gesprochen.
+			if (currentStatus.is(StatusFlag.Reachable)
+					|| app.getConnector().isControlPortBusy()) {
 				checkReset();
 			} else {
 				showIPDialog(false);
@@ -178,7 +184,15 @@ public final class ConfigurationAssistant {
 		visible.set(true);
 		AlertDialog.Builder builder = new AlertDialog.Builder(ctx);
 		builder.setTitle(ctx.getString(R.string.ConnectivityProblem));
-		builder.setMessage(ctx.getString(R.string.AVRReset));
+		// Zwei verschiedene Fehler, die bisher denselben Text bekamen: der
+		// Receiver ist weg, oder er ist da und nur sein Steuerkanal vergeben.
+		// Nur letzteres braucht den Netzstecker.
+		// getText, nicht getString: beide Texte setzen ihre erste Zeile - die
+		// mit dem Unterschied - in <b>, und getString macht daraus toString()
+		// und wirft die Spans weg. Die Auszeichnung kam also nie an.
+		builder.setMessage(ctx.getText(app.getConnector().isControlPortBusy()
+				? R.string.AVRControlPortBusy
+				: R.string.AVRReset));
 		builder.setInverseBackgroundForced(true);
 		builder.setCancelable(false);
 		Logger.setLocation("checkReset-1");

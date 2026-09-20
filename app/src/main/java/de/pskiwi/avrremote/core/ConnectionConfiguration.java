@@ -126,6 +126,16 @@ public final class ConnectionConfiguration {
 		return true;
 	}
 
+	/**
+	 * Ob {@link #checkAddress(boolean)} das Geraet wirklich anspricht. Bei
+	 * erweiterter Konfiguration tut es das nicht und liefert unbesehen true -
+	 * wer aus dem Ergebnis auf den Zustand des Receivers schliesst, darf das
+	 * dann nicht.
+	 */
+	public boolean isProbing() {
+		return !extendedConfig;
+	}
+
 	public boolean checkAddress(boolean complete) throws UnknownHostException {
 		if (extendedConfig) {
 			return true;

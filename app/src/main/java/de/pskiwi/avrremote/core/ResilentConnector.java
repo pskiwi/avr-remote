@@ -94,6 +94,43 @@ public final class ResilentConnector implements ISender {
 			return generation.get() == epoch;
 		}
 
+		/**
+		 * Der Receiver antwortet, nur seinen Steuerport bekommen wir nicht:
+		 * dann ist die eine Sitzung, die er zulaesst, vergeben - von einer
+		 * anderen App, einem anderen Geraet oder aus einer, die nie
+		 * geschlossen wurde. Das ist ein anderer Fehler als "Receiver reagiert
+		 * nicht", und nur er laesst sich durch Stromlosmachen beheben. Weil
+		 * der Logmodus ab Werk nur nach logcat schreibt, ist der Dialog im
+		 * ConfigurationAssistant die einzige Stelle, an der ein Nutzer das je
+		 * erfaehrt.
+		 *
+		 * reachable deckt den Fall schon ab, wenn es true ist: der Test
+		 * dahinter verlangt Ping und Port 80. Ist es false, kann es genauso an
+		 * den UPnP-Ports gelegen haben - erst dann lohnt die engere Nachfrage.
+		 * Sie kostet rund eine Sekunde und laeuft nur in einem Durchlauf, der
+		 * ohnehin schon gescheitert ist.
+		 */
+		private boolean checkControlPortBusy(boolean reachable) {
+			if (!connectionConfig.isProbing()) {
+				// Bei erweiterter Konfiguration ist reachable kein Befund:
+				// checkAddress() liefert dort unbesehen true, ohne das Geraet
+				// anzusprechen. Wir wissen also nicht, ob es antwortet - und
+				// duerfen dem Nutzer nicht sagen, es tue das.
+				return false;
+			}
+			if (reachable) {
+				return true;
+			}
+			try {
+				return connectionConfig.checkAddress(true);
+			} catch (Exception x) {
+				// Der Aufrufer ist gerade dabei, seine eigene Ursache zu
+				// werfen - die darf diese hier nicht verdraengen.
+				Logger.debug("control port check failed " + x);
+				return false;
+			}
+		}
+
 		public void run() {
 			while (!Thread.currentThread().isInterrupted() && isCurrent()) {
 				try {
@@ -124,8 +161,22 @@ public final class ResilentConnector implements ISender {
 						// Bei Fehler Reachable setzen, sonst wird Reachable
 						// über "Connected" mit gesetzt
 						if (isCurrent()) {
-							enableManager.setStatus(StatusFlag.Reachable,
-									reachable);
+							// Erst pruefen, dann setzen, auch wenn das Reachable
+							// um bis zu eine Sekunde verzoegert: setStatus macht
+							// per Fallthrough "Connected" *definiert*, und genau
+							// daran haengt, ob ConnectionProgressMonitor den
+							// Dialog aufmacht - der das Flag dann liest.
+							// Andersherum stuende dort eine Sekunde lang der Wert
+							// des vorigen Durchlaufs.
+							final boolean busy = checkControlPortBusy(reachable);
+							// Nochmal pruefen: checkControlPortBusy blockiert
+							// rund eine Sekunde, in der ein neuer Thread laengst
+							// verbunden haben und das Flag geloescht haben kann.
+							if (isCurrent()) {
+								controlPortBusy = busy;
+								enableManager.setStatus(StatusFlag.Reachable,
+										reachable);
+							}
 						}
 						throw x;
 					}
@@ -153,6 +204,7 @@ public final class ResilentConnector implements ISender {
 						// clearState() bliebe das Flag stehen, ohne Verbindung
 						// und ohne Reconnect-Loop dahinter. Wie die Wache unten
 						// verengt auch diese das Fenster nur.
+						controlPortBusy = false;
 						fireConnected(newConnector, true);
 					}
 					newConnector.waitUntilClosed();
@@ -397,11 +449,25 @@ public final class ResilentConnector implements ISender {
 		closeCurrentConnection();
 	}
 
+	/**
+	 * Ob der letzte Verbindungsversuch an einem belegten Steuerport
+	 * gescheitert ist - siehe Reconnector.checkControlPortBusy().
+	 */
+	public boolean isControlPortBusy() {
+		return controlPortBusy;
+	}
+
 	public boolean isRunning() {
 		return connector != IConnector.NULL_CONNECTOR && isConnnected();
 	}
 
 	private void clearState() {
+		// sonst ueberlebt der Befund einen IP-Wechsel oder ein stop(), und der
+		// naechste Dialog raet zum Netzstecker fuer eine Adresse, mit der wir
+		// nie gesprochen haben. Im Fehlerpfad von Reconnector.run() wird
+		// clearState() nicht aufgerufen - das frisch gesetzte Flag ueberlebt
+		// den Durchlauf, in dem es entsteht.
+		controlPortBusy = false;
 		enableManager.reset();
 	}
 
@@ -419,6 +485,9 @@ public final class ResilentConnector implements ISender {
 	// nach einem IP-Wechsel weiter die alte Adresse anwählen, bis er von selbst
 	// endet.
 	private volatile ConnectionConfiguration connectionConfig = ConnectionConfiguration.UNDEFINED;
+	// volatile: geschrieben vom Reconnect-Thread, gelesen auf dem UI-Thread
+	// (ConfigurationAssistant.checkReset)
+	private volatile boolean controlPortBusy;
 	private final ThreadHandler threadHandler = new ThreadHandler();
 	private final AtomicInteger generation = new AtomicInteger();
 	private static int[] RECONNECT_DELAY = { 1, 2, 4, 8, 16 };
