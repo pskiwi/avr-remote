@@ -223,8 +223,12 @@ Consequences:
 - **Within Java 11, write modern Java.** The code dates from 2010 and mostly predates it, but new and
   touched code should not imitate that. In particular use **try-with-resources** rather than the
   manual `try { … } finally { x.close(); }` pattern — `http/HTTPSupport` is the reference. The tree
-  was converted in August 2026 and `core/Connector.java:168` is the only manual block left: it is
-  not convertible at all, it closes the socket only on the failure path (`if (!ok)`). The other reason to keep the manual form is when
+  was converted in August 2026 and `core/Connector.java:153` is the only manual block left: it is
+  not convertible at all, it closes the socket only on the failure path (`if (!ok)`) — on success
+  the socket has to outlive the constructor. It covers the whole setup, binding and connect
+  included, and that is deliberate: `Network.bindSocket()` forces the file descriptor into
+  existence and can then fail, whereas a failed `connect()` cleans up after itself (measured).
+  The other reason to keep the manual form is when
   an exception from `close()` must be swallowed deliberately — see
   `HTTPSupportTest.serveOneRequest`, where letting it propagate would fake a test failure.
   This does **not** extend to the UI bases above: those are a migration, not a style choice.
