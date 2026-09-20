@@ -154,7 +154,11 @@ public final class HTTPSupport {
 	private HTTPSupport() {
 	}
 
-	/** Rückgabe von status(), wenn gar keine Antwort kam. */
+	/**
+	 * Rückgabe von status(), wenn gar keine Antwort kam. Denselben Wert
+	 * liefert getResponseCode() von sich aus, wenn es die Statuszeile nicht
+	 * lesen kann - beides heißt "keine brauchbare Antwort".
+	 */
 	public static final int NO_ANSWER = -1;
 
 	private static final String FORM_CONTENT_TYPE = "application/x-www-form-urlencoded";

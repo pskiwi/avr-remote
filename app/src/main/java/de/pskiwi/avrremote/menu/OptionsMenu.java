@@ -232,23 +232,24 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 		new Thread("CheckReceiverWebsite") {
 			@Override
 			public void run() {
-				// Nur eine klare Absage führt auf die Startseite. Bleibt der
-				// Receiver die Antwort schuldig - aus, oder im Netz gerade
-				// nicht erreichbar -, bleibt es beim eingestellten Pfad:
-				// verwerfen würde eine Einstellung, die der Anwender
-				// ausdrücklich gesetzt hat.
+				// Nur die eine gemessene Absage verwirft den eingestellten
+				// Pfad: der 404 des GoAhead. Keine Antwort, ein Serverfehler
+				// oder eine Passwortabfrage belegen nicht, dass die Seite
+				// fehlt - dann bleibt es bei dem, was der Anwender
+				// ausdrücklich eingestellt hat.
 				final int code = HTTPSupport.status(pageURL);
-				final String url = code == HTTPSupport.NO_ANSWER
-						|| code == HttpURLConnection.HTTP_OK ? pageURL
-						: baseURL;
+				final String url = code == HttpURLConnection.HTTP_NOT_FOUND ? baseURL
+						: pageURL;
 				activity.runOnUiThread(new Runnable() {
 					public void run() {
 						final ProgressDialog progress = websiteProgress;
 						websiteProgress = null;
-						// wie beim Scan: an einer abgeräumten Activity wirft
-						// dismiss(). Der Browser wird trotzdem geöffnet - der
-						// Tipp darf nicht folgenlos verpuffen
-						if (showing.isShowing()) {
+						// dismiss() wirft erst, wenn das Fenster der Activity
+						// weg ist. Pausiert ist nicht weg: hier auf
+						// isShowing() zu prüfen ließe den Dialog, der sich
+						// nicht abbrechen lässt, für immer stehen
+						if (!activity.isFinishing()
+								&& !activity.isDestroyed()) {
 							progress.dismiss();
 						}
 						openURL(url);
