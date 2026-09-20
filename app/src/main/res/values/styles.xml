@@ -5,8 +5,32 @@
 		<item name="android:textStyle">bold</item>
 	</style>
 
+	<!-- Alle Auswahllisten der App sind Plattform-Dialoge: Input/Mode
+	     (SelectButtonExtender), die Menues aus MenuBuilder, die Modellliste des
+	     ConfigurationAssistant, die ListPreferences der Settings und die beiden
+	     Spinner - ein Spinner im Dialog-Modus baut seinen Popup ebenfalls ueber
+	     AlertDialog.Builder. Ohne eigenes Theme kommen deren Farben komplett vom
+	     Geraet: ein heller Dialog mitten in einer schwarzen App. Hersteller-
+	     Aufsaetze mit erzwungenem Dunkelmodus (MIUI) faerben genau diese Mischung
+	     falsch um - gemeldet als weisse Schrift auf weissem Grund, Redmi K20 /
+	     Android 11. Ein durchgehend dunkler Dialog laesst ihnen nichts zum
+	     Invertieren. AlertDialog.Builder loest alertDialogTheme aus dem Theme des
+	     uebergebenen Context auf, deshalb steht es in beiden App-Themes. -->
+	<style name="AVRAlertDialog" parent="@android:style/Theme.Material.Dialog.Alert">
+	</style>
+
+	<!-- Der Eintrag im aufgeklappten Spinner wird mit dem Context der Activity
+	     gebaut, nicht mit dem des Dialogs. Seine Schriftfarbe stammt aus dem
+	     pre-Holo-Theme und war fuer den hellen Dropdown-Grund von damals gedacht -
+	     vor dem dunklen Panel von AVRAlertDialog waere sie dunkel auf dunkel. -->
+	<style name="AVRSpinnerDropDownItem" parent="@android:style/Widget.DropDownItem.Spinner">
+		<item name="android:textColor">@android:color/primary_text_dark</item>
+	</style>
+
 	<style name="AVRTheme" parent="@android:style/Theme.NoTitleBar">
 		<item name="android:buttonStyle">@style/MyButtonStyle</item>
+		<item name="android:alertDialogTheme">@style/AVRAlertDialog</item>
+		<item name="android:spinnerDropDownItemStyle">@style/AVRSpinnerDropDownItem</item>
 	</style>
 
 	<style name="AVRDialog" parent="@android:style/Theme.Light.NoTitleBar">
@@ -16,6 +40,8 @@
 <!--  		<item name="android:textStyle">bold</item>-->
 		<item name="android:buttonStyle">@style/MyButtonStyle</item>
 		<item name="android:imageButtonStyle">@style/MyImageButtonStyle</item>
+		<item name="android:alertDialogTheme">@style/AVRAlertDialog</item>
+		<item name="android:spinnerDropDownItemStyle">@style/AVRSpinnerDropDownItem</item>
 	</style>
 
 
