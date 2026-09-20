@@ -17,6 +17,20 @@
 	     Invertieren. AlertDialog.Builder loest alertDialogTheme aus dem Theme des
 	     uebergebenen Context auf, deshalb steht es in beiden App-Themes. -->
 	<style name="AVRAlertDialog" parent="@android:style/Theme.Material.Dialog.Alert">
+		<item name="android:colorAccent">@color/accentText</item>
+		<item name="android:windowTitleStyle">@style/AVRDialogTitle</item>
+	</style>
+
+	<!-- Titel und Eintraege eines Auswahldialogs unterscheiden sich bei Material nur
+	     in Groesse und Schnitt, beide weiss - zu wenig, um den Titel als Titel zu
+	     lesen. Der Titel bekommt deshalb die hellere Akzentfarbe. Ohne parent, weil die
+	     Plattform ihren DialogWindowTitle.Material nicht oeffentlich macht; die drei
+	     Items sind genau das, was sie dort setzt. -->
+	<style name="AVRDialogTitle">
+		<item name="android:textAppearance">@android:style/TextAppearance.Material.DialogWindowTitle</item>
+		<item name="android:textColor">@color/accentText</item>
+		<item name="android:maxLines">1</item>
+		<item name="android:scrollHorizontally">true</item>
 	</style>
 
 	<!-- Der Eintrag im aufgeklappten Spinner wird mit dem Context der Activity
@@ -31,17 +45,18 @@
 		<item name="android:buttonStyle">@style/MyButtonStyle</item>
 		<item name="android:alertDialogTheme">@style/AVRAlertDialog</item>
 		<item name="android:spinnerDropDownItemStyle">@style/AVRSpinnerDropDownItem</item>
+		<item name="android:colorAccent">@color/accentText</item>
+		<item name="android:seekBarStyle">@style/AVRSeekBar</item>
+		<item name="android:editTextBackground">@drawable/edit_text_avr</item>
+		<item name="android:editTextColor">@android:color/primary_text_dark</item>
 	</style>
 
 	<style name="AVRDialog" parent="@android:style/Theme.Light.NoTitleBar">
 	</style>
 
-	<style name="AVRActivity" parent="@android:style/Theme.NoTitleBar">
+	<style name="AVRActivity" parent="@style/AVRTheme">
 <!--  		<item name="android:textStyle">bold</item>-->
-		<item name="android:buttonStyle">@style/MyButtonStyle</item>
 		<item name="android:imageButtonStyle">@style/MyImageButtonStyle</item>
-		<item name="android:alertDialogTheme">@style/AVRAlertDialog</item>
-		<item name="android:spinnerDropDownItemStyle">@style/AVRSpinnerDropDownItem</item>
 	</style>
 
 
@@ -53,7 +68,19 @@
 	<style name="AVROptionActivity" parent="@android:style/Theme.Dialog">
 		<item name="android:alertDialogTheme">@style/AVRAlertDialog</item>
 		<item name="android:spinnerDropDownItemStyle">@style/AVRSpinnerDropDownItem</item>
+		<item name="android:colorAccent">@color/accentText</item>
 	</style>
+
+	<!-- Das Gelb der Regler und der orange Fokusrahmen der Eingabefelder sind
+	     pre-Holo-Grafiken. Der Regler wird nur eingefaerbt - progressTint trifft
+	     allein die Fortschritts-Ebene, Knopf und Rille bleiben wie sie sind. Das
+	     Eingabefeld dagegen bekommt einen eigenen Hintergrund: sein Aussehen haengt
+	     an ?attr/editTextBackground, nicht am Widget-Style - Widget.Material.EditText
+	     ist ein leerer Alias von Widget.EditText und aendert nichts. -->
+	<style name="AVRSeekBar" parent="@android:style/Widget.SeekBar">
+		<item name="android:progressTint">@color/accentFill</item>
+	</style>
+
 
 	<style name="MyButtonStyle" parent="@android:style/Widget.Button">
 		<item name="android:background">@drawable/custom_button</item>

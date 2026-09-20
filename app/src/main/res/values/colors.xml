@@ -5,4 +5,14 @@
         <color name="connected">#F2F5A9</color>
         <color name="poweron">#D0F5A9</color>
         <color name="buildInfo">#A8A8A8</color>
+        <!-- Das Rot des Treiberrings im App-Icon (ic_launcher_foreground.xml),
+             gedaempft: reines FF0000 flimmert auf Schwarz. accent faerbt Flaechen
+             gedaempft. accentFill faerbt Flaechen (die Regler in LevelActivity),
+             accentText alles Duenne auf dunklem Grund: Dialogtitel, die Textbuttons
+             eines Dialogs, der Fokusrahmen eines Eingabefeldes. Zwei Werte, weil
+             Abdunkeln bei Schrift gegen die Lesbarkeit arbeitet: #A84A4A auf dem
+             Dialogpanel sind 1.8:1, #D98080 sind 3.5:1 - die Schwelle fuer grosse
+             Schrift ist 3:1. -->
+        <color name="accentFill">#A84A4A</color>
+        <color name="accentText">#D98080</color>
 </resources>
