@@ -11,19 +11,51 @@ one still depends on has been folded into the live one.
 ## Next platform deadline: targetSdk 37
 
 The code side is done — `scan/LocalNetwork`, the socket binding, the permission and SSDP discovery
-are in, `compileSdk` is 37, and [CONNECTION.md](CONNECTION.md) describes the result. What is left is
-the part no build can answer.
+are in, `compileSdk` is 37, and [CONNECTION.md](CONNECTION.md) describes the result. `targetSdk` is
+still 36, so none of it is in force. What is left is the part no build can answer.
 
-- [ ] **Finish verifying on an Android 17 device before raising `targetSdk` to 37.** Done so far,
-      on a Pixel 8 with `adb shell am compat enable RESTRICT_LOCAL_NETWORK de.pskiwi.avrremote`:
-      with the permission granted the receiver connects normally; with it revoked the connection is
-      swallowed (`SocketTimeoutException` on port 23, no `SecurityException`), which is what the
-      hints behind `AVRSettings.isLocalNetworkBlocked()` now cover — see
-      [CONNECTION.md](CONNECTION.md). Note those hints are gated on `targetSdkVersion`, so the
-      `am compat` route does **not** exercise them; that needs a real `targetSdk 37` build.
+- [ ] **Finish verifying on an Android 17 device, then raise `targetSdk` in a commit of its own.**
+      That order matters: raising it together with anything else means a failure could be either,
+      and the device checks below are the only evidence there is.
+
+      Done so far, on a Pixel 8 with
+      `adb shell am compat enable RESTRICT_LOCAL_NETWORK de.pskiwi.avrremote`: with the permission
+      granted the receiver connects normally; with it revoked the connection is swallowed —
+      `SocketTimeoutException` on port 23, no `SecurityException` — which is what the hints behind
+      `AVRSettings.isLocalNetworkBlocked()` now cover. **Those hints are gated on
+      `targetSdkVersion`, so the `am compat` route does not reach them**; they have been built and
+      never seen. Device state was restored afterwards (`am compat reset`, permission re-granted).
+
       Still untried: the SSDP scan against a receiver, Wi-Fi off/on driving `StatusFlag.WLAN` and
       the reconnect, and the case the whole construction exists for — mobile data on plus a Wi-Fi
       without internet, where connection *and* scan must work and the connection did not before.
+
+- [ ] Before that commit, know what else `targetSdk 37` switches on. All seventeen behaviour
+      changes for apps targeting Android 17 were checked against this code in September 2026, and
+      **only Local Network Protection applies**. The rest, so nobody has to re-derive it:
+
+      | Change | Why it misses this app |
+      |---|---|
+      | RemoteViews memory limit | no `RemoteViews` anywhere; the app widget is long gone |
+      | Lock-free `MessageQueue`, `static final` no longer writable | no `setAccessible`/`getDeclaredField` — the only reflection is `Class.forName` in `ModelConfigurator` |
+      | ECH, Certificate Transparency | the app opens no TLS connection at all; the one `https://` outside the GPL headers is a URL handed to the browser (`menu/OptionsMenu.java:193`) |
+      | Safer native DCL | no native libraries |
+      | Background audio hardening | no `AudioManager`, no `MediaSession` — volume goes to the receiver over telnet |
+      | Orientation/resizability on large screens | no `screenOrientation` in the manifest, so there is no constraint to ignore |
+      | Passwords hidden on physical keyboards | no password fields |
+      | CP2 PII columns, CP2 strict SQL, OTP SMS, `setContentCaptureEnabled`, accessibility IME, `BluetoothSocket.read()` | those APIs are not used |
+
+      One is a judgement rather than a grep: **BAL hardening**. There is a single `PendingIntent`
+      (`StatusbarManager.java:45`, notification → activity, `FLAG_IMMUTABLE`), launched by the user
+      tapping the notification, and the two `startActivity` calls outside an Activity
+      (`ScreenMenu.java:311`, `core/display/NetDisplay.java:1107`) go through an Activity reference
+      from a foreground interaction. No background launch — but that is reasoning, not a test.
+
+      A trial build with `targetSdk 37` is clean and removes exactly one lint entry,
+      `OldTargetApi`. **That proves very little:** AGP 8.13.0 is tested only to compile SDK 36.1,
+      so checks for 37's behaviour changes do not exist in this lint at all. Its silence is not a
+      pass. Changes that apply to *all* apps on Android 17 regardless of target are a different
+      matter — those are already in force, and the app ran normally on the Pixel 8 under Android 17.
 - [ ] **The SSDP parser is pinned against constructed data, not a capture.** The two files under
       `app/src/test/resources/de/pskiwi/avrremote/scan/` follow the UPnP spec and the known header
       order of a Denon/HEOS device, but nobody recorded them off a receiver — unlike the AVR-3808
