@@ -26,7 +26,7 @@ Play Store automation and never has been.
 
 ## Build and run
 
-The build needs **JDK 17** and **Android SDK Platform 36**:
+The build needs **JDK 17** and **Android SDK Platform 37.2**:
 
 ```sh
 export JAVA_HOME=/opt/homebrew/opt/openjdk@17          # keg-only formula, not on PATH by default
@@ -38,6 +38,12 @@ $ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/app-debu
 ```
 
 `local.properties` is deliberately untracked — the SDK path comes from `ANDROID_HOME`.
+
+`compileSdk 37` needs `compileSdkMinor 2` beside it: there is no base package `platforms;android-37`
+in the SDK repository, only the minor versions `37.0`/`37.1`/`37.2`, and without the minor AGP looks
+for `android-37` and fails with *"Failed to find target with hash string"*. AGP 8.13.0 is only tested
+up to compile SDK 36.1 and warns about 37.2 in every build, which is what
+`android.suppressUnsupportedCompileSdk` in `gradle.properties` silences.
 
 **There is almost no test coverage.** `src/test` holds nine JVM test classes on JUnit 4, the only
 dependency in the project — `http/HTTPSupportTest`, `http/Series08ParserTest`,
