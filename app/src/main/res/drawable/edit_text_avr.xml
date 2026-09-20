@@ -11,7 +11,7 @@
             <solid android:color="#1A1A1A" />
             <stroke
                 android:width="2dp"
-                android:color="@color/accentText" />
+                android:color="@color/accent" />
             <corners android:radius="2dp" />
             <padding
                 android:left="8dp"

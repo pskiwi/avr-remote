@@ -17,7 +17,7 @@
 	     Invertieren. AlertDialog.Builder loest alertDialogTheme aus dem Theme des
 	     uebergebenen Context auf, deshalb steht es in beiden App-Themes. -->
 	<style name="AVRAlertDialog" parent="@android:style/Theme.Material.Dialog.Alert">
-		<item name="android:colorAccent">@color/accentText</item>
+		<item name="android:colorAccent">@color/accent</item>
 		<item name="android:windowTitleStyle">@style/AVRDialogTitle</item>
 	</style>
 
@@ -28,7 +28,7 @@
 	     Items sind genau das, was sie dort setzt. -->
 	<style name="AVRDialogTitle">
 		<item name="android:textAppearance">@android:style/TextAppearance.Material.DialogWindowTitle</item>
-		<item name="android:textColor">@color/accentText</item>
+		<item name="android:textColor">@color/accent</item>
 		<item name="android:maxLines">1</item>
 		<item name="android:scrollHorizontally">true</item>
 	</style>
@@ -45,8 +45,9 @@
 		<item name="android:buttonStyle">@style/MyButtonStyle</item>
 		<item name="android:alertDialogTheme">@style/AVRAlertDialog</item>
 		<item name="android:spinnerDropDownItemStyle">@style/AVRSpinnerDropDownItem</item>
-		<item name="android:colorAccent">@color/accentText</item>
+		<item name="android:colorAccent">@color/accent</item>
 		<item name="android:seekBarStyle">@style/AVRSeekBar</item>
+		<item name="android:editTextStyle">@style/AVREditText</item>
 		<item name="android:editTextBackground">@drawable/edit_text_avr</item>
 		<item name="android:editTextColor">@android:color/primary_text_dark</item>
 	</style>
@@ -68,7 +69,7 @@
 	<style name="AVROptionActivity" parent="@android:style/Theme.Dialog">
 		<item name="android:alertDialogTheme">@style/AVRAlertDialog</item>
 		<item name="android:spinnerDropDownItemStyle">@style/AVRSpinnerDropDownItem</item>
-		<item name="android:colorAccent">@color/accentText</item>
+		<item name="android:colorAccent">@color/accent</item>
 	</style>
 
 	<!-- Das Gelb der Regler und der orange Fokusrahmen der Eingabefelder sind
@@ -76,9 +77,22 @@
 	     allein die Fortschritts-Ebene, Knopf und Rille bleiben wie sie sind. Das
 	     Eingabefeld dagegen bekommt einen eigenen Hintergrund: sein Aussehen haengt
 	     an ?attr/editTextBackground, nicht am Widget-Style - Widget.Material.EditText
-	     ist ein leerer Alias von Widget.EditText und aendert nichts. -->
+	     ist ein leerer Alias von Widget.EditText und aendert nichts. Die Rille wird
+	     mit abgedunkelt, sonst traegt die Fuellung zu wenig gegen sie ab. -->
 	<style name="AVRSeekBar" parent="@android:style/Widget.SeekBar">
-		<item name="android:progressTint">@color/accentFill</item>
+		<item name="android:progressTint">@color/accent</item>
+		<item name="android:progressBackgroundTint">@color/sliderTrack</item>
+	</style>
+
+	<!-- editTextBackground gilt nur, solange Widget.EditText des Geraets dieses
+	     Attribut auch ausliest - AOSP tut das, ein Hersteller-Overlay mit fest
+	     verdrahtetem Hintergrund nicht, und genau so ein Geraet hat die Rezension
+	     geschickt. Der Style setzt den Hintergrund deshalb zusaetzlich direkt. Beides
+	     bleibt stehen: das Attribut deckt Widgets ab, die von Widget.EditText erben,
+	     ohne diesen Style zu benutzen. -->
+	<style name="AVREditText" parent="@android:style/Widget.EditText">
+		<item name="android:background">@drawable/edit_text_avr</item>
+		<item name="android:textColor">@android:color/primary_text_dark</item>
 	</style>
 
 
