@@ -48,7 +48,7 @@
             android:name=".LevelActivity"
             android:exported="false"
             android:label="Level"
-            android:theme="@style/AVRLevelActivity" />
+            android:theme="@style/AVRActivity" />
         <activity
             android:name=".OnScreenDisplayActivity"
             android:exported="false"

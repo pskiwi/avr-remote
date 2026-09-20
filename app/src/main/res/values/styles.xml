@@ -45,16 +45,11 @@
 	</style>
 
 
-	<!-- LevelActivity und OptionActivity hingen als einzige direkt an einem
-	     Plattform-Theme aus dem Manifest, also wieder am Geraet. Beide zeigen
-	     heute keinen Dialog; die Huelle sorgt dafuer, dass der erste, der dort
-	     entsteht, dieselben Farben erbt wie ueberall sonst. Das Aussehen der
-	     Activities selbst aendert sich nicht, die Eltern bleiben dieselben. -->
-	<style name="AVRLevelActivity" parent="@android:style/Theme.Light">
-		<item name="android:alertDialogTheme">@style/AVRAlertDialog</item>
-		<item name="android:spinnerDropDownItemStyle">@style/AVRSpinnerDropDownItem</item>
-	</style>
-
+	<!-- OptionActivity hing als einzige noch direkt an einem Plattform-Theme aus
+	     dem Manifest, also wieder am Geraet. Sie zeigt heute keinen Dialog; die
+	     Huelle sorgt dafuer, dass der erste, der dort entsteht, dieselben Farben
+	     erbt wie ueberall sonst. Das Aussehen der Activity selbst aendert sich
+	     nicht, der Elter bleibt derselbe. -->
 	<style name="AVROptionActivity" parent="@android:style/Theme.Dialog">
 		<item name="android:alertDialogTheme">@style/AVRAlertDialog</item>
 		<item name="android:spinnerDropDownItemStyle">@style/AVRSpinnerDropDownItem</item>
