@@ -20,4 +20,9 @@
              Material-Dialogpanel benutzt, damit das Popup-Menue nicht als schwarze
              Flaeche in einer schwarzen App steht. -->
         <color name="floating">#424242</color>
+        <!-- Der Balken unter dem aktiven Reiter darf das Rot des Icons fast
+             ungebrochen tragen: eine kleine gefuellte Flaeche ohne Schrift darauf,
+             die nur markieren soll, wo man ist. Die Ruecksicht, die accent nimmt,
+             gilt hier nicht. -->
+        <color name="accentBright">#F51414</color>
 </resources>

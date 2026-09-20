@@ -18,7 +18,7 @@
             <item android:gravity="bottom">
                 <shape>
                     <size android:height="4dp" />
-                    <solid android:color="@color/accent" />
+                    <solid android:color="@color/accentBright" />
                 </shape>
             </item>
         </layer-list>
