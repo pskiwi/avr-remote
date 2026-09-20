@@ -1,8 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-        <color name="disconnected">#F78181</color>
-        <color name="disconnectedReachable">#FFCC33</color>
-        <color name="connected">#F2F5A9</color>
-        <color name="poweron">#D0F5A9</color>
         <color name="buildInfo">#A8A8A8</color>
+        <!-- Das Rot des Treiberrings im App-Icon (ic_launcher_foreground.xml),
+             aufgehellt statt abgedunkelt. Ein Wert fuer alles: reines FF0000 flimmert
+             auf Schwarz, ein dunkles Rot dagegen verliert die Lesbarkeit, wo es
+             darauf ankommt. Auf dem Dialogpanel sind es 3.5:1 - Schwelle fuer grosse
+             Schrift ist 3:1 - und als Reglerfuellung gegen die abgedunkelte Rille
+             4.0:1, Schwelle fuer Bedienelemente ebenfalls 3:1. -->
+        <color name="accent">#D98080</color>
+        <!-- Die dunklen Flaechen der App, von hell nach dunkel. Vorher standen diese
+             Werte als Zahlen in den Drawables, teils doppelt - #3A3A3A war einmal
+             benannt und einmal abgetippt. surfaceRaised ist auch die Rille der
+             Regler: das Grau der Plattform (#707370) ist dafuer zu hell, gegen jede
+             Rotstufe bleibt es unter 2:1, und dann sieht man nicht mehr, wo der
+             Regler steht. -->
+        <color name="surfacePressed">#4A4A4A</color>
+        <color name="surfaceRaised">#3A3A3A</color>
+        <color name="surface">#2E2E2E</color>
+        <color name="surfaceLow">#242424</color>
+        <color name="surfaceSunken">#1A1A1A</color>
+        <color name="outline">#666666</color>
+        <!-- Der Grund schwebender Flaechen: derselbe Grauton, den das dunkle
+             Material-Dialogpanel benutzt, damit das Popup-Menue nicht als schwarze
+             Flaeche in einer schwarzen App steht. -->
+        <color name="floating">#424242</color>
+        <!-- Der Balken unter dem aktiven Reiter darf das Rot des Icons fast
+             ungebrochen tragen: eine kleine gefuellte Flaeche ohne Schrift darauf,
+             die nur markieren soll, wo man ist. Die Ruecksicht, die accent nimmt,
+             gilt hier nicht. -->
+        <color name="accentBright">#F51414</color>
 </resources>

@@ -107,6 +107,15 @@ public final class AVRTheme {
 		return 90;
 	}
 
+	/**
+	 * Gibt den Reitern den Hintergrund der App. Die Grafiken der Plattform sind
+	 * nicht oeffentlich und sehen je nach Android-Version anders aus - ein Tint
+	 * darueber erbt genau diesen Unterschied, gemessen auf Android 11 gegen 17.
+	 */
+	private void styleTab(View tab) {
+		tab.setBackgroundResource(de.pskiwi.avrremote.R.drawable.tab_indicator_avr);
+	}
+
 	public void saveTabSettings(TabHost tabHost) {
 	}
 
@@ -121,9 +130,15 @@ public final class AVRTheme {
 			unselected = 0xff;
 		}
 
+		// Der Strich unter den Reitern gehoert der Plattform und sieht je nach
+		// Version anders aus - orange auf Android 11, weiss auf 17. Die Auswahl
+		// zeigt der Balken in styleTab an, also weg damit.
+		tabHost.getTabWidget().setStripEnabled(false);
+
 		int currentTab = tabHost.getCurrentTab();
 		for (int i = 0; i < tabHost.getTabWidget().getChildCount(); i++) {
 			final View childAt = tabHost.getTabWidget().getChildAt(i);
+			styleTab(childAt);
 			final Drawable background = childAt.getBackground();
 			if (background != null) {
 				if (i == currentTab) {

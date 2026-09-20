@@ -5,17 +5,123 @@
 		<item name="android:textStyle">bold</item>
 	</style>
 
+	<!-- Alle Auswahllisten der App sind Plattform-Dialoge: Input/Mode
+	     (SelectButtonExtender), die Menues aus MenuBuilder, die Modellliste des
+	     ConfigurationAssistant, die ListPreferences der Settings und die beiden
+	     Spinner - ein Spinner im Dialog-Modus baut seinen Popup ebenfalls ueber
+	     AlertDialog.Builder. Ohne eigenes Theme kommen deren Farben komplett vom
+	     Geraet: ein heller Dialog mitten in einer schwarzen App. Hersteller-
+	     Aufsaetze mit erzwungenem Dunkelmodus (MIUI) faerben genau diese Mischung
+	     falsch um - gemeldet als weisse Schrift auf weissem Grund, Redmi K20 /
+	     Android 11. Ein durchgehend dunkler Dialog laesst ihnen nichts zum
+	     Invertieren. AlertDialog.Builder loest alertDialogTheme aus dem Theme des
+	     uebergebenen Context auf, deshalb steht es in beiden App-Themes. -->
+	<style name="AVRAlertDialog" parent="@android:style/Theme.Material.Dialog.Alert">
+		<item name="android:colorAccent">@color/accent</item>
+		<item name="android:windowTitleStyle">@style/AVRDialogTitle</item>
+		<item name="android:textAppearanceListItemSmall">@style/AVRListItemText</item>
+	</style>
+
+	<!-- Titel und Eintraege eines Auswahldialogs unterscheiden sich bei Material nur
+	     in Groesse und Schnitt, beide weiss - zu wenig, um den Titel als Titel zu
+	     lesen. Der Titel bekommt deshalb die hellere Akzentfarbe. Ohne parent, weil die
+	     Plattform ihren DialogWindowTitle.Material nicht oeffentlich macht; die drei
+	     Items sind genau das, was sie dort setzt. -->
+	<style name="AVRDialogTitle">
+		<item name="android:textAppearance">@android:style/TextAppearance.Material.DialogWindowTitle</item>
+		<item name="android:textColor">@color/accent</item>
+		<item name="android:maxLines">1</item>
+		<item name="android:scrollHorizontally">true</item>
+	</style>
+
+	<!-- Der Eintrag im aufgeklappten Spinner wird mit dem Context der Activity
+	     gebaut, nicht mit dem des Dialogs. Seine Schriftfarbe stammt aus dem
+	     pre-Holo-Theme und war fuer den hellen Dropdown-Grund von damals gedacht -
+	     vor dem dunklen Panel von AVRAlertDialog waere sie dunkel auf dunkel. -->
+	<style name="AVRSpinnerDropDownItem" parent="@android:style/Widget.DropDownItem.Spinner">
+		<item name="android:textColor">@android:color/primary_text_dark</item>
+	</style>
+
+	<!-- Das Menue hinter dem Menu-Knopf ist ein PopupMenu (OptionsMenu.showPopup),
+	     kein Dialog - es nimmt popupMenuStyle und die beiden Popup-Textstile aus dem
+	     Theme der Activity. Im pre-Holo-Theme zeigen die auf das helle Dropdown-Panel
+	     von damals mit dunkler Schrift: weisses Menue vor schwarzer App. Material
+	     liefert beides passend, den Grund ueber colorBackgroundFloating, das im
+	     Legacy-Theme auf colorBackground zeigt und damit dunkel ist. -->
+	<style name="AVRPopupMenu" parent="@android:style/Widget.Material.PopupMenu">
+		<item name="android:popupBackground">@color/floating</item>
+	</style>
+
+	<!-- Eine Zeile, die man in einer Liste antippt, hatte je nach Flaeche drei
+	     Groessen: 22sp in den Einstellungen und in der Umbenennen-Liste
+	     (textAppearanceListItem zeigt im pre-Holo-Theme auf textAppearanceLarge),
+	     16sp im Popup-Menue und 16sp in den Dialoglisten, die ihre Groesse aus dem
+	     Material-Dialogtheme holen. Hier ist es eine: die 16sp von
+	     TextAppearance.Material.Subhead, der Groesse, die die Plattform sowohl fuer
+	     Listeneintraege als auch fuer Menuepunkte vorsieht. textAppearanceLarge muss mit,
+	     weil PreferenceActivity unter einem Legacy-Theme das alte preference.xml
+	     bekommt, und das zeigt direkt darauf statt auf textAppearanceListItem. -->
+	<style name="AVRListItemText" parent="@android:style/TextAppearance.Material.Subhead">
+	</style>
+
 	<style name="AVRTheme" parent="@android:style/Theme.NoTitleBar">
 		<item name="android:buttonStyle">@style/MyButtonStyle</item>
+		<item name="android:alertDialogTheme">@style/AVRAlertDialog</item>
+		<item name="android:spinnerDropDownItemStyle">@style/AVRSpinnerDropDownItem</item>
+		<item name="android:colorAccent">@color/accent</item>
+		<item name="android:seekBarStyle">@style/AVRSeekBar</item>
+		<item name="android:popupMenuStyle">@style/AVRPopupMenu</item>
+		<item name="android:textAppearanceLargePopupMenu">@style/AVRListItemText</item>
+		<item name="android:textAppearanceSmallPopupMenu">@android:style/TextAppearance.Material.Widget.PopupMenu.Small</item>
+		<item name="android:textAppearanceListItem">@style/AVRListItemText</item>
+		<item name="android:textAppearanceLarge">@style/AVRListItemText</item>
+		<item name="android:textAppearanceListItemSmall">@style/AVRListItemText</item>
+		<item name="android:editTextStyle">@style/AVREditText</item>
+		<item name="android:editTextBackground">@drawable/edit_text_avr</item>
+		<item name="android:editTextColor">@android:color/primary_text_dark</item>
 	</style>
 
 	<style name="AVRDialog" parent="@android:style/Theme.Light.NoTitleBar">
 	</style>
 
-	<style name="AVRActivity" parent="@android:style/Theme.NoTitleBar">
+	<style name="AVRActivity" parent="@style/AVRTheme">
 <!--  		<item name="android:textStyle">bold</item>-->
-		<item name="android:buttonStyle">@style/MyButtonStyle</item>
 		<item name="android:imageButtonStyle">@style/MyImageButtonStyle</item>
+	</style>
+
+
+	<!-- OptionActivity hing als einzige noch direkt an einem Plattform-Theme aus
+	     dem Manifest, also wieder am Geraet. Sie zeigt heute keinen Dialog; die
+	     Huelle sorgt dafuer, dass der erste, der dort entsteht, dieselben Farben
+	     erbt wie ueberall sonst. Das Aussehen der Activity selbst aendert sich
+	     nicht, der Elter bleibt derselbe. -->
+	<style name="AVROptionActivity" parent="@android:style/Theme.Dialog">
+		<item name="android:alertDialogTheme">@style/AVRAlertDialog</item>
+		<item name="android:spinnerDropDownItemStyle">@style/AVRSpinnerDropDownItem</item>
+		<item name="android:colorAccent">@color/accent</item>
+	</style>
+
+	<!-- Das Gelb der Regler und der orange Fokusrahmen der Eingabefelder sind
+	     pre-Holo-Grafiken. Der Regler wird nur eingefaerbt - progressTint trifft
+	     allein die Fortschritts-Ebene, Knopf und Rille bleiben wie sie sind. Das
+	     Eingabefeld dagegen bekommt einen eigenen Hintergrund: sein Aussehen haengt
+	     an ?attr/editTextBackground, nicht am Widget-Style - Widget.Material.EditText
+	     ist ein leerer Alias von Widget.EditText und aendert nichts. Die Rille wird
+	     mit abgedunkelt, sonst traegt die Fuellung zu wenig gegen sie ab. -->
+	<style name="AVRSeekBar" parent="@android:style/Widget.SeekBar">
+		<item name="android:progressTint">@color/accent</item>
+		<item name="android:progressBackgroundTint">@color/surfaceRaised</item>
+	</style>
+
+	<!-- editTextBackground gilt nur, solange Widget.EditText des Geraets dieses
+	     Attribut auch ausliest - AOSP tut das, ein Hersteller-Overlay mit fest
+	     verdrahtetem Hintergrund nicht, und genau so ein Geraet hat die Rezension
+	     geschickt. Der Style setzt den Hintergrund deshalb zusaetzlich direkt. Beides
+	     bleibt stehen: das Attribut deckt Widgets ab, die von Widget.EditText erben,
+	     ohne diesen Style zu benutzen. -->
+	<style name="AVREditText" parent="@android:style/Widget.EditText">
+		<item name="android:background">@drawable/edit_text_avr</item>
+		<item name="android:textColor">@android:color/primary_text_dark</item>
 	</style>
 
 

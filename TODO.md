@@ -108,7 +108,9 @@ one still depends on has been folded into the live one.
 
 ## Housekeeping
 
-- [ ] Lint reports 47 unused resources and 30 missing German translations. One of the unused ones is
+- [ ] Lint reports 47 unused resources and 30 missing German translations. Four of them are gone:
+      `disconnected`, `disconnectedReachable`, `connected` and `poweron` were removed once it turned
+      out nothing referenced them — the status bar draws from drawables, see the entry below. One of the unused ones is
       `widget_button_width` in `res/values/dimension.xml`, left over from the app widget that no
       longer exists — its neighbour `widget_margin` and the whole `res/values-v14/` override are
       already gone.
@@ -191,3 +193,22 @@ one still depends on has been folded into the live one.
       at `:62`) without `takePersistableUriPermission()`, so it does not survive a restart. Note the
       fix is not just an added call: the picker uses `ACTION_PICK`, and persistable permissions need
       `ACTION_OPEN_DOCUMENT`. Part of the same Activity-Result-API rewrite.
+- [ ] **The status bar paints itself from three drawables, not from `colors.xml`.**
+      `StatusAreaManager` switches between `connected_power.xml` (`#30a030`),
+      `connected_poweroff.xml` (`#a03030`) and `connection_problem.xml` (`#a0a0a0`), each a
+      gradient with the colour written into it. So the states of the one element every user watches
+      are the only colours in the app that are not named anywhere — worth pulling into `colors.xml`
+      next time that area is touched, together with the greens: `#30a030` there has nothing to do
+      with the green of the pre-Holo checkmark next to it in `LevelActivity`.
+- [ ] Three smaller leftovers from the same pass, none of them broken, all of them arguable:
+      the checkbox in `LevelActivity` is still the green pre-Holo drawable while the radio buttons
+      in dialogs are tinted with the accent — `android:buttonTint` in a `checkboxStyle` would align
+      them, at the price of the established "green = on"; the dialog title carries the same red as
+      the dialog's text buttons and is separated from them only by size and position, where
+      `textStyle bold` in `AVRDialogTitle` would help; and `drawable/edit_text_avr.xml` has no
+      `state_enabled="false"` variant, which the platform nine-patch it replaced did have.
+- [ ] **`LevelActivity.java:210` adds a divider that is zero pixels high.** It is an empty `View`
+      with `WRAP_CONTENT` and a background colour, so it measures to nothing and has never been
+      visible — not in the light theme it was written for and not in the dark one the screen uses
+      now. Either give it a height (`1dp`) and a colour from `colors.xml`, or drop it and the
+      `0xFFCCCCCC` with it.

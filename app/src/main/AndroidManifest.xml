@@ -23,6 +23,7 @@
     <application
         android:name="AVRApplication"
         android:allowBackup="true"
+        android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/AVRTheme"
@@ -47,7 +48,7 @@
             android:name=".LevelActivity"
             android:exported="false"
             android:label="Level"
-            android:theme="@android:style/Theme.Light" />
+            android:theme="@style/AVRActivity" />
         <activity
             android:name=".OnScreenDisplayActivity"
             android:exported="false"
@@ -66,7 +67,7 @@
             android:name=".OptionActivity"
             android:exported="false"
             android:label="Options"
-            android:theme="@android:style/Theme.Dialog" />
+            android:theme="@style/AVROptionActivity" />
 
         <provider
             android:name=".log.LogFileProvider"
