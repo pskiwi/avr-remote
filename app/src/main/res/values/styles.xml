@@ -41,12 +41,25 @@
 		<item name="android:textColor">@android:color/primary_text_dark</item>
 	</style>
 
+	<!-- Das Menue hinter dem Menu-Knopf ist ein PopupMenu (OptionsMenu.showPopup),
+	     kein Dialog - es nimmt popupMenuStyle und die beiden Popup-Textstile aus dem
+	     Theme der Activity. Im pre-Holo-Theme zeigen die auf das helle Dropdown-Panel
+	     von damals mit dunkler Schrift: weisses Menue vor schwarzer App. Material
+	     liefert beides passend, den Grund ueber colorBackgroundFloating, das im
+	     Legacy-Theme auf colorBackground zeigt und damit dunkel ist. -->
+	<style name="AVRPopupMenu" parent="@android:style/Widget.Material.PopupMenu">
+		<item name="android:popupBackground">@color/floating</item>
+	</style>
+
 	<style name="AVRTheme" parent="@android:style/Theme.NoTitleBar">
 		<item name="android:buttonStyle">@style/MyButtonStyle</item>
 		<item name="android:alertDialogTheme">@style/AVRAlertDialog</item>
 		<item name="android:spinnerDropDownItemStyle">@style/AVRSpinnerDropDownItem</item>
 		<item name="android:colorAccent">@color/accent</item>
 		<item name="android:seekBarStyle">@style/AVRSeekBar</item>
+		<item name="android:popupMenuStyle">@style/AVRPopupMenu</item>
+		<item name="android:textAppearanceLargePopupMenu">@android:style/TextAppearance.Material.Widget.PopupMenu.Large</item>
+		<item name="android:textAppearanceSmallPopupMenu">@android:style/TextAppearance.Material.Widget.PopupMenu.Small</item>
 		<item name="android:editTextStyle">@style/AVREditText</item>
 		<item name="android:editTextBackground">@drawable/edit_text_avr</item>
 		<item name="android:editTextColor">@android:color/primary_text_dark</item>

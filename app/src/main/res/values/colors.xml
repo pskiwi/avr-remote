@@ -16,4 +16,8 @@
              jede Rotstufe bleibt es unter 2:1, und dann sieht man nicht mehr, wo der
              Regler steht. -->
         <color name="sliderTrack">#3A3A3A</color>
+        <!-- Der Grund schwebender Flaechen: derselbe Grauton, den das dunkle
+             Material-Dialogpanel benutzt, damit das Popup-Menue nicht als schwarze
+             Flaeche in einer schwarzen App steht. -->
+        <color name="floating">#424242</color>
 </resources>
