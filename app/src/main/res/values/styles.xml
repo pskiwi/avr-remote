@@ -56,11 +56,12 @@
 	     Groessen: 22sp in den Einstellungen und in der Umbenennen-Liste
 	     (textAppearanceListItem zeigt im pre-Holo-Theme auf textAppearanceLarge),
 	     16sp im Popup-Menue und 16sp in den Dialoglisten, die ihre Groesse aus dem
-	     Material-Dialogtheme holen. Hier ist es eine. textAppearanceLarge muss mit,
+	     Material-Dialogtheme holen. Hier ist es eine: die 16sp von
+	     TextAppearance.Material.Subhead, der Groesse, die die Plattform sowohl fuer
+	     Listeneintraege als auch fuer Menuepunkte vorsieht. textAppearanceLarge muss mit,
 	     weil PreferenceActivity unter einem Legacy-Theme das alte preference.xml
 	     bekommt, und das zeigt direkt darauf statt auf textAppearanceListItem. -->
 	<style name="AVRListItemText" parent="@android:style/TextAppearance.Material.Subhead">
-		<item name="android:textSize">18sp</item>
 	</style>
 
 	<style name="AVRTheme" parent="@android:style/Theme.NoTitleBar">
