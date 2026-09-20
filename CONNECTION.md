@@ -178,17 +178,36 @@ dialog then says "the receiver is not responding", which is simply untrue.
 
 That case has its own text since September 2026. `Reconnector` sets `controlPortBusy` when a
 connect fails while ping and port 80 answer, and `ConfigurationAssistant` picks
-`AVRControlPortBusy` over `AVRReset` accordingly: the receiver is there, its one control session is
-taken — by another app, another device, or one that was never closed — and only cutting mains
-power reliably frees it. Standby usually does not, because the network stays awake; that is why
-the dialog's "Automatic" button, which sends an HTTP standby/on cycle, often leaves the user
-exactly where they were (issue #11).
+`AVRControlPortBusy` over `AVRReset` accordingly: the receiver is there and the control session it
+allows is most likely taken — by another app, another device, or one that was never closed — and
+only cutting mains power reliably frees it. Standby usually does not, because the network stays
+awake; that is why the dialog's "Automatic" button, which sends an HTTP standby/on cycle, often
+leaves the user exactly where they were (issue #11). The text hedges on purpose: what the app
+knows is that port 80 answered and port 23 did not, which the receiver's own IP-control setting
+can produce just as well.
 
 The flag is deliberately a *message* selector and nothing more — it feeds no `StatusFlag` and
 changes no connect behaviour. It also decides whether the dialog appears at all: `checkStatus()`
 routes to `checkReset()` on `Reachable` **or** `controlPortBusy`, because `Reachable` additionally
-demands the UPnP ports, and without that a newer model would get the "configure your IP" dialog
-for an address we had just been talking to.
+demands the UPnP ports, and without that a model offering neither 5000/6666 nor 8080 + 111 would
+get the "configure your IP" dialog for an address we had just been talking to.
+
+Three details keep it from lying:
+
+- **It says nothing for an extended config.** `checkAddress()` returns `true` there without
+  probing (see the top of this file), so `reachable` is not a finding and the flag stays false —
+  `checkControlPortBusy()` asks `ConnectionConfiguration.isProbing()` first. Without that, every
+  failure for those users, unplugged receiver included, would claim the box had answered.
+- **It is computed before `Reachable` is published, not after.** `setStatus(Reachable, false)`
+  makes `Connected` *defined* by fallthrough, and that is the condition on which
+  `ConnectionProgressMonitor` opens the dialog that reads the flag. The probe in between blocks
+  about a second, so the other order leaves the previous run's value readable for that second.
+  Being a second late with `Reachable` on a failed attempt costs nothing; the second `isCurrent()`
+  after the probe is the same guard as at the loop's other blocking `checkAddress()`.
+- **`clearState()` clears it.** Otherwise the finding survives an IP change or a `stop()`, and the
+  next dialog recommends the mains plug for an address we never spoke to. The failure path in
+  `Reconnector.run()` does not call `clearState()`, so the flag still outlives the run that sets
+  it.
 
 Why a dialog and not a log line: `debugMode` defaults to `adb`, so there is no file log on a
 normal installation and no way to ask for one after the fact. Whatever the app does not say on

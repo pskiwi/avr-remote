@@ -111,6 +111,13 @@ public final class ResilentConnector implements ISender {
 		 * ohnehin schon gescheitert ist.
 		 */
 		private boolean checkControlPortBusy(boolean reachable) {
+			if (!connectionConfig.isProbing()) {
+				// Bei erweiterter Konfiguration ist reachable kein Befund:
+				// checkAddress() liefert dort unbesehen true, ohne das Geraet
+				// anzusprechen. Wir wissen also nicht, ob es antwortet - und
+				// duerfen dem Nutzer nicht sagen, es tue das.
+				return false;
+			}
 			if (reachable) {
 				return true;
 			}
@@ -154,9 +161,22 @@ public final class ResilentConnector implements ISender {
 						// Bei Fehler Reachable setzen, sonst wird Reachable
 						// über "Connected" mit gesetzt
 						if (isCurrent()) {
-							enableManager.setStatus(StatusFlag.Reachable,
-									reachable);
-							controlPortBusy = checkControlPortBusy(reachable);
+							// Erst pruefen, dann setzen, auch wenn das Reachable
+							// um bis zu eine Sekunde verzoegert: setStatus macht
+							// per Fallthrough "Connected" *definiert*, und genau
+							// daran haengt, ob ConnectionProgressMonitor den
+							// Dialog aufmacht - der das Flag dann liest.
+							// Andersherum stuende dort eine Sekunde lang der Wert
+							// des vorigen Durchlaufs.
+							final boolean busy = checkControlPortBusy(reachable);
+							// Nochmal pruefen: checkControlPortBusy blockiert
+							// rund eine Sekunde, in der ein neuer Thread laengst
+							// verbunden haben und das Flag geloescht haben kann.
+							if (isCurrent()) {
+								controlPortBusy = busy;
+								enableManager.setStatus(StatusFlag.Reachable,
+										reachable);
+							}
 						}
 						throw x;
 					}
@@ -442,6 +462,12 @@ public final class ResilentConnector implements ISender {
 	}
 
 	private void clearState() {
+		// sonst ueberlebt der Befund einen IP-Wechsel oder ein stop(), und der
+		// naechste Dialog raet zum Netzstecker fuer eine Adresse, mit der wir
+		// nie gesprochen haben. Im Fehlerpfad von Reconnector.run() wird
+		// clearState() nicht aufgerufen - das frisch gesetzte Flag ueberlebt
+		// den Durchlauf, in dem es entsteht.
+		controlPortBusy = false;
 		enableManager.reset();
 	}
 
