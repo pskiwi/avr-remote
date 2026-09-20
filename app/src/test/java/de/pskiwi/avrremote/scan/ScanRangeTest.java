@@ -18,15 +18,17 @@ package de.pskiwi.avrremote.scan;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.BitSet;
 
 import org.junit.Test;
 
 /**
- * Die beiden reinen Funktionen hinter dem Sweep-Fallback:
- * {@code hostRange()} bestimmt, welcher Teil des letzten Oktetts zum eigenen
- * Subnetz gehört, {@code splitRange()} verteilt ihn auf die Scan-Threads.
+ * Die beiden reinen Funktionen hinter dem Suchlauf: {@code hostRange()}
+ * bestimmt, welcher Teil des letzten Oktetts zum eigenen Subnetz gehört, und
+ * {@code splitRange()} verteilt Arbeit auf die Scan-Threads - beim Sweep die
+ * Adressen des Subnetzes, bei SSDP die Indizes der Antwortenden.
  *
  * <p>
  * Der Anlass ist {@link #everyAddressIsScanned()}: die alte Aufteilung lief
@@ -80,13 +82,37 @@ public class ScanRangeTest {
 		assertArrayEquals(new int[] { 240, 256 }, ranges[15]);
 	}
 
-	/** /25 ab .128: halb so viele Adressen, aber immer noch 16 Threads. */
+	/**
+	 * Ein /25 ab .128: halb so viele Adressen, aber immer noch 16 Threads. Der
+	 * Versatz muss durchschlagen - {@code from} ist nicht immer 0.
+	 */
 	@Test
 	public void halfASubnetStillUsesAllThreads() {
 		final int[][] ranges = AVRScanner.splitRange(128, 128, 16);
 		assertEquals(16, ranges.length);
 		assertArrayEquals(new int[] { 128, 136 }, ranges[0]);
 		assertArrayEquals(new int[] { 248, 256 }, ranges[15]);
+	}
+
+	/**
+	 * Die zweite Verwendung: Indizes einer Kandidatenliste aus SSDP. Krumme
+	 * Groessen sind hier der Normalfall, und keiner der Bereiche darf leer sein
+	 * oder ueber das Listenende hinausgehen - beides waere eine
+	 * IndexOutOfBoundsException in subList().
+	 */
+	@Test
+	public void candidateListIsSplitWithoutGapsOrOverflow() {
+		for (int size = 1; size <= 40; size++) {
+			final int[][] ranges = AVRScanner.splitRange(0, size, 16);
+			assertEquals("size " + size, Math.min(16, size), ranges.length);
+			int next = 0;
+			for (int[] range : ranges) {
+				assertEquals("size " + size, next, range[0]);
+				assertTrue("empty range at size " + size, range[1] > range[0]);
+				next = range[1];
+			}
+			assertEquals("size " + size, size, next);
+		}
 	}
 
 	/**

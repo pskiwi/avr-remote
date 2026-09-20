@@ -166,6 +166,29 @@ public final class AVRSettings extends PreferenceActivity implements
 		}
 	}
 
+	/**
+	 * Haelt Local Network Protection uns gerade vom lokalen Netz ab ?
+	 *
+	 * Die Frage ist nicht "fehlt die Permission" - solange targetSdk 36 ist,
+	 * fehlt sie folgenlos, und ein Hinweis darauf waere schlicht falsch. LNP
+	 * greift erst, wenn beides zutrifft: das Geraet ist Android 17 und das
+	 * Paket zielt auch darauf. Deshalb wird targetSdk hier aus dem laufenden
+	 * Paket gelesen statt gegen eine Konstante geprueft - der Tag, an dem
+	 * build.gradle auf 37 geht, schaltet das hier von allein scharf.
+	 *
+	 * Nicht erfasst ist der Testfall "am compat enable RESTRICT_LOCAL_NETWORK"
+	 * bei targetSdk 36: das ist ein Werkzeug, kein Nutzerzustand.
+	 */
+	public static boolean isLocalNetworkBlocked(Context ctx) {
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.CINNAMON_BUN) {
+			return false;
+		}
+		if (ctx.getApplicationInfo().targetSdkVersion < Build.VERSION_CODES.CINNAMON_BUN) {
+			return false;
+		}
+		return ctx.checkSelfPermission(android.Manifest.permission.ACCESS_LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED;
+	}
+
 	@Override
 	protected void onResume() {
 		super.onResume();

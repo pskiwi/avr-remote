@@ -346,6 +346,26 @@ from the options menu and the setup assistant without `AVRRemote` having started
 dialog appears only when Android asks for one, i.e. after a previous refusal. On a grant the
 connector is told to reconnect, because the attempt made at startup went nowhere.
 
+**LNP blocks silently.** Measured on a Pixel 8 with the restriction forced on: without the
+permission the socket does not fail, it is swallowed — `InetAddress.isReachable()` says false and
+`connect()` to port 23 ends in a `SocketTimeoutException` after 2.5 s, from the correct source
+address. There is no `SecurityException` to catch and nothing in the failure that names a
+permission. Left alone, the app would show its ordinary "not reachable" state and retry forever,
+which reads as "receiver switched off or wrong IP" — the one diagnosis that sends a user looking in
+entirely the wrong place. Hence two deliberate hints:
+
+- `AVRRemote.onRequestPermissionsResult` shows the reason when the request is *refused*, and
+- `AVRScanner.scan()` refuses to start and says why, instead of letting the user watch a
+  progress dialog for ten seconds before "no receiver found".
+
+Both are gated on `AVRSettings.isLocalNetworkBlocked()`, which asks whether LNP applies **to this
+build** — the device is Android 17 *and* `getApplicationInfo().targetSdkVersion` is 37 — not merely
+whether the permission is missing. At `targetSdk 36` the permission is absent without consequence,
+and warning about it there would be simply wrong. Reading the target from the running package rather
+than from a constant is what makes this arm itself on the day `build.gradle` moves to 37. The one
+thing it does not cover is the `am compat` override above, which is a test tool rather than a state
+a user can be in.
+
 `targetSdk` is still 36, so none of this is in force yet; `compileSdk 37` is what makes the constants
 available. To exercise it before raising the target, force the restriction on an Android 17 device:
 
@@ -360,6 +380,14 @@ collecting for three seconds — UDP is allowed to lose packets) and returns the
 answered. Every candidate then goes through the existing `AVRTargetTester.testAddress()`, which is
 what keeps printers, TVs and routers — they all answer `ssdp:all` — out of the result, and is why
 nothing else about the scan had to change.
+
+Both searches hand their addresses to the same `AVRScanner.testAll()`, which fans them out over
+`SCAN_THREADS` threads. That matters more for SSDP than it looks: a candidate costs up to four
+connect timeouts, so testing a household's worth of UPnP devices one after another would take
+longer than the whole sweep it is supposed to replace. A hit carries the way it was found
+(`FoundBy.SSDP` or `FoundBy.SWEEP`) into the selection list, because the two say different things —
+SSDP means the device announced itself as a UPnP device, the sweep only means the right ports are
+open.
 
 No `MulticastLock` is needed: replies to `M-SEARCH` come back unicast. A lock only gates *incoming*
 multicast, i.e. unsolicited `NOTIFY`. If a device turns out to receive nothing,

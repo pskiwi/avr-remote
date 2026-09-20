@@ -43,12 +43,36 @@ import de.pskiwi.avrremote.log.Logger;
 /** Lokales Netz nach möglichen AVRs durchsuchen */
 public final class AVRScanner {
 
+	/**
+	 * Wie ein Treffer zustande kam. Steht in der Auswahlliste hinter der
+	 * Adresse, weil die beiden Wege verschieden viel aussagen: SSDP heisst, das
+	 * Geraet hat sich selbst als UPnP-Geraet gemeldet; der Sweep heisst nur,
+	 * dass an dieser Adresse die passenden Ports offen sind. Wer zwischen zwei
+	 * Eintraegen zu waehlen hat, entscheidet damit anders.
+	 *
+	 * Die Kuerzel sind bewusst technisch und damit in beiden Sprachen gleich -
+	 * die fehlenden Uebersetzungen sind schon ein eigenes Thema.
+	 */
+	public enum FoundBy {
+		SSDP("SSDP"), SWEEP("Scan");
+
+		private FoundBy(String label) {
+			this.label = label;
+		}
+
+		public String getLabel() {
+			return label;
+		}
+
+		private final String label;
+	}
+
 	public final static class ScanResult {
 
-		public ScanResult(InetAddress address) {
+		public ScanResult(InetAddress address, FoundBy foundBy) {
 			this.address = address;
 			this.info = address.getHostAddress() + " / "
-					+ address.getHostName();
+					+ address.getHostName() + "  (" + foundBy.getLabel() + ")";
 			this.ip = address.getHostAddress();
 		}
 
@@ -70,20 +94,19 @@ public final class AVRScanner {
 
 	private final static class ScanThread extends Thread {
 
-		public ScanThread(String prefix, int from, int to) {
-			super("Scan-Thread [" + from + ":" + to + "]");
-			this.prefix = prefix;
-			this.from = from;
-			this.to = to;
+		public ScanThread(List<InetAddress> addresses, FoundBy foundBy) {
+			super("Scan-Thread [" + addresses.get(0).getHostAddress() + "+"
+					+ addresses.size() + "]");
+			this.addresses = addresses;
+			this.foundBy = foundBy;
 		}
 
 		@Override
 		public void run() {
-			for (int i = from; i < to; i++) {
+			for (InetAddress ia : addresses) {
 				try {
-					final InetAddress ia = Inet4Address.getByName(prefix + i);
 					if (AVRTargetTester.testAddress(ia, false)) {
-						result.add(new ScanResult(ia));
+						result.add(new ScanResult(ia, foundBy));
 					}
 				} catch (Exception e) {
 					Logger.error("scan exception", e);
@@ -96,9 +119,8 @@ public final class AVRScanner {
 		}
 
 		private final List<ScanResult> result = new LinkedList<ScanResult>();
-		private final int from;
-		private final int to;
-		private final String prefix;
+		private final List<InetAddress> addresses;
+		private final FoundBy foundBy;
 
 	}
 
@@ -113,22 +135,33 @@ public final class AVRScanner {
 		// emulator
 		Logger.info(Build.PRODUCT + "/" + Build.DEVICE);
 
+		// Ohne die Permission kommt unter Local Network Protection weder ein
+		// SSDP-Paket raus noch ein TCP-Connect durch - und zwar lautlos, per
+		// Timeout. Dann lieber hier abbrechen und sagen warum, statt den
+		// Anwender zehn Sekunden auf "kein Receiver gefunden" warten zu lassen.
+		if (AVRSettings.isLocalNetworkBlocked(ctx)) {
+			Logger.info("Scan: local network permission missing");
+			handler.error(ctx.getString(R.string.LocalNetworkPermission));
+			return;
+		}
+
 		final LocalNetwork localNetwork = app.getLocalNetwork();
+		final LinkAddress address = localNetwork.getIPv4();
 		final InetAddress ip;
 		final int prefixLength;
-		if (EmulationDetector.isEmulator()) {
+		if (address != null) {
+			ip = address.getAddress();
+			prefixLength = address.getPrefixLength();
+		} else if (EmulationDetector.isEmulator()) {
+			// Je nach Image meldet der Emulator kein WLAN. Ein Netz annehmen,
+			// damit der Scan-Pfad dort ueberhaupt durchlaufen werden kann.
 			ip = InetAddress.getByName("192.168.10.1");
 			prefixLength = 24;
 		} else {
-			if (!localNetwork.isConnected()) {
-				final String errorCause = localNetwork.getErrorCause();
-				Logger.info("Scan: " + errorCause);
-				handler.error(errorCause);
-				return;
-			}
-			final LinkAddress address = localNetwork.getIPv4();
-			ip = address.getAddress();
-			prefixLength = address.getPrefixLength();
+			final String errorCause = localNetwork.getErrorCause();
+			Logger.info("Scan: " + errorCause);
+			handler.error(errorCause);
+			return;
 		}
 		Logger.info("Scan: " + ip.getHostAddress() + "/" + prefixLength);
 
@@ -151,8 +184,11 @@ public final class AVRScanner {
 				try {
 					// Erst fragen, dann suchen: SSDP hat die Antwort in
 					// Sekunden, der Sweep braucht Minuten und trifft ohnehin
-					// nur Netze ab /24.
-					final List<ScanResult> viaSSDP = scanSSDP();
+					// nur Netze ab /24. Die Antworten kommen von allem, was
+					// UPnP spricht, und laufen deshalb durch denselben Filter
+					// wie der Sweep.
+					final List<ScanResult> viaSSDP = testAll(
+							SSDPDiscovery.search(), FoundBy.SSDP);
 					if (!viaSSDP.isEmpty()) {
 						return viaSSDP;
 					}
@@ -183,32 +219,22 @@ public final class AVRScanner {
 	}
 
 	/**
-	 * Jede Adresse, die auf SSDP geantwortet hat, durch denselben Filter wie der
-	 * Sweep schicken - Drucker, Fernseher und Router antworten genauso.
+	 * Adressen auf SCAN_THREADS Threads verteilt durch {@link AVRTargetTester}
+	 * schicken. Beide Suchwege enden hier, und zwar aus demselben Grund: ein
+	 * Kandidat kostet bis zu vier Connect-Timeouts, und nacheinander summiert
+	 * sich das auch bei den wenigen SSDP-Antworten eines Haushalts voller
+	 * UPnP-Geraete auf mehr, als der Sweep insgesamt braucht.
 	 */
-	private List<ScanResult> scanSSDP() {
-		final List<ScanResult> result = new ArrayList<ScanResult>();
-		for (InetAddress candidate : SSDPDiscovery.search()) {
-			if (AVRTargetTester.testAddress(candidate, false)) {
-				result.add(new ScanResult(candidate));
-			} else {
-				Logger.debug("SSDP: not an AVR " + candidate.getHostAddress());
-			}
+	private List<ScanResult> testAll(List<InetAddress> addresses,
+			FoundBy foundBy) throws InterruptedException {
+		if (addresses.isEmpty()) {
+			return Collections.emptyList();
 		}
-		return result;
-	}
-
-	private List<ScanResult> scanNetwork(InetAddress i4, int prefixLength)
-			throws InterruptedException {
-		final String[] parts = i4.getHostAddress().split("\\.");
-		final String prefix = parts[0] + "." + parts[1] + "." + parts[2] + ".";
-		final int[] hostRange = hostRange(Integer.parseInt(parts[3]),
-				prefixLength);
-		final int[][] ranges = splitRange(hostRange[0], hostRange[1],
-				SCAN_THREADS);
+		final int[][] ranges = splitRange(0, addresses.size(), SCAN_THREADS);
 		final ScanThread[] threads = new ScanThread[ranges.length];
 		for (int i = 0; i < ranges.length; i++) {
-			threads[i] = new ScanThread(prefix, ranges[i][0], ranges[i][1]);
+			threads[i] = new ScanThread(addresses.subList(ranges[i][0],
+					ranges[i][1]), foundBy);
 			threads[i].start();
 		}
 		final List<ScanResult> result = new ArrayList<ScanResult>();
@@ -216,7 +242,23 @@ public final class AVRScanner {
 			threads[i].join(JOIN_TIMEOUT);
 			result.addAll(threads[i].getResult());
 		}
+		Logger.info("found " + result.size() + " receiver(s) via "
+				+ foundBy.getLabel());
 		return result;
+	}
+
+	private List<ScanResult> scanNetwork(InetAddress i4, int prefixLength)
+			throws Exception {
+		final String[] parts = i4.getHostAddress().split("\\.");
+		final String prefix = parts[0] + "." + parts[1] + "." + parts[2] + ".";
+		final int[] hostRange = hostRange(Integer.parseInt(parts[3]),
+				prefixLength);
+		final List<InetAddress> addresses = new ArrayList<InetAddress>();
+		for (int i = hostRange[0]; i < hostRange[0] + hostRange[1]; i++) {
+			// Literal, also kein DNS - das hier kostet nichts.
+			addresses.add(Inet4Address.getByName(prefix + i));
+		}
+		return testAll(addresses, FoundBy.SWEEP);
 	}
 
 	/**

@@ -14,14 +14,16 @@ The code side is done — `scan/LocalNetwork`, the socket binding, the permissio
 are in, `compileSdk` is 37, and [CONNECTION.md](CONNECTION.md) describes the result. What is left is
 the part no build can answer.
 
-- [ ] **Verify on an Android 17 device before raising `targetSdk` to 37.** At `targetSdk 36` Local
-      Network Protection does not apply, so a green build proves nothing. Force it with
-      `adb shell am compat enable RESTRICT_LOCAL_NETWORK de.pskiwi.avrremote` and check: the scan
-      finds the receiver over SSDP; Wi-Fi off/on still drives `StatusFlag.WLAN` and the reconnect;
-      a *refused* permission gives a comprehensible error rather than silence, and granting it
-      afterwards in the system settings brings the connection back. The case the whole construction
-      exists for is mobile data on plus a Wi-Fi without internet — connection *and* scan must work
-      there, and before the rebuild the connection did not.
+- [ ] **Finish verifying on an Android 17 device before raising `targetSdk` to 37.** Done so far,
+      on a Pixel 8 with `adb shell am compat enable RESTRICT_LOCAL_NETWORK de.pskiwi.avrremote`:
+      with the permission granted the receiver connects normally; with it revoked the connection is
+      swallowed (`SocketTimeoutException` on port 23, no `SecurityException`), which is what the
+      hints behind `AVRSettings.isLocalNetworkBlocked()` now cover — see
+      [CONNECTION.md](CONNECTION.md). Note those hints are gated on `targetSdkVersion`, so the
+      `am compat` route does **not** exercise them; that needs a real `targetSdk 37` build.
+      Still untried: the SSDP scan against a receiver, Wi-Fi off/on driving `StatusFlag.WLAN` and
+      the reconnect, and the case the whole construction exists for — mobile data on plus a Wi-Fi
+      without internet, where connection *and* scan must work and the connection did not before.
 - [ ] **The SSDP parser is pinned against constructed data, not a capture.** The two files under
       `app/src/test/resources/de/pskiwi/avrremote/scan/` follow the UPnP spec and the known header
       order of a Denon/HEOS device, but nobody recorded them off a receiver — unlike the AVR-3808
