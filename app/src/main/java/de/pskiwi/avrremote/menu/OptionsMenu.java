@@ -18,6 +18,7 @@ package de.pskiwi.avrremote.menu;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
@@ -216,6 +217,18 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 		// zeigte dann nur eine Fehlerseite (Feedback zum AVR-1912, 09/2026).
 		// Deshalb im Hintergrund prüfen und sonst die Startseite öffnen.
 		final String pageURL = baseURL + pdaWeb;
+
+		// Die Prüfung läuft bis in die Timeouts von HTTPSupport, wenn der
+		// Receiver aus ist. Solange nur ein Dialog: ohne ihn wirkt der
+		// Menüpunkt tot, und jeder weitere Tipp öffnete einen Browser mehr.
+		if (websiteProgress != null) {
+			return;
+		}
+		websiteProgress = ProgressDialog.show(activity,
+				activity.getString(R.string.PleaseWait),
+				activity.getString(R.string.OpeningReceiverWebsite), true,
+				false);
+
 		new Thread("CheckReceiverWebsite") {
 			@Override
 			public void run() {
@@ -230,6 +243,14 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 						: baseURL;
 				activity.runOnUiThread(new Runnable() {
 					public void run() {
+						final ProgressDialog progress = websiteProgress;
+						websiteProgress = null;
+						// wie beim Scan: an einer abgeräumten Activity wirft
+						// dismiss(). Der Browser wird trotzdem geöffnet - der
+						// Tipp darf nicht folgenlos verpuffen
+						if (showing.isShowing()) {
+							progress.dismiss();
+						}
 						openURL(url);
 					}
 				});
@@ -257,6 +278,9 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 				.getState(ZoneState.PowerState.class);
 		state.switchState();
 	}
+
+	/** Läuft gerade eine Prüfung? Nur vom UI-Thread angefasst. */
+	private ProgressDialog websiteProgress;
 
 	private final Activity activity;
 	private final ModelConfigurator configurator;
