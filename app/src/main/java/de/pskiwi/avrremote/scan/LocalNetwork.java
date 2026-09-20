@@ -16,7 +16,12 @@
  */
 package de.pskiwi.avrremote.scan;
 
+import java.io.IOException;
+import java.net.DatagramSocket;
 import java.net.Inet4Address;
+import java.net.Socket;
+import java.net.URL;
+import java.net.URLConnection;
 
 import android.content.Context;
 import android.net.ConnectivityManager;
@@ -40,7 +45,9 @@ import de.pskiwi.avrremote.log.Logger;
  *
  * Der zweite Grund für die Klasse: unter Local Network Protection (Pflicht ab
  * Android 17) muss jeder Socket ins lokale Netz an genau dieses Network gebunden
- * werden, nicht nur der Suchlauf. getNetwork() ist die Quelle dafür.
+ * werden, nicht nur der Suchlauf. {@link #bind(Socket)},
+ * {@link #bind(DatagramSocket)} und {@link #openConnection(URL)} sind die Quelle
+ * dafür.
  */
 public final class LocalNetwork {
 
@@ -83,12 +90,43 @@ public final class LocalNetwork {
 
 	/** Ist ein WLAN mit brauchbarer IPv4-Adresse da ? */
 	public boolean isConnected() {
-		return network != null && getIPv4() != null;
+		return boundNetwork != null && getIPv4() != null;
 	}
 
 	/** Das WLAN, an das Sockets zu binden sind, oder null. */
 	public Network getNetwork() {
-		return network;
+		return boundNetwork;
+	}
+
+	/**
+	 * Socket an das WLAN binden, vor dem connect(). Ohne Bindung nimmt der
+	 * Verbindungsaufbau das Default-Netz, und das ist neben aktivem Mobilfunk
+	 * nicht das WLAN - der Receiver ist dann ueber Mobilfunk zu suchen und die
+	 * Verbindung scheitert. Genau das Szenario, das die Netzerkennung hier
+	 * muehsam als "verbunden" erkennt.
+	 *
+	 * Ist kein WLAN bekannt, bleibt es beim bisherigen Verhalten: der Aufrufer
+	 * kommt ohne Bindung sonst gar nicht mehr zum Zug.
+	 */
+	public static void bind(Socket socket) throws IOException {
+		final Network n = boundNetwork;
+		if (n != null) {
+			n.bindSocket(socket);
+		}
+	}
+
+	/** Wie {@link #bind(Socket)}, fuer den SSDP-Suchlauf. */
+	public static void bind(DatagramSocket socket) throws IOException {
+		final Network n = boundNetwork;
+		if (n != null) {
+			n.bindSocket(socket);
+		}
+	}
+
+	/** Wie {@link #bind(Socket)}, fuer das HTTP-Scraping. */
+	public static URLConnection openConnection(URL url) throws IOException {
+		final Network n = boundNetwork;
+		return n != null ? n.openConnection(url) : url.openConnection();
 	}
 
 	/** Eigene IPv4-Adresse samt Prefix-Länge, oder null. */
@@ -112,7 +150,7 @@ public final class LocalNetwork {
 	}
 
 	public String getErrorCause() {
-		if (network == null) {
+		if (boundNetwork == null) {
 			return "WiFi not connected";
 		}
 		if (getIPv4() == null) {
@@ -138,22 +176,22 @@ public final class LocalNetwork {
 
 		@Override
 		public void onAvailable(Network n) {
-			network = n;
+			boundNetwork = n;
 			linkProperties = connectivity.getLinkProperties(n);
 			notifyListener(true);
 		}
 
 		@Override
 		public void onLinkPropertiesChanged(Network n, LinkProperties lp) {
-			if (n.equals(network)) {
+			if (n.equals(boundNetwork)) {
 				linkProperties = lp;
 			}
 		}
 
 		@Override
 		public void onLost(Network n) {
-			if (n.equals(network)) {
-				network = null;
+			if (n.equals(boundNetwork)) {
+				boundNetwork = null;
 				linkProperties = null;
 				notifyListener(false);
 			}
@@ -176,8 +214,14 @@ public final class LocalNetwork {
 	}
 
 	private final ConnectivityManager connectivity;
+	// Statisch, weil die Sockets an Stellen entstehen, die den Objektgraphen
+	// nicht erreichen: Connector sitzt tief in core/ und wird vom Reconnect-Loop
+	// gebaut, HTTPSupport und AVRTargetTester sind reine Utility-Klassen. Es gibt
+	// genau eine LocalNetwork-Instanz (AVRApplication.onCreate) und damit genau
+	// einen Schreiber. Bewusst nicht bindProcessToNetwork(): das wirkt auf alles
+	// im Prozess, auch auf Verbindungen, die gar nicht ins lokale Netz gehen.
 	// Auf dem Binder-Thread des Callbacks geschrieben, von jedem Thread gelesen.
-	private volatile Network network;
+	private static volatile Network boundNetwork;
 	private volatile LinkProperties linkProperties;
 	private volatile Handler handler;
 	private volatile IWiFiListener listener;

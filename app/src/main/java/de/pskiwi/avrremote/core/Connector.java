@@ -25,6 +25,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 
 import de.pskiwi.avrremote.log.Logger;
+import de.pskiwi.avrremote.scan.LocalNetwork;
 
 public final class Connector implements ISender, IConnector {
 
@@ -148,6 +149,10 @@ public final class Connector implements ISender, IConnector {
 		this.sendDelay = sendDelay;
 		listener = eventListener;
 		socket = new Socket();
+		// vor dem connect(), sonst geht Telnet 23 neben aktivem Mobilfunk am
+		// WLAN vorbei. bindSocket() und nicht getSocketFactory(), damit der
+		// try/finally-Block unten unangetastet bleibt.
+		LocalNetwork.bind(socket);
 		socket.setTcpNoDelay(true);
 		socket.connect(connectionConfiguration.getSocketAddress(),
 				AVR_CONNECT_TIMEOUT);
