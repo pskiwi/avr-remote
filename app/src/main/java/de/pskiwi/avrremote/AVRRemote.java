@@ -113,7 +113,9 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 			// nie gefragt. Das lokale Netz hat Vorrang, es haelt sonst jeden
 			// Socket auf; die Benachrichtigung folgt in
 			// onRequestPermissionsResult.
-			if (!AVRSettings.requestLocalNetworkPermission(this)) {
+			if (AVRSettings.requestLocalNetworkPermission(this)) {
+				notificationRequestPending = true;
+			} else {
 				AVRSettings.requestNotificationPermission(this);
 			}
 		}
@@ -254,8 +256,15 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 				// immer nur ein Hinweis zugleich sichtbar ist.
 				Logger.info("local network permission denied - connection will fail");
 			}
-			// Jetzt ist der Dialog weg und die zweite Anfrage kommt durch
-			AVRSettings.requestNotificationPermission(this);
+			// Jetzt ist der Dialog weg und die zweite Anfrage kommt durch -
+			// aber nur, wenn sie auch aus onCreate stammt. Mit demselben
+			// Request-Code kommt der Suchlauf hier heraus (AVRScanner.scanIP
+			// ueber das Menue), und mitten im Suchlauf nach der
+			// Benachrichtigung zu fragen haette damit nichts zu tun.
+			if (notificationRequestPending) {
+				notificationRequestPending = false;
+				AVRSettings.requestNotificationPermission(this);
+			}
 		}
 	}
 
@@ -619,6 +628,8 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 	private ConnectionProgressMonitor connectionProgressMonitor;
 	private ConfigurationAssistant configurationAssistant;
 	private boolean showing;
+	/** Die Berechtigungskette aus onCreate laeuft noch, siehe dort. */
+	private boolean notificationRequestPending;
 	private ViewList viewList;
 	private TextDisplayHandler textDisplayHandler;
 	private OptionsMenu optionsMenu;
