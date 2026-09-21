@@ -39,9 +39,14 @@ import org.junit.Test;
  */
 public class ScanRangeTest {
 
+	/**
+	 * Ein /24 ist das letzte Oktett ohne seine beiden Enden: auf der
+	 * Netzadresse kann kein Receiver sitzen, und ein Ping auf die
+	 * Broadcast-Adresse geht an jedes Geraet im Netz.
+	 */
 	@Test
-	public void classCCoversTheWholeOctet() {
-		assertArrayEquals(new int[] { 0, 256 }, AVRScanner.hostRange(17, 24));
+	public void classCSkipsNetworkAndBroadcast() {
+		assertArrayEquals(new int[] { 1, 254 }, AVRScanner.hostRange(17, 24));
 	}
 
 	/**
@@ -51,9 +56,19 @@ public class ScanRangeTest {
 	 */
 	@Test
 	public void smallerSubnetsStartAtTheirOwnHalf() {
-		assertArrayEquals(new int[] { 128, 128 }, AVRScanner.hostRange(200, 25));
-		assertArrayEquals(new int[] { 0, 128 }, AVRScanner.hostRange(100, 25));
-		assertArrayEquals(new int[] { 4, 4 }, AVRScanner.hostRange(5, 30));
+		assertArrayEquals(new int[] { 129, 126 }, AVRScanner.hostRange(200, 25));
+		assertArrayEquals(new int[] { 1, 126 }, AVRScanner.hostRange(100, 25));
+		assertArrayEquals(new int[] { 5, 2 }, AVRScanner.hostRange(5, 30));
+	}
+
+	/**
+	 * Die beiden Netze, die keine Netz- und Broadcast-Adresse haben: ein /31 ist
+	 * eine Punkt-zu-Punkt-Verbindung (RFC 3021) und ein /32 eine einzelne
+	 * Adresse. Hier darf nichts abgezogen werden, sonst bliebe nichts uebrig.
+	 */
+	@Test
+	public void tiniestSubnetsKeepBothAddresses() {
+		assertArrayEquals(new int[] { 4, 2 }, AVRScanner.hostRange(5, 31));
 		assertArrayEquals(new int[] { 42, 1 }, AVRScanner.hostRange(42, 32));
 	}
 

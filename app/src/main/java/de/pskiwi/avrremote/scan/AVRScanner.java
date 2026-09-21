@@ -292,11 +292,20 @@ public final class AVRScanner {
 	 * Erster zu scannender Wert im letzten Oktett und Anzahl, als {from, count}.
 	 * Nur fuer prefixLength >= 24 definiert - darunter reicht das letzte Oktett
 	 * nicht aus.
+	 *
+	 * Netzadresse und Broadcast bleiben aussen vor: auf ihnen kann kein Receiver
+	 * sitzen, und die Broadcast-Adresse kostet nicht nur die vergebliche Probe -
+	 * ein ICMP-Echo dorthin erreicht jedes Geraet im Netz. Ein /31 hat beides
+	 * nicht (RFC 3021, Punkt-zu-Punkt) und ein /32 ist eine einzelne Adresse,
+	 * deshalb die Grenze bei count > 2.
 	 */
 	static int[] hostRange(int lastOctet, int prefixLength) {
 		final int hostBits = 32 - prefixLength;
 		final int mask = (0xff << hostBits) & 0xff;
-		return new int[] { lastOctet & mask, 1 << hostBits };
+		final int network = lastOctet & mask;
+		final int count = 1 << hostBits;
+		return count > 2 ? new int[] { network + 1, count - 2 } : new int[] {
+				network, count };
 	}
 
 	/**

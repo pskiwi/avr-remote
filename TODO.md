@@ -209,12 +209,6 @@ still 36, so none of it is in force. What is left is the part no build can answe
       `qlmanage`, command recorded in a comment at the top of the SVG.
       `res/drawable/icon_small.png` (32×32) is the last leftover of the old 2010 icon and is
       referenced nowhere.
-- [ ] The sweep probes the network address and the directed broadcast: `hostRange(x, 24)` returns
-      `{0, 256}` (`scan/AVRScanner.java:269`), so `.0` and `.255` get a ping and up to four TCP
-      connects each. `ScanRangeTest.classCCoversTheWholeOctet` pins that deliberately — the whole
-      point of the fix was that host ranges were being cut short — but neither address can hold a
-      receiver, and an ICMP echo to the broadcast address is the kind of packet that draws
-      attention on a managed network. Excluding both costs two lines and one test expectation.
 - [ ] `misc/file-copyright.txt` is referenced by nothing since `misc/add-copyright.sh` was deleted.
 - [ ] **`ScreenInfo` measures the window, not the display.** The class builds its diagonal from
       `getDefaultDisplay().getMetrics()` (`ScreenInfo.java:28-33`), and every caller hands it an
