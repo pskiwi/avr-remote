@@ -49,6 +49,7 @@ public final class StatusAreaManager implements IStatusListener {
 									public void run() {
 										// neu laden der Eingänge ermöglichen
 										nextXMLUpdate = 0;
+										xmlRetried = false;
 										final AVRApplication app = activity
 												.getApp();
 										app.getModelConfigurator()
@@ -134,16 +135,28 @@ public final class StatusAreaManager implements IStatusListener {
 					if (state.isDefined()) {
 						configurator.setXMLInfol(state);
 					}
+					xmlRetried = false;
 				} catch (Exception e) {
 					// Ein gescheiterter Versuch darf die Stunde nicht
 					// verbrauchen: beim Start meldet die App "erreichbar, nicht
 					// verbunden", bevor die Verbindung steht, und wenn dieser
 					// erste Versuch die Bremse anzieht, fehlen Zonen- und
-					// Eingangsnamen danach eine volle Stunde. Nur nicht sofort
-					// wieder - der Receiver antwortet hier gerade nicht, und
-					// jede Statusaenderung kaeme sonst hier heraus.
-					nextXMLUpdate = System.currentTimeMillis()
-							+ XML_RETRY_DELAY;
+					// Eingangsnamen danach eine volle Stunde.
+					//
+					// Aber nur ein einziges Mal. Ein Receiver, der auf Ping und
+					// Port 80 antwortet und dessen Web-Oberflaeche trotzdem
+					// nichts hergibt - im Standby bei etlichen Modellen so -,
+					// steht stabil auf "erreichbar, nicht verbunden", und jede
+					// Statusaenderung kommt hier heraus. Ohne die Grenze waere
+					// das dauerhaft ein Versuch pro Minute statt einer pro
+					// Stunde.
+					if (xmlRetried) {
+						Logger.info("XML retry failed, waiting the full hour");
+					} else {
+						xmlRetried = true;
+						nextXMLUpdate = System.currentTimeMillis()
+								+ XML_RETRY_DELAY;
+					}
 					Logger.error("Read state failed", e);
 				}
 			}
@@ -155,6 +168,8 @@ public final class StatusAreaManager implements IStatusListener {
 	 * geschrieben und auf dem UI-Thread gelesen.
 	 */
 	private volatile long nextXMLUpdate;
+	/** War der letzte Versuch schon der Nachschlag ? Siehe loadXMLStatus(). */
+	private volatile boolean xmlRetried;
 
 	private final Button infoView;
 	private final AVRRemote activity;
