@@ -19,7 +19,6 @@ package de.pskiwi.avrremote;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.TabActivity;
 import android.content.Context;
 import android.content.Intent;
@@ -240,22 +239,15 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 				// und ist unter Local Network Protection ins Leere gegangen
 				getApp().getConnector().triggerReconnect();
 			} else if (AVRSettings.isLocalNetworkBlocked(this)) {
-				// Sonst bleibt es beim stillen Nichts: LNP laesst den Socket
-				// nicht scheitern, sondern verschluckt ihn, und die App zeigt
-				// dann "nicht erreichbar" - als waere der Receiver aus.
-				// Gemessen auf einem Pixel 8 mit erzwungenem
-				// RESTRICT_LOCAL_NETWORK: SocketTimeoutException auf Port 23.
-				showLocalNetworkBlockedDialog();
+				// Kein Dialog von hier: der Verbindungs-Fortschritt geht
+				// Sekundenbruchteile spaeter auf und legt sich darueber, auf
+				// einem Pixel 8 nachgestellt. Den Anwender unterrichtet der
+				// ConfigurationAssistant, sobald der Verbindungsversuch
+				// gescheitert ist - der hat die Buchfuehrung dafuer, dass
+				// immer nur ein Hinweis zugleich sichtbar ist.
+				Logger.info("local network permission denied - connection will fail");
 			}
 		}
-	}
-
-	private void showLocalNetworkBlockedDialog() {
-		Logger.info("local network permission denied - connection will fail");
-		new AlertDialog.Builder(this).setTitle(R.string.ConfigProblem)
-				.setMessage(R.string.LocalNetworkPermission)
-				.setInverseBackgroundForced(true)
-				.setNeutralButton(R.string.OK, null).show();
 	}
 
 	private ZoneState getCurrentFrontState() {

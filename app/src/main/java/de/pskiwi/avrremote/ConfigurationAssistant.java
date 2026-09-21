@@ -85,6 +85,14 @@ public final class ConfigurationAssistant {
 			if (currentStatus.is(StatusFlag.Reachable)
 					|| app.getConnector().isControlPortBusy()) {
 				checkReset();
+			} else if (AVRSettings.isLocalNetworkBlocked(ctx)) {
+				// Sonst behauptet der Assistent hier, die IP sei ungueltig, und
+				// bietet einen Suchlauf an, der aus demselben Grund nichts
+				// finden kann. Unter Local Network Protection ist Reachable
+				// immer false - Ping und Port 80 gehen ins Leere -, waehrend
+				// die Adresse voellig in Ordnung ist. Auf einem Pixel 8 mit
+				// targetSdk 37 und entzogener Permission genau so gesehen.
+				alertLocalNetworkBlocked();
 			} else {
 				showIPDialog(false);
 			}
@@ -142,6 +150,28 @@ public final class ConfigurationAssistant {
 		});
 		AlertDialog alert = builder.create();
 		alert.show();
+	}
+
+	/**
+	 * Die Permission fehlt und Local Network Protection gilt - das ist kein
+	 * Konfigurationsproblem, und ein Suchlauf hilft nicht.
+	 */
+	private void alertLocalNetworkBlocked() {
+		if (visible.get() || !ctx.isShowing()) {
+			return;
+		}
+		visible.set(true);
+		final AlertDialog.Builder builder = new AlertDialog.Builder(ctx);
+		builder.setTitle(R.string.ConnectivityProblem);
+		builder.setMessage(R.string.LocalNetworkPermission);
+		builder.setInverseBackgroundForced(true);
+		builder.setNeutralButton(R.string.OK,
+				new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog, int which) {
+						visible.set(false);
+					}
+				});
+		builder.create().show();
 	}
 
 	private void alertNoWLan() {

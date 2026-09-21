@@ -136,7 +136,7 @@ public final class AVRSettings extends PreferenceActivity implements
 	 * vorherigen Ablehnung. Beim ersten Mal ist der System-Dialog selbst die
 	 * Frage.
 	 */
-	public static void requestLocalNetworkPermission(final Activity activity) {
+	public static void requestLocalNetworkPermission(Activity activity) {
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.CINNAMON_BUN) {
 			return;
 		}
@@ -146,24 +146,17 @@ public final class AVRSettings extends PreferenceActivity implements
 		if (activity.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) {
 			return;
 		}
-		if (activity.shouldShowRequestPermissionRationale(permission)) {
-			new AlertDialog.Builder(activity)
-					.setTitle(R.string.app_name)
-					.setMessage(R.string.LocalNetworkPermission)
-					.setInverseBackgroundForced(true)
-					.setNeutralButton(R.string.OK,
-							new DialogInterface.OnClickListener() {
-								public void onClick(DialogInterface dialog,
-										int which) {
-									activity.requestPermissions(
-											new String[] { permission },
-											REQUEST_ACCESS_LOCAL_NETWORK);
-								}
-							}).show();
-		} else {
-			activity.requestPermissions(new String[] { permission },
-					REQUEST_ACCESS_LOCAL_NETWORK);
-		}
+		// Kein eigener Begruendungs-Dialog vorweg, obwohl
+		// shouldShowRequestPermissionRationale() ihn nahelegt: er kommt aus
+		// onCreate und landet damit unter dem Verbindungs-Fortschritt und dem
+		// ConfigurationAssistant, die Sekunden spaeter aufgehen - auf einem
+		// Pixel 8 nachgestellt, der Anwender sieht ihn nie. Die Begruendung
+		// steht stattdessen dort, wo die Folge auftritt: bei der Ablehnung
+		// (AVRRemote.onRequestPermissionsResult), beim Scan und im
+		// ConfigurationAssistant. Dasselbe Muster wie bei POST_NOTIFICATIONS
+		// oben, das auch direkt fragt.
+		activity.requestPermissions(new String[] { permission },
+				REQUEST_ACCESS_LOCAL_NETWORK);
 	}
 
 	/**
