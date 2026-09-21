@@ -33,15 +33,6 @@ still 36, so none of it is in force. What is left is the part no build can answe
       does **not** reach the hints, which are gated on `targetSdkVersion`; only a real 37 build
       does.
 
-- [ ] **`requestLocalNetworkPermission` and `isLocalNetworkBlocked` disagree about `targetSdk`.**
-      The request (`AVRSettings.java:148`) is gated on `SDK_INT` alone, the check
-      (`AVRSettings.java:187`) deliberately also on the running package's `targetSdkVersion` — so on
-      an Android 17 device with today's `targetSdk 36` the user is asked at first start for a
-      permission that has no effect yet, while every "denied" path stays silent because nothing is
-      in fact blocked. Raising `targetSdk` to 37 settles it by itself; until then the asymmetry is
-      deliberate and harmless, and worth remembering only so nobody "fixes" the check to match the
-      request rather than the other way round.
-
 - [ ] **The one case still untested: mobile data on beside a Wi-Fi without internet.** That is what
       the socket binding exists for, and it is the one scenario the test Wi-Fi here cannot produce.
       Until someone runs it, the binding is verified only in the sense that sockets demonstrably

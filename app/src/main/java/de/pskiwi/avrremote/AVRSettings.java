@@ -146,6 +146,15 @@ public final class AVRSettings extends PreferenceActivity implements
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.CINNAMON_BUN) {
 			return false;
 		}
+		// Dieselbe Bedingung wie in isLocalNetworkBlocked(), und aus demselben
+		// Grund: solange das Paket targetSdk 36 hat, ist die Permission
+		// folgenlos. Danach zu fragen ist nicht nur ueberfluessig - Android
+		// merkt sich die Ablehnung, und die zweite kostet die Frage endgueltig.
+		// Sie waere also verbraucht, bevor sie etwas bewirken kann. Der Tag, an
+		// dem build.gradle auf 37 geht, schaltet sie von allein scharf.
+		if (activity.getApplicationInfo().targetSdkVersion < Build.VERSION_CODES.CINNAMON_BUN) {
+			return false;
+		}
 		// Erst hinter der Versionsabfrage lesen: der Compiler setzt die
 		// Konstante zwar ein, aber sonst meldet Lint sie als InlinedApi.
 		final String permission = android.Manifest.permission.ACCESS_LOCAL_NETWORK;
