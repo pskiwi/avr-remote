@@ -114,11 +114,24 @@ public final class AVRScanner {
 			}
 		}
 
+		/**
+		 * Der Thread kann noch laufen: das {@code join(JOIN_TIMEOUT)} in
+		 * {@link AVRScanner#testAll} darf ablaufen, und in einem /24 hat jeder
+		 * Thread 16 Adressen zu je bis zu 2,25 s - Ping plus vier
+		 * Connect-Timeouts. Ohne die Sperre liest der Aufrufer dann eine Liste,
+		 * in die nebenher geschrieben wird, und {@code addAll()} wirft eine
+		 * ConcurrentModificationException oder sieht einen halben Stand.
+		 */
 		public List<ScanResult> getResult() {
-			return result;
+			synchronized (result) {
+				return new ArrayList<ScanResult>(result);
+			}
 		}
 
-		private final List<ScanResult> result = new LinkedList<ScanResult>();
+		// Der Mutex der Huelle ist die Huelle selbst - dasselbe Schloss, das
+		// getResult() nimmt.
+		private final List<ScanResult> result = Collections
+				.synchronizedList(new LinkedList<ScanResult>());
 		private final List<InetAddress> addresses;
 		private final FoundBy foundBy;
 
@@ -249,6 +262,11 @@ public final class AVRScanner {
 		final List<ScanResult> result = new ArrayList<ScanResult>();
 		for (int i = 0; i < threads.length; i++) {
 			threads[i].join(JOIN_TIMEOUT);
+			if (threads[i].isAlive()) {
+				// Das Ergebnis ist dann unvollstaendig, und in einem
+				// eingeschickten Log ist das sonst nicht zu sehen.
+				Logger.info("scan timed out: " + threads[i].getName());
+			}
 			result.addAll(threads[i].getResult());
 		}
 		Logger.info("found " + result.size() + " receiver(s) via "

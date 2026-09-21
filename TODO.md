@@ -171,13 +171,6 @@ still 36, so none of it is in force. What is left is the part no build can answe
       as buttons that stay greyed out until the next status change repairs them. Cheaper to fix than
       it looks: `fireListener()` only copies the status and `Handler.post()`s it, so a `synchronized`
       on `setStatus()` would cover a few field writes and a post, never the UI fanout itself.
-- [ ] **The scan reads a worker's result list while the worker may still be writing it.**
-      `AVRScanner.java:242` does `threads[i].join(JOIN_TIMEOUT)` and then `getResult()` on the
-      thread's live `LinkedList`, with no synchronisation and no check that the join succeeded. A
-      `/24` sweep hands each of the 16 threads 16 addresses at up to ~2.25 s each (250 ms ping plus
-      up to four 500 ms connects), so the 10 s join can expire while the thread is still appending —
-      `result.addAll(...)` then throws `ConcurrentModificationException` or returns a torn list. The
-      hazard predates the SSDP work, but `testAll()` is now on the path of every SSDP candidate too.
 - [ ] **`AVRTargetTester.PING_TIMEOUT` is 250 ms, which a phone waking from standby cannot meet.**
       Wi-Fi power save puts the receiver out of reach for the first moments after the user picks the
       phone up, so `checkAddress()` reports "not reachable" for a device that is plainly there — the
