@@ -92,6 +92,19 @@ public final class DeviceDescriptionTest {
 		assertNull(d.getPresentationURL());
 	}
 
+	/**
+	 * Und der Aufrufer muss sie von einer echten unterscheiden koennen: ein 404
+	 * kommt als Fehlerseite und nicht als Ausnahme zurueck, weshalb
+	 * {@code read()} sonst eine Beschreibung aus lauter null in den Bericht
+	 * stellen wuerde - "nicht vorhanden" waere daran nicht mehr abzulesen.
+	 */
+	@Test
+	public void anErrorPageIsNoDescription() throws IOException {
+		assertFalse(DeviceDescription.parse("<html>Site or Page Not Found</html>")
+				.isUseful());
+		assertTrue(DeviceDescription.parse(capture()).isUseful());
+	}
+
 	private static String capture() throws IOException {
 		try (InputStream in = DeviceDescriptionTest.class
 				.getResourceAsStream("avr3310-description.xml")) {

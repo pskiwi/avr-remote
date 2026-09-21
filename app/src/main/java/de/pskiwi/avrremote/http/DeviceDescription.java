@@ -65,6 +65,11 @@ public final class DeviceDescription {
 		try {
 			final DeviceDescription result = parse(new String(
 					HTTPSupport.get(url), "UTF-8"));
+			if (!result.isUseful()) {
+				Logger.info("no UPnP description [" + url
+						+ "]: unexpected content");
+				return null;
+			}
 			Logger.info("UPnP description: " + result);
 			return result;
 		} catch (IOException x) {
@@ -73,6 +78,24 @@ public final class DeviceDescription {
 			Logger.info("no UPnP description [" + url + "]: " + x);
 			return null;
 		}
+	}
+
+	/**
+	 * Ist da eine Beschreibung, oder nur irgendein Text ?
+	 *
+	 * {@code HTTPSupport.get()} wirft bei 404 nicht, es liefert den Fehlertext -
+	 * ein Receiver ohne UPnP auf 8080 antwortet mit der GoAhead-Seite "Site or
+	 * Page Not Found". {@link #parse} findet darin kein einziges Tag, und ohne
+	 * diese Pruefung stuende im Bericht {@code null / null (null) [null] null}
+	 * statt {@code not available}. Genau dieser Unterschied ist die Frage, fuer
+	 * die der Wert ueberhaupt erhoben wird.
+	 *
+	 * Die beiden Felder zusammen, weil einzeln keines sicher ist: ein
+	 * Marantz-Geraet ohne {@code modelName} waere denkbar, eines ohne beides
+	 * keine Beschreibung mehr.
+	 */
+	boolean isUseful() {
+		return modelName != null || manufacturer != null;
 	}
 
 	/** Android-frei und auf einem String, damit der Teil im JVM-Test zu pinnen ist. */

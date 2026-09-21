@@ -93,14 +93,6 @@ still 36, so none of it is in force. What is left is the part no build can answe
       base URL — a heuristic whose confirmation is still outstanding with the reporter of the
       AVR-1912. On the AVR-3310 `presentationURL` is exactly that bare base URL, which corroborates
       the fallback for this model. Fetching it would replace the probe entirely.
-- [ ] **`DeviceDescription.read()` accepts an error page as a description.** `HTTPSupport.execute`
-      does not throw on 404, it returns the body, and `read()` (`http/DeviceDescription.java:66`)
-      hands back an object for whatever came. A receiver with nothing on port 8080 answers with the
-      GoAhead "Site or Page Not Found" page, `parse()` matches no tag, and the feedback report then
-      prints `null / null (null) [null] null` instead of `not available` — which defeats the one
-      question the `UPnP` line exists to answer, namely whether 8080 carries the description across
-      the generations. `DeviceDescriptionTest.nothingUsefulGivesNulls` pins the parser half; what is
-      missing is `read()` returning null when `modelName` and `manufacturer` are both absent.
 - [ ] The `NOTIFY` branch is untested against a real device in another sense too: `SSDPDiscovery`
       only ever looks at replies to its own `M-SEARCH`. If a receiver turns out to answer nothing
       (no `MulticastLock` — see [CONNECTION.md](CONNECTION.md)), the sweep fallback hides it, and
