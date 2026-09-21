@@ -259,9 +259,18 @@ public final class AVRScanner {
 					ranges[i][1]), foundBy);
 			threads[i].start();
 		}
-		final List<ScanResult> result = new ArrayList<ScanResult>();
+		// Erst auf alle warten, dann einsammeln. Zusammen in einer Schleife
+		// bekaeme der erste Thread nur die ersten JOIN_TIMEOUT Millisekunden,
+		// der zweite die naechsten und so fort - waehrend ein /24 jedem 16
+		// Adressen zu je bis zu 2,25 s gibt. Wer laenger braucht als sein
+		// eigenes Zeitfenster, haette seine Funde also verloren, obwohl der
+		// Suchlauf insgesamt noch minutenlang weiterlaeuft: ein Receiver auf
+		// einer niedrigen Adresse waere als "nicht gefunden" gemeldet worden.
 		for (int i = 0; i < threads.length; i++) {
 			threads[i].join(JOIN_TIMEOUT);
+		}
+		final List<ScanResult> result = new ArrayList<ScanResult>();
+		for (int i = 0; i < threads.length; i++) {
 			if (threads[i].isAlive()) {
 				// Das Ergebnis ist dann unvollstaendig, und in einem
 				// eingeschickten Log ist das sonst nicht zu sehen.
