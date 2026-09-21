@@ -118,21 +118,9 @@ public final class StatusAreaManager implements IStatusListener {
 		new Thread("LoadXMLStatus") {
 			@Override
 			public void run() {
+				final ModelConfigurator configurator = activity.getApp()
+						.getModelConfigurator();
 				try {
-					final ModelConfigurator configurator = activity.getApp()
-							.getModelConfigurator();
-					// Vor readState(), nicht dahinter: das wirft, sobald das
-					// HTTP-Scraping scheitert, und der Zustand, aus dem die
-					// Beschreibung am meisten wert ist - Receiver da, Telnet
-					// belegt oder stumm -, ist oft genau der, in dem das
-					// Scraping scheitert. Haengt trotzdem an diesem Thread und
-					// nicht an einem eigenen: derselbe Receiver, dieselbe
-					// Stundenbremse, und gebraucht wird der Wert nur fuer den
-					// Feedback-Bericht.
-					final ConnectionConfiguration config = configurator
-							.getConnectionConfig();
-					configurator.setDeviceDescription(
-							DeviceDescription.read(config), config.getIP());
 					final AVRXMLInfo state = new AVRHTTPClient(configurator)
 							.readState(configurator);
 					if (state.isDefined()) {
@@ -161,6 +149,23 @@ public final class StatusAreaManager implements IStatusListener {
 								+ XML_RETRY_DELAY;
 					}
 					Logger.error("Read state failed", e);
+				}
+				// Eigener try, und erst danach. Eigener, weil readState()
+				// wirft, sobald das Scraping scheitert - und der Zustand, aus
+				// dem die Beschreibung am meisten wert ist, Receiver da und
+				// Telnet belegt oder stumm, ist oft genau der. Erst danach,
+				// weil Port 8080 fest verdrahtet ist und laengst nicht jeder
+				// Receiver etwas darauf anbietet: wo er nicht ablehnt sondern
+				// schluckt, stehen hier 5 s Connect-Timeout, und die duerfen
+				// nicht vor den Zonen- und Eingangsnamen liegen, die der
+				// Anwender zu sehen bekommt. Der Bericht hat es nicht eilig.
+				try {
+					final ConnectionConfiguration config = configurator
+							.getConnectionConfig();
+					configurator.setDeviceDescription(
+							DeviceDescription.read(config), config.getIP());
+				} catch (Exception e) {
+					Logger.error("Read UPnP description failed", e);
 				}
 			}
 		}.start();
