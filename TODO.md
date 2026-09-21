@@ -84,6 +84,23 @@ still 36, so none of it is in force. What is left is the part no build can answe
       base URL — a heuristic whose confirmation is still outstanding with the reporter of the
       AVR-1912. On the AVR-3310 `presentationURL` is exactly that bare base URL, which corroborates
       the fallback for this model. Fetching it would replace the probe entirely.
+- [ ] **A failed fetch of `description.xml` erases what an earlier one found.**
+      `StatusAreaManager.loadXMLStatus()` calls `setDeviceDescription(...)` with whatever
+      `DeviceDescription.read()` returned, and that is null both on an `IOException` and on an
+      unrecognised body; `ModelConfigurator.setDeviceDescription` (`:167`) overwrites either way.
+      So an hourly read that succeeds while the receiver is on, followed by one that fails while it
+      is in standby, leaves the feedback report saying `not available` for a device that was
+      identified an hour earlier. Keeping the last good value is two lines — but only half the
+      answer: the value must then be cleared when the user switches receivers, or the report will
+      name the wrong device. Both halves or neither.
+- [ ] **Started from the options menu, the permission detour ends in silence.**
+      `menu/OptionsMenu.java:105`/`:112` hand `AVRScanner.scanIP` an empty `Runnable`, and since the
+      scan stops as soon as it has opened the permission dialog (`scan/AVRScanner.java:344`), the
+      user taps *Scan*, answers the system prompt and sees nothing at all — no progress dialog, no
+      message, no hint that the search has to be started again. From the `ConfigurationAssistant`
+      the path is sound, its `runFinished` clears `visible`. A toast would need a new string in both
+      languages; re-triggering the scan from `onRequestPermissionsResult` is the better answer and
+      the larger one, since `OnScreenDisplayActivity` — the other caller — does not override it.
 - [ ] The `NOTIFY` branch is untested against a real device in another sense too: `SSDPDiscovery`
       only ever looks at replies to its own `M-SEARCH`. If a receiver turns out to answer nothing
       (no `MulticastLock` — see [CONNECTION.md](CONNECTION.md)), the sweep fallback hides it, and
