@@ -75,6 +75,14 @@ still 36, so none of it is in force. What is left is the part no build can answe
       (`goform/formMainZone_MainZoneXml.xml`) does **not** carry it — its `<ModelId>` is an opaque
       `1`. Unknown, and the reason this is not already done: whether `modelName` matches the list
       verbatim on other generations. Only an AVR-3310 was available.
+
+      `<presentationURL>` is worth a second look on its own, because it settles a guess made
+      elsewhere. `menu/OptionsMenu.java:240` opens the receiver's web UI by probing the configured
+      page and treating **only** a 404 as proof that it is missing, then falling back to the bare
+      base URL — a heuristic whose confirmation is still outstanding with the reporter of the
+      AVR-1912. The device states the answer instead of being guessed at: on the AVR-3310 the
+      value is exactly that bare base URL, which corroborates the fallback for this model at
+      least. Fetching it would replace the probe entirely.
 - [ ] The `NOTIFY` branch is untested against a real device in another sense too: `SSDPDiscovery`
       only ever looks at replies to its own `M-SEARCH`. If a receiver turns out to answer nothing
       (no `MulticastLock` — see [CONNECTION.md](CONNECTION.md)), the sweep fallback hides it, and
