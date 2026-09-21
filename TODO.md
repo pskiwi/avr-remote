@@ -33,6 +33,15 @@ still 36, so none of it is in force. What is left is the part no build can answe
       does **not** reach the hints, which are gated on `targetSdkVersion`; only a real 37 build
       does.
 
+- [ ] **`requestLocalNetworkPermission` and `isLocalNetworkBlocked` disagree about `targetSdk`.**
+      The request (`AVRSettings.java:148`) is gated on `SDK_INT` alone, the check
+      (`AVRSettings.java:187`) deliberately also on the running package's `targetSdkVersion` — so on
+      an Android 17 device with today's `targetSdk 36` the user is asked at first start for a
+      permission that has no effect yet, while every "denied" path stays silent because nothing is
+      in fact blocked. Raising `targetSdk` to 37 settles it by itself; until then the asymmetry is
+      deliberate and harmless, and worth remembering only so nobody "fixes" the check to match the
+      request rather than the other way round.
+
 - [ ] **The one case still untested: mobile data on beside a Wi-Fi without internet.** That is what
       the socket binding exists for, and it is the one scenario the test Wi-Fi here cannot produce.
       Until someone runs it, the binding is verified only in the sense that sockets demonstrably
@@ -84,10 +93,38 @@ still 36, so none of it is in force. What is left is the part no build can answe
       base URL — a heuristic whose confirmation is still outstanding with the reporter of the
       AVR-1912. On the AVR-3310 `presentationURL` is exactly that bare base URL, which corroborates
       the fallback for this model. Fetching it would replace the probe entirely.
+- [ ] **`DeviceDescription.read()` accepts an error page as a description.** `HTTPSupport.execute`
+      does not throw on 404, it returns the body, and `read()` (`http/DeviceDescription.java:66`)
+      hands back an object for whatever came. A receiver with nothing on port 8080 answers with the
+      GoAhead "Site or Page Not Found" page, `parse()` matches no tag, and the feedback report then
+      prints `null / null (null) [null] null` instead of `not available` — which defeats the one
+      question the `UPnP` line exists to answer, namely whether 8080 carries the description across
+      the generations. `DeviceDescriptionTest.nothingUsefulGivesNulls` pins the parser half; what is
+      missing is `read()` returning null when `modelName` and `manufacturer` are both absent.
 - [ ] The `NOTIFY` branch is untested against a real device in another sense too: `SSDPDiscovery`
       only ever looks at replies to its own `M-SEARCH`. If a receiver turns out to answer nothing
       (no `MulticastLock` — see [CONNECTION.md](CONNECTION.md)), the sweep fallback hides it, and
       the only sign is `SSDP: 0 device(s) answered` in the log.
+- [ ] **The `/24` guard shuts SSDP out of the networks where it is the only thing that works.**
+      `AVRScanner.java:170` returns with *auto scan not supported* before the AsyncTask starts, so a
+      user on a `/16` or `/23` — some ISP routers, most corporate and guest Wi-Fi — never gets an
+      `M-SEARCH` sent at all. SSDP does not care about the subnet size; only the sweep does, and the
+      sweep is now the fallback rather than the main path. The guard belongs around `scanNetwork()`
+      inside `doInBackground`, with the "not supported" message left for the case where SSDP also
+      found nothing.
+- [ ] **`SSDPDiscovery`'s timing constants do not add up.** The third `M-SEARCH` goes out at
+      `2 * SEND_INTERVAL` = 1600 ms and devices spread their answers over `MX` = 2 s, so a reply to
+      it can arrive at 3600 ms — but the loop stops collecting at `SEARCH_DURATION` = 3000 ms and
+      closes the socket (`scan/SSDPDiscovery.java:181`). A device that answers only the third burst
+      is dropped, which is exactly the packet-loss case the three repeats exist for. Either extend
+      the window to `2 * SEND_INTERVAL + MX` or lower `MX`; the comment on `M_SEARCH` already says
+      the two have to match.
+- [ ] **`alertLocalNetworkBlocked()` can leave the assistant muted for good.**
+      `ConfigurationAssistant.java:159` sets `visible` but the dialog is cancelable without an
+      `OnCancelListener`, so dismissing it with the back button or a tap outside leaves the flag
+      true — and `checkReset`, `showIPDialog` and `alertNoWLan` all begin with `if (visible.get())
+      return;`. `showIPDialog` and `checkReset` guard against exactly this; `alertNoWLan` has the
+      same hole and predates the branch, so fix both together.
 - [ ] The NPE in `AVRApplication$1.onReceive` (1.5.1, Pixel 8 Pro, Android 17 **Beta**) can no
       longer happen: the `BroadcastReceiver` is gone with the `WifiManager` broadcast, and so is the
       crash site. The cause was never found — it was `getNetworkInfo(TYPE_WIFI)` returning null, and
@@ -155,6 +192,27 @@ still 36, so none of it is in force. What is left is the part no build can answe
       as buttons that stay greyed out until the next status change repairs them. Cheaper to fix than
       it looks: `fireListener()` only copies the status and `Handler.post()`s it, so a `synchronized`
       on `setStatus()` would cover a few field writes and a post, never the UI fanout itself.
+- [ ] **`StatusAreaManager.loadXMLStatus()` arms its hour-long brake before it knows whether the
+      read worked.** `lastXMLUpdate` is set at `StatusAreaManager.java:115`, before the thread runs,
+      and nothing resets it when the read throws. At startup the app typically reports
+      "disconnected but reachable" seconds before it connects, so that first attempt — from
+      `handleDisconnected` (`:92`), where the transport is by definition not up yet — consumes the
+      brake, and the `loadXMLStatus()` in `handleConnected` (`:99`) returns immediately. Zone and
+      input names from the XML are then missing for a full hour. Resetting `lastXMLUpdate` on
+      failure would cover it; note the brake exists to stop repeat requests, so it must stay armed
+      for the success case.
+- [ ] Same method, second ordering problem: `DeviceDescription.read(...)` (`:130`) sits behind
+      `readState(configurator)`, which throws whenever the HTTP scraping fails. The state the call
+      was added for — receiver reachable, telnet busy or mute — is often one where that scraping is
+      what fails, so the UPnP line reads `not available` in precisely the reports the comment above
+      it calls the most valuable. It wants its own `try`, or to run first.
+- [ ] **The scan reads a worker's result list while the worker may still be writing it.**
+      `AVRScanner.java:242` does `threads[i].join(JOIN_TIMEOUT)` and then `getResult()` on the
+      thread's live `LinkedList`, with no synchronisation and no check that the join succeeded. A
+      `/24` sweep hands each of the 16 threads 16 addresses at up to ~2.25 s each (250 ms ping plus
+      up to four 500 ms connects), so the 10 s join can expire while the thread is still appending —
+      `result.addAll(...)` then throws `ConcurrentModificationException` or returns a torn list. The
+      hazard predates the SSDP work, but `testAll()` is now on the path of every SSDP candidate too.
 - [ ] **`AVRTargetTester.PING_TIMEOUT` is 250 ms, which a phone waking from standby cannot meet.**
       Wi-Fi power save puts the receiver out of reach for the first moments after the user picks the
       phone up, so `checkAddress()` reports "not reachable" for a device that is plainly there — the
@@ -193,6 +251,12 @@ still 36, so none of it is in force. What is left is the part no build can answe
       `qlmanage`, command recorded in a comment at the top of the SVG.
       `res/drawable/icon_small.png` (32×32) is the last leftover of the old 2010 icon and is
       referenced nowhere.
+- [ ] The sweep probes the network address and the directed broadcast: `hostRange(x, 24)` returns
+      `{0, 256}` (`scan/AVRScanner.java:269`), so `.0` and `.255` get a ping and up to four TCP
+      connects each. `ScanRangeTest.classCCoversTheWholeOctet` pins that deliberately — the whole
+      point of the fix was that host ranges were being cut short — but neither address can hold a
+      receiver, and an ICMP echo to the broadcast address is the kind of packet that draws
+      attention on a managed network. Excluding both costs two lines and one test expectation.
 - [ ] `misc/file-copyright.txt` is referenced by nothing since `misc/add-copyright.sh` was deleted.
 - [ ] **`ScreenInfo` measures the window, not the display.** The class builds its diagonal from
       `getDefaultDisplay().getMetrics()` (`ScreenInfo.java:28-33`), and every caller hands it an
