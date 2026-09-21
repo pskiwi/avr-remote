@@ -405,6 +405,15 @@ public final class AVRScanner {
 									runFinished.run();
 								}
 							});
+					// Auch der Abbruch muss runFinished erreichen: der
+					// Assistent haelt darin fest, dass wieder kein Dialog
+					// sichtbar ist, und bliebe sonst fuer den Rest seines
+					// Lebens stumm - dieser Dialog ist abbrechbar.
+					builder.setOnCancelListener(new OnCancelListener() {
+						public void onCancel(DialogInterface dialog) {
+							runFinished.run();
+						}
+					});
 					AlertDialog alert = builder.create();
 					alert.show();
 				}
@@ -414,6 +423,9 @@ public final class AVRScanner {
 			scan.scan(resultHandler);
 
 		} catch (Exception e) {
+			// dito: ohne das bleibt der Assistent an einem Suchlauf haengen,
+			// der gar nicht erst angelaufen ist
+			runFinished.run();
 			Logger.error("scan failed", e);
 		}
 	}
