@@ -202,10 +202,22 @@ public final class LocalNetwork {
 			notifyListener(true);
 		}
 
+		/**
+		 * onAvailable kommt, bevor DHCP fertig ist - die LinkProperties tragen
+		 * dann noch keine IPv4-Adresse, und genau die braucht der Suchlauf
+		 * ({@link #getIPv4()}). Kommt sie erst hier nach, muss das gemeldet
+		 * werden: sonst steht StatusFlag.WLAN auf true, während
+		 * {@link #isConnected()} noch false ist, und ein Scan in diesem Fenster
+		 * bricht mit "no IPv4 address" ab, ohne dass sich danach etwas rührt.
+		 */
 		@Override
 		public void onLinkPropertiesChanged(Network n, LinkProperties lp) {
 			if (n.equals(boundNetwork)) {
+				final boolean hadAddress = getIPv4() != null;
 				linkProperties = lp;
+				if (!hadAddress && getIPv4() != null) {
+					notifyListener(true);
+				}
 			}
 		}
 
