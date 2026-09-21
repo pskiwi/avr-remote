@@ -21,6 +21,7 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 import de.pskiwi.avrremote.EnableManager.IStatusListener;
 import de.pskiwi.avrremote.EnableManager.StatusFlag;
+import de.pskiwi.avrremote.core.ConnectionConfiguration;
 import de.pskiwi.avrremote.http.AVRHTTPClient;
 import de.pskiwi.avrremote.http.DeviceDescription;
 import de.pskiwi.avrremote.models.ModelConfigurator;
@@ -128,8 +129,10 @@ public final class StatusAreaManager implements IStatusListener {
 					// nicht an einem eigenen: derselbe Receiver, dieselbe
 					// Stundenbremse, und gebraucht wird der Wert nur fuer den
 					// Feedback-Bericht.
-					configurator.setDeviceDescription(DeviceDescription
-							.read(configurator.getConnectionConfig()));
+					final ConnectionConfiguration config = configurator
+							.getConnectionConfig();
+					configurator.setDeviceDescription(
+							DeviceDescription.read(config), config.getIP());
 					final AVRXMLInfo state = new AVRHTTPClient(configurator)
 							.readState(configurator);
 					if (state.isDefined()) {
