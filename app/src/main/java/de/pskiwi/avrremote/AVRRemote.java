@@ -118,6 +118,13 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 			} else {
 				AVRSettings.requestNotificationPermission(this);
 			}
+		} else {
+			// Die Kette laeuft weiter, auch wenn waehrend des System-Dialogs
+			// gedreht wurde: sonst ist die Activity neu, das Merkmal wieder
+			// false, und die Benachrichtigung wird in dieser Sitzung nie
+			// gefragt - genau das, was die Kette verhindern soll.
+			notificationRequestPending = savedInstanceState
+					.getBoolean(NOTIFICATION_PENDING);
 		}
 
 		Logger.setLocation("AVRRemote-onCreate-2");
@@ -370,6 +377,7 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 		super.onSaveInstanceState(outState);
 
 		outState.putInt(CURRENT_TAB, getTabHost().getCurrentTab());
+		outState.putBoolean(NOTIFICATION_PENDING, notificationRequestPending);
 	}
 
 	@Override
@@ -637,5 +645,6 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 	// Achtung, kann "null" sein
 	private ZoneState currentZoneState;
 	private static final String CURRENT_TAB = "CURRENT_TAB";
+	private static final String NOTIFICATION_PENDING = "NOTIFICATION_PENDING";
 
 }
