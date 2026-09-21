@@ -19,7 +19,6 @@ package de.pskiwi.avrremote;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.TabActivity;
 import android.content.Context;
 import android.content.Intent;
@@ -107,9 +106,25 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 		setContentView(R.layout.tabhost);
 		EdgeToEdge.apply(this);
 		if (savedInstanceState == null) {
-			// nicht bei jeder Drehung erneut anfragen
-			AVRSettings.requestNotificationPermission(this);
-			AVRSettings.requestLocalNetworkPermission(this);
+			// nicht bei jeder Drehung erneut anfragen.
+			// Nacheinander, nicht nebeneinander: requestPermissions() weist
+			// eine zweite Anfrage ab, solange die erste laeuft, und liefert
+			// ihr sofort ein leeres Ergebnis - die zweite Permission wird dann
+			// nie gefragt. Das lokale Netz hat Vorrang, es haelt sonst jeden
+			// Socket auf; die Benachrichtigung folgt in
+			// onRequestPermissionsResult.
+			if (AVRSettings.requestLocalNetworkPermission(this)) {
+				notificationRequestPending = true;
+			} else {
+				AVRSettings.requestNotificationPermission(this);
+			}
+		} else {
+			// Die Kette laeuft weiter, auch wenn waehrend des System-Dialogs
+			// gedreht wurde: sonst ist die Activity neu, das Merkmal wieder
+			// false, und die Benachrichtigung wird in dieser Sitzung nie
+			// gefragt - genau das, was die Kette verhindern soll.
+			notificationRequestPending = savedInstanceState
+					.getBoolean(NOTIFICATION_PENDING);
 		}
 
 		Logger.setLocation("AVRRemote-onCreate-2");
@@ -235,27 +250,30 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 				getApp().getStatusbarManager().update();
 			}
 		} else if (requestCode == AVRSettings.REQUEST_ACCESS_LOCAL_NETWORK) {
+			AVRSettings.localNetworkPermissionResult(this, grantResults);
 			if (granted) {
 				// Der Verbindungsversuch beim Start lief ohne die Permission
 				// und ist unter Local Network Protection ins Leere gegangen
 				getApp().getConnector().triggerReconnect();
 			} else if (AVRSettings.isLocalNetworkBlocked(this)) {
-				// Sonst bleibt es beim stillen Nichts: LNP laesst den Socket
-				// nicht scheitern, sondern verschluckt ihn, und die App zeigt
-				// dann "nicht erreichbar" - als waere der Receiver aus.
-				// Gemessen auf einem Pixel 8 mit erzwungenem
-				// RESTRICT_LOCAL_NETWORK: SocketTimeoutException auf Port 23.
-				showLocalNetworkBlockedDialog();
+				// Kein Dialog von hier: der Verbindungs-Fortschritt geht
+				// Sekundenbruchteile spaeter auf und legt sich darueber, auf
+				// einem Pixel 8 nachgestellt. Den Anwender unterrichtet der
+				// ConfigurationAssistant, sobald der Verbindungsversuch
+				// gescheitert ist - der hat die Buchfuehrung dafuer, dass
+				// immer nur ein Hinweis zugleich sichtbar ist.
+				Logger.info("local network permission denied - connection will fail");
+			}
+			// Jetzt ist der Dialog weg und die zweite Anfrage kommt durch -
+			// aber nur, wenn sie auch aus onCreate stammt. Mit demselben
+			// Request-Code kommt der Suchlauf hier heraus (AVRScanner.scanIP
+			// ueber das Menue), und mitten im Suchlauf nach der
+			// Benachrichtigung zu fragen haette damit nichts zu tun.
+			if (notificationRequestPending) {
+				notificationRequestPending = false;
+				AVRSettings.requestNotificationPermission(this);
 			}
 		}
-	}
-
-	private void showLocalNetworkBlockedDialog() {
-		Logger.info("local network permission denied - connection will fail");
-		new AlertDialog.Builder(this).setTitle(R.string.ConfigProblem)
-				.setMessage(R.string.LocalNetworkPermission)
-				.setInverseBackgroundForced(true)
-				.setNeutralButton(R.string.OK, null).show();
 	}
 
 	private ZoneState getCurrentFrontState() {
@@ -360,6 +378,7 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 		super.onSaveInstanceState(outState);
 
 		outState.putInt(CURRENT_TAB, getTabHost().getCurrentTab());
+		outState.putBoolean(NOTIFICATION_PENDING, notificationRequestPending);
 	}
 
 	@Override
@@ -618,6 +637,8 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 	private ConnectionProgressMonitor connectionProgressMonitor;
 	private ConfigurationAssistant configurationAssistant;
 	private boolean showing;
+	/** Die Berechtigungskette aus onCreate laeuft noch, siehe dort. */
+	private boolean notificationRequestPending;
 	private ViewList viewList;
 	private TextDisplayHandler textDisplayHandler;
 	private OptionsMenu optionsMenu;
@@ -625,5 +646,6 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 	// Achtung, kann "null" sein
 	private ZoneState currentZoneState;
 	private static final String CURRENT_TAB = "CURRENT_TAB";
+	private static final String NOTIFICATION_PENDING = "NOTIFICATION_PENDING";
 
 }

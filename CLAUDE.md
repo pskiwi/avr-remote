@@ -45,12 +45,12 @@ for `android-37` and fails with *"Failed to find target with hash string"*. AGP 
 up to compile SDK 36.1 and warns about 37.2 in every build, which is what
 `android.suppressUnsupportedCompileSdk` in `gradle.properties` silences.
 
-**There is almost no test coverage.** `src/test` holds eleven JVM test classes on JUnit 4, the only
+**There is almost no test coverage.** `src/test` holds twelve JVM test classes on JUnit 4, the only
 dependency in the project — `http/HTTPSupportTest`, `http/Series08ParserTest`,
 `core/ThreadHandlerTest`, `core/InDataTest`, `core/display/NetDisplayTest`,
 `core/display/TunerDisplayTest`, `models/ModelConfiguratorTest`, `ReceiverStatusTest`,
-`http/AVRXMLInfoParserTest`, `scan/ScanRangeTest` and `scan/SSDPDiscoveryTest` — and there is no
-`src/androidTest` at all. `./gradlew test` runs a few
+`http/AVRXMLInfoParserTest`, `http/DeviceDescriptionTest`, `scan/ScanRangeTest` and
+`scan/SSDPDiscoveryTest` — and there is no `src/androidTest` at all. `./gradlew test` runs a few
 dozen cases and nothing else (twice, in fact: once per build variant), so do not report a change as
 verified because the build passed; verify on a device or emulator instead. Six limits are worth
 knowing before writing more tests:
@@ -78,9 +78,15 @@ knowing before writing more tests:
   directory on the test classpath and tracks it as a task input by itself, so it needs neither an
   `inputs.file` entry nor the module/root path dance above. Keep such captures byte-exact — one of
   the two has CRLF line endings and both pad their values with spaces, and the tests exist to pin
-  what the parsers do with that. The two SSDP files beside them in `scan/` follow the same rules
-  (CRLF, byte-exact) but are **not** captures: they were built from the UPnP spec, which the test's
-  Javadoc and [TODO.md](TODO.md) both say. Do not cite them as evidence of what a receiver sends.
+  what the parsers do with that. `scan/ssdp-search-response.txt` beside them is an AVR-3310's reply
+  to an M-SEARCH with exactly one field changed — the half of the UUID that is the device's MAC —
+  and its neighbour `ssdp-notify.txt` is *derived* from it rather than captured, because the
+  receiver repeats its advertisement only every ~900 s. The test's Javadoc says which is which; keep
+  it that way rather than letting the next reader assume both are real.
+- A second XML parser, a second approach: `http/DeviceDescription` reads five flat fields out of
+  the receiver's UPnP `description.xml` with regexes rather than SAX, precisely so it *can* be
+  tested here — `http/AVRXMLInfoParser` cannot, for the `localName` reason above. Five fields
+  without nesting do not buy enough from a parser to be worth losing that.
 - **A static initialiser that touches Android locks the whole class out of JVM tests.** Three
   different behaviours in the stub `android.jar`, and only the third one throws by itself:
   constructors are no-ops (`new Handler()` works), **field reads return null or 0**
@@ -234,9 +240,10 @@ Consequences:
   This does **not** extend to the UI bases above: those are a migration, not a style choice.
 - `minSdk 24`. Anything newer needs a `Build.VERSION.SDK_INT` guard. Lint reports this as `NewApi`,
   but `abortOnError false` means the build still succeeds — it will only fail on the device.
-  Note `compileSdk` is 37 while `targetSdk` is 36, so constants from newer platforms (for instance
+  `compileSdk` and `targetSdk` are both 37, so constants from that platform (for instance
   `Manifest.permission.ACCESS_LOCAL_NETWORK` and `VERSION_CODES.CINNAMON_BUN`) can be named
-  directly: the compiler inlines them, nothing is looked up at runtime.
+  directly: the compiler inlines them, nothing is looked up at runtime. That says nothing about
+  whether the *feature* exists on the device — `minSdk 24` still means a guard.
 - **Anything that opens a socket into the local network binds it first.** `LocalNetwork.bind(Socket)`,
   `LocalNetwork.bind(DatagramSocket)` and `LocalNetwork.openConnection(URL)` are the only way in —
   `core/Connector`, `http/HTTPSupport`, `scan/AVRTargetTester` and `scan/SSDPDiscovery` all go
@@ -251,7 +258,7 @@ Consequences:
 
 ### When adding an Activity
 
-Three things are easy to forget and all are required at `targetSdk 36`:
+Three things are easy to forget and all are required at `targetSdk 37`:
 
 1. `android:exported` in the manifest. For a component **with** an intent filter, omitting it is a
    build error; without a filter it is optional but set explicitly here for consistency.
@@ -264,5 +271,7 @@ Three things are easy to forget and all are required at `targetSdk 36`:
 
 ## What comes next
 
-The next platform deadline is Local Network Protection at Android 17, and it is the first item in
-[TODO.md](TODO.md). The connection side of it is in [CONNECTION.md](CONNECTION.md).
+Local Network Protection is **in force**: `targetSdk` is 37, so without `ACCESS_LOCAL_NETWORK` no
+socket reaches the local network — silently, by timeout, with no `SecurityException` to catch. That
+is the first section in [TODO.md](TODO.md), which holds what is left of it, and the connection side
+is in [CONNECTION.md](CONNECTION.md).

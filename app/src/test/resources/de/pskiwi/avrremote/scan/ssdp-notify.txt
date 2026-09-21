@@ -1,9 +1,9 @@
 NOTIFY * HTTP/1.1
 HOST: 239.255.255.250:1900
 CACHE-CONTROL: max-age=1800
-LOCATION: http://192.168.10.42:8080/description.xml
-NT: urn:schemas-upnp-org:device:MediaRenderer:1
+LOCATION: http://192.168.10.30:8080/description.xml
+NT: urn:schemas-dm-holdings-com:service:X_HtmlPageHandler:1
 NTS: ssdp:alive
-SERVER: KnOS/3.2 UPnP/1.0 Denon-Heos/3.34.620
-USN: uuid:5f9ec1b3-ed59-79ef-4b12-0005cdf3b4a1::urn:schemas-upnp-org:device:MediaRenderer:1
+SERVER: KnOS/3.2 UPnP/1.0 DMP/3.5
+USN: uuid:5f9ec1b3-ff59-19bb-8530-0005cd000000::urn:schemas-dm-holdings-com:service:X_HtmlPageHandler:1
 

@@ -79,6 +79,20 @@ public final class LocalNetwork {
 	 * Handler-Überladung von registerNetworkCallback() wäre der direktere Weg,
 	 * ist aber erst API 26 und damit oberhalb von minSdk 24 - handler.post() im
 	 * Callback leistet dasselbe ohne Versionsweiche.
+	 *
+	 * Ein bereits verbundenes WLAN meldet registerNetworkCallback von selbst nach,
+	 * für "gar kein WLAN" gibt es dagegen keine Meldung: onLost kommt nur für ein
+	 * Netz, das vorher verfügbar war. Der abgelöste BroadcastReceiver bekam
+	 * NETWORK_STATE_CHANGED_ACTION sticky zugestellt und hat StatusFlag.WLAN
+	 * deshalb immer sofort definiert. Ohne das Nachziehen unten bliebe das Flag
+	 * beim Start ohne WLAN undefiniert - und ConfigurationAssistant.checkStatus
+	 * zeigt "WLAN nicht aktiv" genau dann nicht an, wenn es zutrifft.
+	 *
+	 * Verzögert, weil die Nachmeldung über einen Binder-Thread kommt und synchron
+	 * nicht zu haben ist: was nach SEED_DELAY nicht gemeldet wurde, gibt es auch
+	 * nicht. Kommt sie später doch, korrigiert sie das Flag - die umgekehrte
+	 * Richtung darf es nicht geben, ein gemeldetes WLAN nachträglich als "kein
+	 * WLAN" zu überschreiben würde den Dialog für den falschen Fall aufmachen.
 	 */
 	public void register(Handler handler, IWiFiListener listener) {
 		this.handler = handler;
@@ -86,6 +100,11 @@ public final class LocalNetwork {
 		final NetworkRequest request = new NetworkRequest.Builder()
 				.addTransportType(NetworkCapabilities.TRANSPORT_WIFI).build();
 		connectivity.registerNetworkCallback(request, callback);
+		handler.postDelayed(new Runnable() {
+			public void run() {
+				notifyListenerIfNothingReported();
+			}
+		}, SEED_DELAY);
 	}
 
 	/** Ist ein WLAN mit brauchbarer IPv4-Adresse da ? */
@@ -181,10 +200,22 @@ public final class LocalNetwork {
 			notifyListener(true);
 		}
 
+		/**
+		 * onAvailable kommt, bevor DHCP fertig ist - die LinkProperties tragen
+		 * dann noch keine IPv4-Adresse, und genau die braucht der Suchlauf
+		 * ({@link #getIPv4()}). Kommt sie erst hier nach, muss das gemeldet
+		 * werden: sonst steht StatusFlag.WLAN auf true, während
+		 * {@link #isConnected()} noch false ist, und ein Scan in diesem Fenster
+		 * bricht mit "no IPv4 address" ab, ohne dass sich danach etwas rührt.
+		 */
 		@Override
 		public void onLinkPropertiesChanged(Network n, LinkProperties lp) {
 			if (n.equals(boundNetwork)) {
+				final boolean hadAddress = getIPv4() != null;
 				linkProperties = lp;
+				if (!hadAddress && getIPv4() != null) {
+					notifyListener(true);
+				}
 			}
 		}
 
@@ -198,7 +229,29 @@ public final class LocalNetwork {
 		}
 	};
 
-	private void notifyListener(final boolean connected) {
+	/**
+	 * Der Seed aus {@link #register}: meldet nur, wenn sonst noch niemand etwas
+	 * gemeldet hat.
+	 */
+	private synchronized void notifyListenerIfNothingReported() {
+		if (!reported) {
+			notifyListener(false);
+		}
+	}
+
+	/**
+	 * Synchronisiert, und zwar einschließlich des post(): der Callback meldet
+	 * aus einem Binder-Thread, der Seed aus dem Main-Thread, und es reicht
+	 * nicht, nur das Merkmal unter einem Schloss zu führen. Sonst entscheidet
+	 * der Seed "noch nichts gemeldet", onAvailable postet dazwischen sein "WLAN
+	 * da", und das "kein WLAN" des Seeds reiht sich dahinter ein. StatusFlag.WLAN
+	 * stünde dann auf false, obwohl das Netz da ist, und nichts käme nach, um
+	 * das zu berichtigen: für ein bereits verfügbares Netz meldet sich der
+	 * Callback kein zweites Mal. Unter dem Schloss postet, wer zuerst meldet,
+	 * auch zuerst.
+	 */
+	private synchronized void notifyListener(final boolean connected) {
+		reported = true;
 		Logger.info("LocalNetwork: WiFi " + (connected ? "available" : "lost")
 				+ " " + this);
 		final Handler h = handler;
@@ -225,4 +278,19 @@ public final class LocalNetwork {
 	private volatile LinkProperties linkProperties;
 	private volatile Handler handler;
 	private volatile IWiFiListener listener;
+	/**
+	 * Hat schon einmal jemand etwas gemeldet ? Nur unter dem Monitor dieser
+	 * Instanz angefasst, siehe {@link #notifyListener} und {@link #register}.
+	 */
+	private boolean reported;
+	/**
+	 * Drei Sekunden, nicht eine: die Nachmeldung eines bereits verbundenen
+	 * Netzes kommt über einen Binder-Thread und hat keine zugesicherte Frist,
+	 * während der Main-Thread beim Start gerade AVRRemote aufbaut. Zu früh
+	 * gemeldet hiesse "kein WLAN" für ein vorhandenes, und der Assistent
+	 * bekäme einen Grund, den falschen Dialog zu zeigen. Zu spät kostet
+	 * nichts: gebraucht wird das Flag erst, wenn der Verbindungsversuch
+	 * aufgegeben hat, und das dauert länger.
+	 */
+	private static final long SEED_DELAY = 3000;
 }

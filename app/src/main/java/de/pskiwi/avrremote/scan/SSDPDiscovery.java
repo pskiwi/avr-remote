@@ -171,14 +171,28 @@ public final class SSDPDiscovery {
 
 	private static final String SSDP_ADDRESS = "239.255.255.250";
 	private static final int SSDP_PORT = 1900;
-	/** MX muss zur Sammeldauer passen, sonst antworten Geräte zu spät. */
+	/**
+	 * Über so viele Sekunden verteilen die Geräte ihre Antworten, damit sie den
+	 * Fragesteller nicht überfahren. Steht im M-SEARCH und bestimmt zusammen mit
+	 * dem letzten Sendezeitpunkt die Sammeldauer - deshalb als Konstante und
+	 * nicht als Text im Paket.
+	 */
+	private static final int MX_SECONDS = 2;
 	private static final String M_SEARCH = "M-SEARCH * HTTP/1.1\r\n"
 			+ "HOST: " + SSDP_ADDRESS + ":" + SSDP_PORT + "\r\n"
-			+ "MAN: \"ssdp:discover\"\r\n" + "MX: 2\r\n" + "ST: ssdp:all\r\n"
-			+ "\r\n";
+			+ "MAN: \"ssdp:discover\"\r\n" + "MX: " + MX_SECONDS + "\r\n"
+			+ "ST: ssdp:all\r\n" + "\r\n";
 	private static final int SEARCH_REPEATS = 3;
 	private static final int SEND_INTERVAL = 800;
-	private static final int SEARCH_DURATION = 3000;
+	/**
+	 * Bis zum letzten M-SEARCH plus MX, gerechnet statt geraten: das letzte geht
+	 * bei {@code (SEARCH_REPEATS - 1) * SEND_INTERVAL} raus, und darauf darf ein
+	 * Gerät sich MX Sekunden Zeit lassen. Vorher zuzumachen verwürfe genau die
+	 * Antworten, für die überhaupt wiederholt wird - die auf die ersten beiden
+	 * sind dann ja verloren gegangen.
+	 */
+	private static final int SEARCH_DURATION = (SEARCH_REPEATS - 1)
+			* SEND_INTERVAL + MX_SECONDS * 1000;
 	private static final int RECEIVE_TIMEOUT = 400;
 	private static final int BUFFER_SIZE = 2048;
 }

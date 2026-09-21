@@ -64,7 +64,10 @@ android {
     defaultConfig {
         applicationId "de.pskiwi.avrremote"
         minSdk 24
-        targetSdk 36
+        // 37 = Android 17. Damit gilt Local Network Protection: ohne
+        // ACCESS_LOCAL_NETWORK kommt kein Socket mehr ins lokale Netz, und zwar
+        // lautlos. Siehe CONNECTION.md.
+        targetSdk 37
         // Leer = keine Info-Zeile. Nur der Debug-Build füllt das, siehe unten.
         buildConfigField "String", "BUILD_INFO", "\"\""
     }

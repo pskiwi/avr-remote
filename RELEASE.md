@@ -226,10 +226,12 @@ Everything below was checked in August 2026 and none of it is under our control,
 sources rather than this list — Play policy moves and this file will not.
 
 - **Target API level.** Play requires API 35 today and **API 36 from 31 August 2026** for new apps
-  and updates. The app is at `targetSdk 36`, so it clears both. The next step, API 37, brings
-  mandatory Local Network Protection, which affects the subnet scan and the receiver sockets — see
-  [TODO.md](TODO.md) → *Next platform deadline: targetSdk 37*. Expect that deadline around
-  August 2027; Google has not announced it yet.
+  and updates. The app is at `targetSdk 37`, so it clears both with a year to spare and has already
+  taken the step that matters: API 37 brings mandatory Local Network Protection, which gates the
+  subnet scan and every receiver socket — see [TODO.md](TODO.md) → *Android 17: Local Network
+  Protection* and [CONNECTION.md](CONNECTION.md). The Play deadline for API 37 is expected around
+  August 2027; Google has not announced it yet. **No release has shipped with `targetSdk 37` yet**,
+  so the first one deserves a staged rollout.
   ([requirements](https://support.google.com/googleplay/android-developer/answer/11926878),
   [local network permission](https://developer.android.com/privacy-and-security/local-network-permission))
 - **Package name registration — 30 September 2026.** Part of the Android developer verification

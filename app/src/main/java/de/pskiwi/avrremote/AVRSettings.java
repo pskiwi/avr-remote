@@ -16,6 +16,8 @@
  */
 package de.pskiwi.avrremote;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
@@ -135,34 +137,120 @@ public final class AVRSettings extends PreferenceActivity implements
 	 * Die Begruendung kommt nur, wenn Android sie verlangt - also nach einer
 	 * vorherigen Ablehnung. Beim ersten Mal ist der System-Dialog selbst die
 	 * Frage.
+	 *
+	 * @return true, wenn gerade ein System-Dialog aufgegangen ist. Die Antwort
+	 *         darauf kommt asynchron in onRequestPermissionsResult, und bis
+	 *         dahin weist Android jede zweite Anfrage ab - wer hier true
+	 *         bekommt, darf weder selbst weiterfragen noch das Ergebnis schon
+	 *         auswerten. Fehlende Permission allein genuegt dafuer nicht: nach
+	 *         einer endgueltigen Ablehnung zeigt requestPermissions() nichts
+	 *         mehr an, und dann ist hier nichts aufgegangen, worauf zu warten
+	 *         waere.
 	 */
-	public static void requestLocalNetworkPermission(final Activity activity) {
+	public static boolean requestLocalNetworkPermission(Activity activity) {
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.CINNAMON_BUN) {
-			return;
+			return false;
+		}
+		// Dieselbe Bedingung wie in isLocalNetworkBlocked(), und aus demselben
+		// Grund: solange das Paket targetSdk 36 hat, ist die Permission
+		// folgenlos. Danach zu fragen ist nicht nur ueberfluessig - Android
+		// merkt sich die Ablehnung, und die zweite kostet die Frage endgueltig.
+		// Sie waere also verbraucht, bevor sie etwas bewirken kann. Der Tag, an
+		// dem build.gradle auf 37 geht, schaltet sie von allein scharf.
+		if (activity.getApplicationInfo().targetSdkVersion < Build.VERSION_CODES.CINNAMON_BUN) {
+			return false;
 		}
 		// Erst hinter der Versionsabfrage lesen: der Compiler setzt die
 		// Konstante zwar ein, aber sonst meldet Lint sie als InlinedApi.
 		final String permission = android.Manifest.permission.ACCESS_LOCAL_NETWORK;
 		if (activity.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) {
+			// Merkmal zuruecknehmen, solange wir sie haben: Android entzieht
+			// ungenutzten Apps ihre Berechtigungen von selbst und raeumt dabei
+			// auch die Ablehnung weg, auf die sich die Pruefung unten stuetzt.
+			// Bliebe das Merkmal stehen, waere danach beides wahr - "schon
+			// gefragt" und "keine Begruendung noetig" - und die App fragte nie
+			// wieder, obwohl der Dialog laengst wieder aufginge.
+			setLocalNetworkPermissionAsked(activity, false);
+			return false;
+		}
+		// Endgueltig abgelehnt - ab Android 11 reicht dafuer ein einziges
+		// "Nicht zulassen". requestPermissions() zeigt dann nichts mehr an und
+		// liefert sofort "denied". Wer hier true bekaeme, wartete auf eine
+		// Antwort, die schon da ist: der Suchlauf braeche ab, ohne dass der
+		// Anwender irgendetwas zu sehen bekommt, und der Hinweis, der genau
+		// diesen Fall erklaert, wuerde nie erreicht.
+		//
+		// shouldShowRequestPermissionRationale() alleine trennt die beiden
+		// Faelle nicht: vor der allerersten Frage ist es ebenfalls false.
+		// Deshalb das Merkmal daneben - gefragt und trotzdem keine Begruendung
+		// erlaubt heisst endgueltig abgelehnt.
+		if (isLocalNetworkPermissionAsked(activity)
+				&& !activity.shouldShowRequestPermissionRationale(permission)) {
+			return false;
+		}
+		// Kein eigener Begruendungs-Dialog vorweg, obwohl
+		// shouldShowRequestPermissionRationale() ihn nahelegt: er kommt aus
+		// onCreate und landet damit unter dem Verbindungs-Fortschritt und dem
+		// ConfigurationAssistant, die Sekunden spaeter aufgehen - auf einem
+		// Pixel 8 nachgestellt, der Anwender sieht ihn nie. Die Begruendung
+		// steht stattdessen dort, wo die Folge auftritt: bei der Ablehnung
+		// (AVRRemote.onRequestPermissionsResult), beim Scan und im
+		// ConfigurationAssistant. Dasselbe Muster wie bei POST_NOTIFICATIONS
+		// oben, das auch direkt fragt.
+		activity.requestPermissions(new String[] { permission },
+				REQUEST_ACCESS_LOCAL_NETWORK);
+		return true;
+	}
+
+	/**
+	 * Was aus der Frage geworden ist - aus onRequestPermissionsResult zu
+	 * melden, von jeder Activity, die fragen kann.
+	 *
+	 * Das Merkmal wird hier gesetzt und nicht schon beim Fragen. Die Abfrage
+	 * kann naemlich unterbrochen werden - Zurueck-Taste auf dem System-Dialog,
+	 * oder der Prozess stirbt, waehrend er steht -, und dann kommen leere
+	 * Ergebnisse zurueck und Android hat sich nichts gemerkt: keine Ablehnung,
+	 * also auch keine Begruendung noetig. Stuende das Merkmal da schon, waere
+	 * die Frage fuer immer erledigt, ohne dass sie je beantwortet wurde. Unter
+	 * Local Network Protection heisst das: die App kommt nicht mehr ins lokale
+	 * Netz, und aus der App heraus fuehrt kein Weg zurueck.
+	 */
+	public static void localNetworkPermissionResult(Context ctx,
+			int[] grantResults) {
+		if (grantResults.length == 0) {
+			// abgebrochen - beim naechsten Mal wieder fragen
+			Logger.info("local network permission request was interrupted");
 			return;
 		}
-		if (activity.shouldShowRequestPermissionRationale(permission)) {
-			new AlertDialog.Builder(activity)
-					.setTitle(R.string.app_name)
-					.setMessage(R.string.LocalNetworkPermission)
-					.setInverseBackgroundForced(true)
-					.setNeutralButton(R.string.OK,
-							new DialogInterface.OnClickListener() {
-								public void onClick(DialogInterface dialog,
-										int which) {
-									activity.requestPermissions(
-											new String[] { permission },
-											REQUEST_ACCESS_LOCAL_NETWORK);
-								}
-							}).show();
-		} else {
-			activity.requestPermissions(new String[] { permission },
-					REQUEST_ACCESS_LOCAL_NETWORK);
+		setLocalNetworkPermissionAsked(ctx,
+				grantResults[0] != PackageManager.PERMISSION_GRANTED);
+	}
+
+	/**
+	 * Bewusst eine Datei in getNoBackupFilesDir() und keine Einstellung: die
+	 * Default-Preferences wandern mit der Sicherung, das Manifest erlaubt sie
+	 * (allowBackup, ohne Ausschlussregel - siehe TODO.md). Auf einem neuen
+	 * Geraet waere dann beides wahr, "schon gefragt" aus der Sicherung und
+	 * "keine Begruendung noetig" mangels Ablehnung dort - und die App fragte nie.
+	 * Das Merkmal gilt fuer diese Installation auf diesem Geraet, und genau das
+	 * ist dieses Verzeichnis.
+	 */
+	private static boolean isLocalNetworkPermissionAsked(Context ctx) {
+		return new File(ctx.getNoBackupFilesDir(), LOCAL_NETWORK_ASKED).exists();
+	}
+
+	private static void setLocalNetworkPermissionAsked(Context ctx, boolean asked) {
+		final File marker = new File(ctx.getNoBackupFilesDir(),
+				LOCAL_NETWORK_ASKED);
+		try {
+			if (asked) {
+				marker.createNewFile();
+			} else {
+				marker.delete();
+			}
+		} catch (IOException x) {
+			// Schlimmstenfalls wird einmal zu oft gefragt
+			Logger.info("marker [" + marker + "] failed: " + x);
 		}
 	}
 
@@ -507,6 +595,7 @@ public final class AVRSettings extends PreferenceActivity implements
 	private final static String AVRIP = "avrip";
 	private final static String AVRMACRO = "avrmacro_";
 	private final static String NOTIFICATION_KEY = "AVRNotification";
+	private final static String LOCAL_NETWORK_ASKED = "local-network-asked";
 	protected static final int SELECT_IMAGE = 6789;
 	public static final int REQUEST_POST_NOTIFICATIONS = 1;
 	public static final int REQUEST_ACCESS_LOCAL_NETWORK = 2;

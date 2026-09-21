@@ -85,6 +85,14 @@ public final class ConfigurationAssistant {
 			if (currentStatus.is(StatusFlag.Reachable)
 					|| app.getConnector().isControlPortBusy()) {
 				checkReset();
+			} else if (AVRSettings.isLocalNetworkBlocked(ctx)) {
+				// Sonst behauptet der Assistent hier, die IP sei ungueltig, und
+				// bietet einen Suchlauf an, der aus demselben Grund nichts
+				// finden kann. Unter Local Network Protection ist Reachable
+				// immer false - Ping und Port 80 gehen ins Leere -, waehrend
+				// die Adresse voellig in Ordnung ist. Auf einem Pixel 8 mit
+				// targetSdk 37 und entzogener Permission genau so gesehen.
+				alertLocalNetworkBlocked();
 			} else {
 				showIPDialog(false);
 			}
@@ -144,6 +152,37 @@ public final class ConfigurationAssistant {
 		alert.show();
 	}
 
+	/**
+	 * Die Permission fehlt und Local Network Protection gilt - das ist kein
+	 * Konfigurationsproblem, und ein Suchlauf hilft nicht.
+	 */
+	private void alertLocalNetworkBlocked() {
+		if (visible.get() || !ctx.isShowing()) {
+			return;
+		}
+		visible.set(true);
+		final AlertDialog.Builder builder = new AlertDialog.Builder(ctx);
+		builder.setTitle(R.string.ConnectivityProblem);
+		builder.setMessage(R.string.LocalNetworkPermission);
+		builder.setInverseBackgroundForced(true);
+		builder.setNeutralButton(R.string.OK,
+				new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog, int which) {
+						visible.set(false);
+					}
+				});
+		// Ohne den Listener bleibt visible stehen, sobald der Dialog mit der
+		// Zurueck-Taste oder einem Tipp daneben verschwindet - und alles, was
+		// dieser Assistent spaeter noch zu sagen haette, faengt mit
+		// "if (visible.get()) return;" an. Dasselbe wie in showIPDialog().
+		builder.setOnCancelListener(new OnCancelListener() {
+			public void onCancel(DialogInterface dialog) {
+				visible.set(false);
+			}
+		});
+		builder.create().show();
+	}
+
 	private void alertNoWLan() {
 		if (visible.get() || !ctx.isShowing()) {
 			return;
@@ -173,6 +212,13 @@ public final class ConfigurationAssistant {
 						ctx.startActivity(intent);
 					}
 				});
+		// siehe alertLocalNetworkBlocked()
+		builder.setOnCancelListener(new OnCancelListener() {
+			public void onCancel(DialogInterface dialog) {
+				Logger.setLocation("alertNoWLan-4");
+				visible.set(false);
+			}
+		});
 		AlertDialog alert = builder.create();
 		alert.show();
 	}

@@ -29,6 +29,7 @@ import de.pskiwi.avrremote.core.Zone;
 import de.pskiwi.avrremote.core.ZoneState.OptionGroup;
 import de.pskiwi.avrremote.core.display.DisplayManager.DisplayType;
 import de.pskiwi.avrremote.http.AVRXMLInfo;
+import de.pskiwi.avrremote.http.DeviceDescription;
 import de.pskiwi.avrremote.log.Logger;
 
 public final class ModelConfigurator {
@@ -164,6 +165,54 @@ public final class ModelConfigurator {
 		return xmlState.getInfo();
 	}
 
+	/**
+	 * Uebernommen wird nur, was da ist: ein Fehlversuch - Receiver im Standby,
+	 * kein UPnP auf 8080 - darf nicht loeschen, was ein geglueckter Abruf
+	 * ergeben hat, sonst stuende im Bericht wieder "not available" fuer ein
+	 * Geraet, das laengst identifiziert war.
+	 *
+	 * Damit die Angabe deshalb nicht irgendwann das falsche Geraet beschreibt,
+	 * haengt die Adresse mit dran, aus der sie stammt. Das deckt beide
+	 * Wechsel ab: den auf einen anderen Receiver und die geaenderte IP
+	 * desselben.
+	 */
+	public void setDeviceDescription(DeviceDescription description, String ip) {
+		if (description != null) {
+			knownDevice = new KnownDevice(description, ip);
+		}
+	}
+
+	/**
+	 * Was der Receiver per UPnP ueber sich sagt, oder null. Steht im
+	 * Feedback-Bericht und wird dort nur gelesen - der Abruf laeuft im
+	 * Hintergrund (StatusAreaManager), damit kein Netzzugriff am
+	 * Berichtspfad haengt.
+	 */
+	public DeviceDescription getDeviceDescription() {
+		final KnownDevice known = knownDevice;
+		if (known == null
+				|| !known.ip.equals(getConnectionConfig().getIP())) {
+			return null;
+		}
+		return known.description;
+	}
+
+	/**
+	 * Beschreibung und Adresse als Paar, damit nie die eine ohne die andere
+	 * wechselt: geschrieben wird auf dem Hintergrund-Thread aus
+	 * StatusAreaManager, gelesen auf dem des Feedback-Berichts.
+	 */
+	private static final class KnownDevice {
+
+		KnownDevice(DeviceDescription description, String ip) {
+			this.description = description;
+			this.ip = ip;
+		}
+
+		private final DeviceDescription description;
+		private final String ip;
+	}
+
 	public Selection getInputSelection() {
 		return inputSelection;
 	}
@@ -260,6 +309,7 @@ public final class ModelConfigurator {
 			AVRGeneric.DEFAULT_VIDEO_SELECT);
 
 	private AVRXMLInfo xmlState;
+	private volatile KnownDevice knownDevice;
 	private final Context ctx;
 	private ModelArea area = ModelArea.Other;
 	private IAVRModel model = new AVRGeneric();

@@ -21,7 +21,10 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 import de.pskiwi.avrremote.EnableManager.IStatusListener;
 import de.pskiwi.avrremote.EnableManager.StatusFlag;
+import de.pskiwi.avrremote.core.ConnectionConfiguration;
 import de.pskiwi.avrremote.http.AVRHTTPClient;
+import de.pskiwi.avrremote.http.DeviceDescription;
+import de.pskiwi.avrremote.models.ModelConfigurator;
 import de.pskiwi.avrremote.http.AVRXMLInfo;
 import de.pskiwi.avrremote.log.Logger;
 
@@ -46,7 +49,8 @@ public final class StatusAreaManager implements IStatusListener {
 								new Runnable() {
 									public void run() {
 										// neu laden der Eingänge ermöglichen
-										lastXMLUpdate = -1;
+										nextXMLUpdate = 0;
+										xmlRetried = false;
 										final AVRApplication app = activity
 												.getApp();
 										app.getModelConfigurator()
@@ -82,7 +86,12 @@ public final class StatusAreaManager implements IStatusListener {
 		infoView.setBackgroundResource(R.drawable.connection_problem);
 		if (currentStatus.is(StatusFlag.Reachable)) {
 			infoView.setText(R.string.DisconnectedReachable);
-
+			// Auch ohne Verbindung holen: erreichbar heisst, Ping und Port 80
+			// antworten, und genau aus diesem Zustand - Receiver da, Telnet
+			// belegt oder stumm - kommen die Berichte, in denen die Angabe am
+			// meisten wert ist. Die Stundenbremse in loadXMLStatus() gilt auch
+			// hier.
+			loadXMLStatus();
 		} else {
 			infoView.setText(R.string.DisconnectedUnreachable);
 		}
@@ -101,35 +110,80 @@ public final class StatusAreaManager implements IStatusListener {
 	}
 
 	private void loadXMLStatus() {
-		if (System.currentTimeMillis() - lastXMLUpdate < XML_UPDATE_DELAY) {
+		if (System.currentTimeMillis() < nextXMLUpdate) {
 			return;
 		}
 		// vermeidet Mehrfachanfragen
-		lastXMLUpdate = System.currentTimeMillis();
+		nextXMLUpdate = System.currentTimeMillis() + XML_UPDATE_DELAY;
 		new Thread("LoadXMLStatus") {
 			@Override
 			public void run() {
+				final ModelConfigurator configurator = activity.getApp()
+						.getModelConfigurator();
 				try {
-					final AVRXMLInfo state = new AVRHTTPClient(activity
-							.getApp().getModelConfigurator())
-							.readState(activity.getApp().getModelConfigurator());
+					final AVRXMLInfo state = new AVRHTTPClient(configurator)
+							.readState(configurator);
 					if (state.isDefined()) {
-						activity.getApp().getModelConfigurator()
-								.setXMLInfol(state);
+						configurator.setXMLInfol(state);
 					}
-
+					xmlRetried = false;
 				} catch (Exception e) {
+					// Ein gescheiterter Versuch darf die Stunde nicht
+					// verbrauchen: beim Start meldet die App "erreichbar, nicht
+					// verbunden", bevor die Verbindung steht, und wenn dieser
+					// erste Versuch die Bremse anzieht, fehlen Zonen- und
+					// Eingangsnamen danach eine volle Stunde.
+					//
+					// Aber nur ein einziges Mal. Ein Receiver, der auf Ping und
+					// Port 80 antwortet und dessen Web-Oberflaeche trotzdem
+					// nichts hergibt - im Standby bei etlichen Modellen so -,
+					// steht stabil auf "erreichbar, nicht verbunden", und jede
+					// Statusaenderung kommt hier heraus. Ohne die Grenze waere
+					// das dauerhaft ein Versuch pro Minute statt einer pro
+					// Stunde.
+					if (xmlRetried) {
+						Logger.info("XML retry failed, waiting the full hour");
+					} else {
+						xmlRetried = true;
+						nextXMLUpdate = System.currentTimeMillis()
+								+ XML_RETRY_DELAY;
+					}
 					Logger.error("Read state failed", e);
+				}
+				// Eigener try, und erst danach. Eigener, weil readState()
+				// wirft, sobald das Scraping scheitert - und der Zustand, aus
+				// dem die Beschreibung am meisten wert ist, Receiver da und
+				// Telnet belegt oder stumm, ist oft genau der. Erst danach,
+				// weil Port 8080 fest verdrahtet ist und laengst nicht jeder
+				// Receiver etwas darauf anbietet: wo er nicht ablehnt sondern
+				// schluckt, stehen hier 5 s Connect-Timeout, und die duerfen
+				// nicht vor den Zonen- und Eingangsnamen liegen, die der
+				// Anwender zu sehen bekommt. Der Bericht hat es nicht eilig.
+				try {
+					final ConnectionConfiguration config = configurator
+							.getConnectionConfig();
+					configurator.setDeviceDescription(
+							DeviceDescription.read(config), config.getIP());
+				} catch (Exception e) {
+					Logger.error("Read UPnP description failed", e);
 				}
 			}
 		}.start();
 	}
 
-	private long lastXMLUpdate = -1;
+	/**
+	 * Wann fruehestens wieder gelesen werden darf. Wird auf dem Thread oben
+	 * geschrieben und auf dem UI-Thread gelesen.
+	 */
+	private volatile long nextXMLUpdate;
+	/** War der letzte Versuch schon der Nachschlag ? Siehe loadXMLStatus(). */
+	private volatile boolean xmlRetried;
 
 	private final Button infoView;
 	private final AVRRemote activity;
 	// 1h
 	private static final int XML_UPDATE_DELAY = 60 * 60 * 1000;
+	// 1min, nach einem Fehlversuch
+	private static final int XML_RETRY_DELAY = 60 * 1000;
 
 }

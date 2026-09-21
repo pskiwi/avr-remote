@@ -35,11 +35,24 @@ import de.pskiwi.avrremote.scan.SSDPDiscovery.Response;
  *
  * Die beiden Dateien unter src/test/resources sind byte-exakt mit CRLF
  * abgelegt, weil SSDP-Header genau so enden und der Parser das aushalten muss -
- * ein Editor, der sie auf LF normalisiert, nimmt dem Test seinen Sinn. Sie sind
- * nach der UPnP-Spezifikation und der bekannten Header-Folge eines
- * Denon/HEOS-Geräts gebaut, aber <em>nicht</em> von einem Receiver
- * mitgeschnitten - anders als die AVR-3808-Seiten bei den Series08-Parsern.
- * Wer einen echten Mitschnitt hat, sollte sie ersetzen.
+ * ein Editor, der sie auf LF normalisiert, nimmt dem Test seinen Sinn.
+ *
+ * <p>
+ * {@code ssdp-search-response.txt} ist die Antwort eines AVR-3310 auf ein
+ * M-SEARCH, mitgeschnitten im September 2026. Geändert ist daran genau ein
+ * Feld: die zweite Hälfte der UUID ist die MAC des Geräts und steht hier auf
+ * {@code 0005cd000000} statt auf der echten - gleiche Länge, gleiche Hex-Form,
+ * für den Parser nicht zu unterscheiden. Alles andere ist unberührt, auch das
+ * {@code ST}, das kein selbst ausgedachtes Beispiel getroffen hätte:
+ * {@code urn:schemas-dm-holdings-com:...} - D&amp;M Holdings, also Denon und
+ * Marantz selbst, nicht {@code schemas-upnp-org}.
+ *
+ * <p>
+ * {@code ssdp-notify.txt} ist <em>kein</em> Mitschnitt, sondern aus demselben
+ * Gerät abgeleitet: dieselben Header, aber Statuszeile und {@code NT}/{@code NTS}
+ * eines unaufgeforderten Advertisements. Der Receiver wiederholt seine
+ * NOTIFY-Runde nur etwa alle 900 Sekunden (max-age 1800), das war nicht
+ * abzuwarten.
  */
 public final class SSDPDiscoveryTest {
 
@@ -48,18 +61,34 @@ public final class SSDPDiscoveryTest {
 		final Response response = SSDPDiscovery
 				.parse(resource("ssdp-search-response.txt"));
 		assertNotNull(response);
-		assertEquals("http://192.168.10.42:8080/description.xml",
+		assertEquals("http://192.168.10.30:8080/description.xml",
 				response.getLocation());
-		assertEquals("urn:schemas-upnp-org:device:MediaRenderer:1",
+		assertEquals(
+				"urn:schemas-dm-holdings-com:service:X_HtmlPageHandler:1",
 				response.getST());
 		assertTrue(response.getUSN(),
 				response.getUSN().startsWith("uuid:5f9ec1b3-"));
 	}
 
 	/**
+	 * Das LOCATION dieser Antwort zeigt auf die description.xml, aus der sich
+	 * der Modellname lesen liesse - siehe TODO.md. Der Test haelt fest, dass
+	 * der Parser es unverändert durchreicht, Port und Pfad eingeschlossen.
+	 */
+	@Test
+	public void locationSurvivesWithPortAndPath() throws IOException {
+		final Response response = SSDPDiscovery
+				.parse(resource("ssdp-search-response.txt"));
+		assertNotNull(response);
+		assertTrue(response.getLocation(),
+				response.getLocation().endsWith(":8080/description.xml"));
+	}
+
+	/**
 	 * Ein NOTIFY trägt dieselben Header, ist aber keine Antwort auf die eigene
-	 * Frage - das Gerät meldet sich von sich aus. Es hat kein ST, und wer nur
-	 * auf die Header sieht statt auf die Statuszeile, nimmt es trotzdem an.
+	 * Frage - das Gerät meldet sich von sich aus. Es hat kein ST, sondern NT,
+	 * und wer nur auf die Header sieht statt auf die Statuszeile, nimmt es
+	 * trotzdem an.
 	 */
 	@Test
 	public void notifyIsNotAnAnswer() throws IOException {

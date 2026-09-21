@@ -40,6 +40,7 @@ import de.pskiwi.avrremote.R;
 import de.pskiwi.avrremote.ScreenInfo;
 import de.pskiwi.avrremote.core.MacroManager;
 import de.pskiwi.avrremote.core.RenameService;
+import de.pskiwi.avrremote.http.DeviceDescription;
 import de.pskiwi.avrremote.scan.LocalNetwork;
 
 public final class FeedbackReporter {
@@ -147,6 +148,19 @@ public final class FeedbackReporter {
 					+ localNetwork.getErrorCause() + ") " + localNetwork);
 		} catch (Exception x) {
 			out.println("Wifi Info not available [" + x.getMessage() + "]");
+		}
+
+		try {
+			final DeviceDescription description = ((AVRApplication) ctx
+					.getApplicationContext()).getModelConfigurator()
+					.getDeviceDescription();
+			// Sagt, welches Geraet wirklich antwortet - nicht nur, was in der
+			// Liste ausgewaehlt wurde. Laufen die beiden auseinander, war das
+			// bisher aus einem Bericht nicht zu sehen.
+			out.println("UPnP    : "
+					+ (description == null ? "not available" : description));
+		} catch (Exception x) {
+			out.println("UPnP    : not available [" + x.getMessage() + "]");
 		}
 
 		out.println("Log     : " + AVRSettings.getDebugMode(ctx));

@@ -32,6 +32,7 @@ import android.content.DialogInterface.OnCancelListener;
 import android.net.LinkAddress;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.widget.Toast;
 
 import de.pskiwi.avrremote.AVRApplication;
 import de.pskiwi.avrremote.AVRSettings;
@@ -114,11 +115,24 @@ public final class AVRScanner {
 			}
 		}
 
+		/**
+		 * Der Thread kann noch laufen: das {@code join(JOIN_TIMEOUT)} in
+		 * {@link AVRScanner#testAll} darf ablaufen, und in einem /24 hat jeder
+		 * Thread 16 Adressen zu je bis zu 2,25 s - Ping plus vier
+		 * Connect-Timeouts. Ohne die Sperre liest der Aufrufer dann eine Liste,
+		 * in die nebenher geschrieben wird, und {@code addAll()} wirft eine
+		 * ConcurrentModificationException oder sieht einen halben Stand.
+		 */
 		public List<ScanResult> getResult() {
-			return result;
+			synchronized (result) {
+				return new ArrayList<ScanResult>(result);
+			}
 		}
 
-		private final List<ScanResult> result = new LinkedList<ScanResult>();
+		// Der Mutex der Huelle ist die Huelle selbst - dasselbe Schloss, das
+		// getResult() nimmt.
+		private final List<ScanResult> result = Collections
+				.synchronizedList(new LinkedList<ScanResult>());
 		private final List<InetAddress> addresses;
 		private final FoundBy foundBy;
 
@@ -165,13 +179,6 @@ public final class AVRScanner {
 		}
 		Logger.info("Scan: " + ip.getHostAddress() + "/" + prefixLength);
 
-		// Alles ab /24 liegt im letzten Oktett und ist damit in einem Durchgang
-		// absuchbar; darunter waeren es mindestens 512 Adressen.
-		if (prefixLength < 24) {
-			handler.error(ctx.getString(R.string.AutoScanNotSupported));
-			return;
-		}
-
 		Logger.setLocation("scan-1");
 		final ProgressDialog progress = ProgressDialog.show(ctx,
 				ctx.getString(R.string.PleaseWait),
@@ -193,6 +200,16 @@ public final class AVRScanner {
 						return viaSSDP;
 					}
 					Logger.info("SSDP found nothing, falling back to sweep");
+					// Alles ab /24 liegt im letzten Oktett und ist damit in
+					// einem Durchgang absuchbar; darunter waeren es mindestens
+					// 512 Adressen. Die Grenze gilt aber nur fuer den Sweep:
+					// SSDP fragt das ganze Netz mit einem Paket und ist damit
+					// von der Subnetzgroesse unabhaengig - in einem /16 ist es
+					// das einzige, was ueberhaupt etwas finden kann.
+					if (prefixLength < 24) {
+						Logger.info("no sweep below /24");
+						return Collections.emptyList();
+					}
 					return scanNetwork(ip, prefixLength);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -209,6 +226,12 @@ public final class AVRScanner {
 					progress.dismiss();
 					if (result.size() > 0) {
 						handler.finished(result);
+					} else if (prefixLength < 24) {
+						// SSDP hat nichts gefunden, und der Sweep ist hier
+						// nicht gelaufen - das ist der Unterschied zu
+						// "nichts gefunden"
+						handler.error(ctx
+								.getString(R.string.AutoScanNotSupported));
 					} else {
 						handler.error(ctx.getString(R.string.NoIpFound));
 					}
@@ -237,9 +260,23 @@ public final class AVRScanner {
 					ranges[i][1]), foundBy);
 			threads[i].start();
 		}
-		final List<ScanResult> result = new ArrayList<ScanResult>();
+		// Erst auf alle warten, dann einsammeln. Zusammen in einer Schleife
+		// bekaeme der erste Thread nur die ersten JOIN_TIMEOUT Millisekunden,
+		// der zweite die naechsten und so fort - waehrend ein /24 jedem 16
+		// Adressen zu je bis zu 2,25 s gibt. Wer laenger braucht als sein
+		// eigenes Zeitfenster, haette seine Funde also verloren, obwohl der
+		// Suchlauf insgesamt noch minutenlang weiterlaeuft: ein Receiver auf
+		// einer niedrigen Adresse waere als "nicht gefunden" gemeldet worden.
 		for (int i = 0; i < threads.length; i++) {
 			threads[i].join(JOIN_TIMEOUT);
+		}
+		final List<ScanResult> result = new ArrayList<ScanResult>();
+		for (int i = 0; i < threads.length; i++) {
+			if (threads[i].isAlive()) {
+				// Das Ergebnis ist dann unvollstaendig, und in einem
+				// eingeschickten Log ist das sonst nicht zu sehen.
+				Logger.info("scan timed out: " + threads[i].getName());
+			}
 			result.addAll(threads[i].getResult());
 		}
 		Logger.info("found " + result.size() + " receiver(s) via "
@@ -265,11 +302,20 @@ public final class AVRScanner {
 	 * Erster zu scannender Wert im letzten Oktett und Anzahl, als {from, count}.
 	 * Nur fuer prefixLength >= 24 definiert - darunter reicht das letzte Oktett
 	 * nicht aus.
+	 *
+	 * Netzadresse und Broadcast bleiben aussen vor: auf ihnen kann kein Receiver
+	 * sitzen, und die Broadcast-Adresse kostet nicht nur die vergebliche Probe -
+	 * ein ICMP-Echo dorthin erreicht jedes Geraet im Netz. Ein /31 hat beides
+	 * nicht (RFC 3021, Punkt-zu-Punkt) und ein /32 ist eine einzelne Adresse,
+	 * deshalb die Grenze bei count > 2.
 	 */
 	static int[] hostRange(int lastOctet, int prefixLength) {
 		final int hostBits = 32 - prefixLength;
 		final int mask = (0xff << hostBits) & 0xff;
-		return new int[] { lastOctet & mask, 1 << hostBits };
+		final int network = lastOctet & mask;
+		final int count = 1 << hostBits;
+		return count > 2 ? new int[] { network + 1, count - 2 } : new int[] {
+				network, count };
 	}
 
 	/**
@@ -296,7 +342,26 @@ public final class AVRScanner {
 		try {
 			// Der Scan ist ueber das Menue und den Einrichtungs-Assistenten
 			// erreichbar, ohne dass AVRRemote.onCreate gelaufen waere.
-			AVRSettings.requestLocalNetworkPermission(ctx);
+			if (AVRSettings.requestLocalNetworkPermission(ctx)) {
+				// Ein Dialog ist aufgegangen und die Antwort kommt asynchron.
+				// Jetzt zu scannen hiesse, die Permission als fehlend zu sehen
+				// und den Fehlerdialog unter den System-Dialog zu legen. Also
+				// hier aufhoeren: der Anwender beantwortet erst die Frage und
+				// startet den Suchlauf danach neu. Ist die Permission
+				// endgueltig abgelehnt, geht kein Dialog auf, und dann laeuft
+				// der Scan weiter bis zu seinem eigenen Hinweis - siehe
+				// requestLocalNetworkPermission().
+				// Aus dem Optionsmenue fuehrt dieser Rueckweg sonst ins Leere:
+				// dort ist runFinished leer, der Anwender beantwortet die
+				// Frage und sieht danach nichts - kein Fortschritt, keine
+				// Meldung, keine Liste. Der Hinweis legt sich ueber den
+				// System-Dialog und sagt, was zu tun ist.
+				Logger.info("Scan: asked for local network permission first");
+				Toast.makeText(ctx, R.string.ScanAfterPermission,
+						Toast.LENGTH_LONG).show();
+				runFinished.run();
+				return;
+			}
 			final IScanResultHandler resultHandler = new AVRScanner.IScanResultHandler() {
 
 				public void finished(final List<ScanResult> result) {
@@ -348,6 +413,15 @@ public final class AVRScanner {
 									runFinished.run();
 								}
 							});
+					// Auch der Abbruch muss runFinished erreichen: der
+					// Assistent haelt darin fest, dass wieder kein Dialog
+					// sichtbar ist, und bliebe sonst fuer den Rest seines
+					// Lebens stumm - dieser Dialog ist abbrechbar.
+					builder.setOnCancelListener(new OnCancelListener() {
+						public void onCancel(DialogInterface dialog) {
+							runFinished.run();
+						}
+					});
 					AlertDialog alert = builder.create();
 					alert.show();
 				}
@@ -357,6 +431,9 @@ public final class AVRScanner {
 			scan.scan(resultHandler);
 
 		} catch (Exception e) {
+			// dito: ohne das bleibt der Assistent an einem Suchlauf haengen,
+			// der gar nicht erst angelaufen ist
+			runFinished.run();
 			Logger.error("scan failed", e);
 		}
 	}

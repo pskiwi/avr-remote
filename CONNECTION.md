@@ -334,8 +334,8 @@ probe on port 80, so the fallback if it misbehaves on a device is to drop it, no
 
 ### Local Network Protection
 
-The binding is also what Android 17 requires. Local Network Protection becomes mandatory at
-**targetSdk 37** and gates *every* socket into the local network behind
+The binding is also what Android 17 requires. Local Network Protection is mandatory at
+**targetSdk 37**, which this app now targets, and gates *every* socket into the local network behind
 `ACCESS_LOCAL_NETWORK` — telnet 23 and the HTTP scraping as much as the search. Without it the app
 is not scan-less, it is dead.
 
@@ -358,20 +358,40 @@ entirely the wrong place. Hence two deliberate hints:
 - `AVRScanner.scan()` refuses to start and says why, instead of letting the user watch a
   progress dialog for ten seconds before "no receiver found".
 
-Both are gated on `AVRSettings.isLocalNetworkBlocked()`, which asks whether LNP applies **to this
-build** — the device is Android 17 *and* `getApplicationInfo().targetSdkVersion` is 37 — not merely
-whether the permission is missing. At `targetSdk 36` the permission is absent without consequence,
-and warning about it there would be simply wrong. Reading the target from the running package rather
-than from a constant is what makes this arm itself on the day `build.gradle` moves to 37. The one
-thing it does not cover is the `am compat` override above, which is a test tool rather than a state
-a user can be in.
+A third one is where users actually meet it: `ConfigurationAssistant.checkStatus()` used to see
+`WLAN` true and `Reachable` false and announce that the configured address was invalid, offering a
+scan that could not work either — while the address was perfectly correct. Under LNP `Reachable` is
+always false, because both the ping and the port-80 probe go nowhere. That is the dialog a user sees
+at startup, so that is where the explanation belongs.
 
-`targetSdk` is still 36, so none of this is in force yet; `compileSdk 37` is what makes the constants
-available. To exercise it before raising the target, force the restriction on an Android 17 device:
+Nothing raises a dialog from `AVRRemote.onCreate` any more, including the rationale that
+`shouldShowRequestPermissionRationale()` asks for. The connection progress dialog and the assistant
+open on top of it within seconds, so it was never seen — and because the old code called
+`requestPermissions()` from that dialog's button, the permission was never actually requested at
+all. Asking directly, as the `POST_NOTIFICATIONS` path beside it does, is what makes the system
+dialog appear.
+
+All of it is gated on `AVRSettings.isLocalNetworkBlocked()`, which asks whether LNP applies **to
+this build** — the device is Android 17 *and* `getApplicationInfo().targetSdkVersion` is 37 — not merely
+whether the permission is missing. That was written while the target was still 36, where the
+permission is absent without consequence and a warning about it would have been simply wrong;
+reading the target from the running package rather than from a constant is what armed the hints by
+itself on the day `build.gradle` moved to 37. `AVRSettings.requestLocalNetworkPermission()` carries
+the same condition, so the app does not spend the user's one refusal on a permission that cannot yet
+do anything.
+
+To exercise the blocked state now, take the permission away:
 
 ```sh
-adb shell am compat enable RESTRICT_LOCAL_NETWORK de.pskiwi.avrremote
+adb shell pm revoke de.pskiwi.avrremote android.permission.ACCESS_LOCAL_NETWORK
 ```
+
+Measured on a Pixel 8 that way in September 2026: `Reconnector:reachable ... : false` while the
+receiver is plainly there, the assistant explains it instead of blaming the address, and the scan
+stops with the same explanation. Granting it again produces `reachable true` and a reconnect within
+the next cycle. The older route, `adb shell am compat enable RESTRICT_LOCAL_NETWORK`, forces the
+restriction itself but **not** the hints, which are gated on `targetSdkVersion` — it was the way to
+see the blocking before the target moved, and it is the weaker test now.
 
 ### Searching instead of sweeping
 
@@ -380,6 +400,16 @@ collecting for three seconds — UDP is allowed to lose packets) and returns the
 answered. Every candidate then goes through the existing `AVRTargetTester.testAddress()`, which is
 what keeps printers, TVs and routers — they all answer `ssdp:all` — out of the result, and is why
 nothing else about the scan had to change.
+
+Separately from the search, `http/DeviceDescription` fetches the receiver's UPnP description once
+an hour from `http://<ip>:8080/description.xml` — hard-coded port, because port 80 answers that path
+with a 404 on an AVR-3310 and the authoritative `LOCATION` exists only during a scan. It runs on the
+background thread in `StatusAreaManager` that already fetches the XML state, and on `Reachable`
+rather than only on `Connected`: a receiver that answers ping and port 80 but holds its single
+control channel is exactly the state field reports come from, and the description is what says which
+device is really there — as opposed to which one the user picked from the list of 60. It lands in
+the feedback report and nowhere else. `serialNumber` and `UDN` are deliberately not read: both carry
+the device's MAC, and a report travels by mail.
 
 Both searches hand their addresses to the same `AVRScanner.testAll()`, which fans them out over
 `SCAN_THREADS` threads. That matters more for SSDP than it looks: a candidate costs up to four
