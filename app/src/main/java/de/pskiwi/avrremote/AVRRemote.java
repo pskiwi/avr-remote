@@ -106,9 +106,16 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 		setContentView(R.layout.tabhost);
 		EdgeToEdge.apply(this);
 		if (savedInstanceState == null) {
-			// nicht bei jeder Drehung erneut anfragen
-			AVRSettings.requestNotificationPermission(this);
-			AVRSettings.requestLocalNetworkPermission(this);
+			// nicht bei jeder Drehung erneut anfragen.
+			// Nacheinander, nicht nebeneinander: requestPermissions() weist
+			// eine zweite Anfrage ab, solange die erste laeuft, und liefert
+			// ihr sofort ein leeres Ergebnis - die zweite Permission wird dann
+			// nie gefragt. Das lokale Netz hat Vorrang, es haelt sonst jeden
+			// Socket auf; die Benachrichtigung folgt in
+			// onRequestPermissionsResult.
+			if (!AVRSettings.requestLocalNetworkPermission(this)) {
+				AVRSettings.requestNotificationPermission(this);
+			}
 		}
 
 		Logger.setLocation("AVRRemote-onCreate-2");
@@ -247,6 +254,8 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 				// immer nur ein Hinweis zugleich sichtbar ist.
 				Logger.info("local network permission denied - connection will fail");
 			}
+			// Jetzt ist der Dialog weg und die zweite Anfrage kommt durch
+			AVRSettings.requestNotificationPermission(this);
 		}
 	}
 

@@ -135,16 +135,22 @@ public final class AVRSettings extends PreferenceActivity implements
 	 * Die Begruendung kommt nur, wenn Android sie verlangt - also nach einer
 	 * vorherigen Ablehnung. Beim ersten Mal ist der System-Dialog selbst die
 	 * Frage.
+	 *
+	 * @return true, wenn gerade ein System-Dialog aufgegangen ist. Die Antwort
+	 *         darauf kommt asynchron in onRequestPermissionsResult, und bis
+	 *         dahin weist Android jede zweite Anfrage ab - wer hier true
+	 *         bekommt, darf weder selbst weiterfragen noch das Ergebnis schon
+	 *         auswerten.
 	 */
-	public static void requestLocalNetworkPermission(Activity activity) {
+	public static boolean requestLocalNetworkPermission(Activity activity) {
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.CINNAMON_BUN) {
-			return;
+			return false;
 		}
 		// Erst hinter der Versionsabfrage lesen: der Compiler setzt die
 		// Konstante zwar ein, aber sonst meldet Lint sie als InlinedApi.
 		final String permission = android.Manifest.permission.ACCESS_LOCAL_NETWORK;
 		if (activity.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) {
-			return;
+			return false;
 		}
 		// Kein eigener Begruendungs-Dialog vorweg, obwohl
 		// shouldShowRequestPermissionRationale() ihn nahelegt: er kommt aus
@@ -157,6 +163,7 @@ public final class AVRSettings extends PreferenceActivity implements
 		// oben, das auch direkt fragt.
 		activity.requestPermissions(new String[] { permission },
 				REQUEST_ACCESS_LOCAL_NETWORK);
+		return true;
 	}
 
 	/**

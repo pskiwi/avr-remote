@@ -296,7 +296,16 @@ public final class AVRScanner {
 		try {
 			// Der Scan ist ueber das Menue und den Einrichtungs-Assistenten
 			// erreichbar, ohne dass AVRRemote.onCreate gelaufen waere.
-			AVRSettings.requestLocalNetworkPermission(ctx);
+			if (AVRSettings.requestLocalNetworkPermission(ctx)) {
+				// Die Antwort kommt asynchron. Jetzt zu scannen hiesse, die
+				// Permission als fehlend zu sehen und den Fehlerdialog unter
+				// den gerade aufgegangenen System-Dialog zu legen. Also hier
+				// aufhoeren: der Anwender beantwortet erst die Frage und
+				// startet den Suchlauf danach neu.
+				Logger.info("Scan: asked for local network permission first");
+				runFinished.run();
+				return;
+			}
 			final IScanResultHandler resultHandler = new AVRScanner.IScanResultHandler() {
 
 				public void finished(final List<ScanResult> result) {
