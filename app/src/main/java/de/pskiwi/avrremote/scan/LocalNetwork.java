@@ -102,7 +102,7 @@ public final class LocalNetwork {
 		connectivity.registerNetworkCallback(request, callback);
 		handler.postDelayed(new Runnable() {
 			public void run() {
-				if (!reported) {
+				if (markReported()) {
 					notifyListener(false);
 				}
 			}
@@ -231,8 +231,27 @@ public final class LocalNetwork {
 		}
 	};
 
-	private void notifyListener(final boolean connected) {
+	/**
+	 * Erste Meldung gewinnt, und Prüfen und Setzen gehören unter dasselbe
+	 * Schloss: der Callback meldet aus einem Binder-Thread, der Seed aus dem
+	 * Main-Thread. Ohne die Sperre könnte der Seed sein "kein WLAN" lesen,
+	 * während onAvailable sein "WLAN da" bereits postet - und es dahinter
+	 * einreihen. StatusFlag.WLAN stünde dann auf false, obwohl das Netz da ist,
+	 * und nichts käme nach, um das zu berichtigen: für ein bereits verfügbares
+	 * Netz meldet sich der Callback kein zweites Mal.
+	 *
+	 * @return true, wenn dies die erste Meldung ist.
+	 */
+	private synchronized boolean markReported() {
+		if (reported) {
+			return false;
+		}
 		reported = true;
+		return true;
+	}
+
+	private void notifyListener(final boolean connected) {
+		markReported();
 		Logger.info("LocalNetwork: WiFi " + (connected ? "available" : "lost")
 				+ " " + this);
 		final Handler h = handler;
@@ -259,7 +278,10 @@ public final class LocalNetwork {
 	private volatile LinkProperties linkProperties;
 	private volatile Handler handler;
 	private volatile IWiFiListener listener;
-	/** Hat der Callback schon einmal etwas gemeldet ? Siehe {@link #register}. */
-	private volatile boolean reported;
+	/**
+	 * Hat schon einmal jemand etwas gemeldet ? Nur unter dem Monitor dieser
+	 * Instanz angefasst, siehe {@link #markReported} und {@link #register}.
+	 */
+	private boolean reported;
 	private static final long SEED_DELAY = 1000;
 }
