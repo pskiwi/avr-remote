@@ -97,13 +97,6 @@ still 36, so none of it is in force. What is left is the part no build can answe
       only ever looks at replies to its own `M-SEARCH`. If a receiver turns out to answer nothing
       (no `MulticastLock` — see [CONNECTION.md](CONNECTION.md)), the sweep fallback hides it, and
       the only sign is `SSDP: 0 device(s) answered` in the log.
-- [ ] **`SSDPDiscovery`'s timing constants do not add up.** The third `M-SEARCH` goes out at
-      `2 * SEND_INTERVAL` = 1600 ms and devices spread their answers over `MX` = 2 s, so a reply to
-      it can arrive at 3600 ms — but the loop stops collecting at `SEARCH_DURATION` = 3000 ms and
-      closes the socket (`scan/SSDPDiscovery.java:181`). A device that answers only the third burst
-      is dropped, which is exactly the packet-loss case the three repeats exist for. Either extend
-      the window to `2 * SEND_INTERVAL + MX` or lower `MX`; the comment on `M_SEARCH` already says
-      the two have to match.
 - [ ] The NPE in `AVRApplication$1.onReceive` (1.5.1, Pixel 8 Pro, Android 17 **Beta**) can no
       longer happen: the `BroadcastReceiver` is gone with the `WifiManager` broadcast, and so is the
       crash site. The cause was never found — it was `getNetworkInfo(TYPE_WIFI)` returning null, and
