@@ -192,20 +192,6 @@ still 36, so none of it is in force. What is left is the part no build can answe
       as buttons that stay greyed out until the next status change repairs them. Cheaper to fix than
       it looks: `fireListener()` only copies the status and `Handler.post()`s it, so a `synchronized`
       on `setStatus()` would cover a few field writes and a post, never the UI fanout itself.
-- [ ] **`StatusAreaManager.loadXMLStatus()` arms its hour-long brake before it knows whether the
-      read worked.** `lastXMLUpdate` is set at `StatusAreaManager.java:115`, before the thread runs,
-      and nothing resets it when the read throws. At startup the app typically reports
-      "disconnected but reachable" seconds before it connects, so that first attempt — from
-      `handleDisconnected` (`:92`), where the transport is by definition not up yet — consumes the
-      brake, and the `loadXMLStatus()` in `handleConnected` (`:99`) returns immediately. Zone and
-      input names from the XML are then missing for a full hour. Resetting `lastXMLUpdate` on
-      failure would cover it; note the brake exists to stop repeat requests, so it must stay armed
-      for the success case.
-- [ ] Same method, second ordering problem: `DeviceDescription.read(...)` (`:130`) sits behind
-      `readState(configurator)`, which throws whenever the HTTP scraping fails. The state the call
-      was added for — receiver reachable, telnet busy or mute — is often one where that scraping is
-      what fails, so the UPnP line reads `not available` in precisely the reports the comment above
-      it calls the most valuable. It wants its own `try`, or to run first.
 - [ ] **The scan reads a worker's result list while the worker may still be writing it.**
       `AVRScanner.java:242` does `threads[i].join(JOIN_TIMEOUT)` and then `getResult()` on the
       thread's live `LinkedList`, with no synchronisation and no check that the join succeeded. A

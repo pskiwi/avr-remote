@@ -48,7 +48,7 @@ public final class StatusAreaManager implements IStatusListener {
 								new Runnable() {
 									public void run() {
 										// neu laden der Eingänge ermöglichen
-										lastXMLUpdate = -1;
+										nextXMLUpdate = 0;
 										final AVRApplication app = activity
 												.getApp();
 										app.getModelConfigurator()
@@ -108,39 +108,59 @@ public final class StatusAreaManager implements IStatusListener {
 	}
 
 	private void loadXMLStatus() {
-		if (System.currentTimeMillis() - lastXMLUpdate < XML_UPDATE_DELAY) {
+		if (System.currentTimeMillis() < nextXMLUpdate) {
 			return;
 		}
 		// vermeidet Mehrfachanfragen
-		lastXMLUpdate = System.currentTimeMillis();
+		nextXMLUpdate = System.currentTimeMillis() + XML_UPDATE_DELAY;
 		new Thread("LoadXMLStatus") {
 			@Override
 			public void run() {
 				try {
 					final ModelConfigurator configurator = activity.getApp()
 							.getModelConfigurator();
+					// Vor readState(), nicht dahinter: das wirft, sobald das
+					// HTTP-Scraping scheitert, und der Zustand, aus dem die
+					// Beschreibung am meisten wert ist - Receiver da, Telnet
+					// belegt oder stumm -, ist oft genau der, in dem das
+					// Scraping scheitert. Haengt trotzdem an diesem Thread und
+					// nicht an einem eigenen: derselbe Receiver, dieselbe
+					// Stundenbremse, und gebraucht wird der Wert nur fuer den
+					// Feedback-Bericht.
+					configurator.setDeviceDescription(DeviceDescription
+							.read(configurator.getConnectionConfig()));
 					final AVRXMLInfo state = new AVRHTTPClient(configurator)
 							.readState(configurator);
 					if (state.isDefined()) {
 						configurator.setXMLInfol(state);
 					}
-					// Haengt hier mit dran statt an einem eigenen Thread: es
-					// ist derselbe Receiver, dieselbe Stundenbremse, und der
-					// Wert wird nur fuer den Feedback-Bericht gebraucht.
-					configurator.setDeviceDescription(DeviceDescription
-							.read(configurator.getConnectionConfig()));
 				} catch (Exception e) {
+					// Ein gescheiterter Versuch darf die Stunde nicht
+					// verbrauchen: beim Start meldet die App "erreichbar, nicht
+					// verbunden", bevor die Verbindung steht, und wenn dieser
+					// erste Versuch die Bremse anzieht, fehlen Zonen- und
+					// Eingangsnamen danach eine volle Stunde. Nur nicht sofort
+					// wieder - der Receiver antwortet hier gerade nicht, und
+					// jede Statusaenderung kaeme sonst hier heraus.
+					nextXMLUpdate = System.currentTimeMillis()
+							+ XML_RETRY_DELAY;
 					Logger.error("Read state failed", e);
 				}
 			}
 		}.start();
 	}
 
-	private long lastXMLUpdate = -1;
+	/**
+	 * Wann fruehestens wieder gelesen werden darf. Wird auf dem Thread oben
+	 * geschrieben und auf dem UI-Thread gelesen.
+	 */
+	private volatile long nextXMLUpdate;
 
 	private final Button infoView;
 	private final AVRRemote activity;
 	// 1h
 	private static final int XML_UPDATE_DELAY = 60 * 60 * 1000;
+	// 1min, nach einem Fehlversuch
+	private static final int XML_RETRY_DELAY = 60 * 1000;
 
 }
