@@ -111,12 +111,6 @@ still 36, so none of it is in force. What is left is the part no build can answe
       is dropped, which is exactly the packet-loss case the three repeats exist for. Either extend
       the window to `2 * SEND_INTERVAL + MX` or lower `MX`; the comment on `M_SEARCH` already says
       the two have to match.
-- [ ] **`alertLocalNetworkBlocked()` can leave the assistant muted for good.**
-      `ConfigurationAssistant.java:159` sets `visible` but the dialog is cancelable without an
-      `OnCancelListener`, so dismissing it with the back button or a tap outside leaves the flag
-      true — and `checkReset`, `showIPDialog` and `alertNoWLan` all begin with `if (visible.get())
-      return;`. `showIPDialog` and `checkReset` guard against exactly this; `alertNoWLan` has the
-      same hole and predates the branch, so fix both together.
 - [ ] The NPE in `AVRApplication$1.onReceive` (1.5.1, Pixel 8 Pro, Android 17 **Beta**) can no
       longer happen: the `BroadcastReceiver` is gone with the `WifiManager` broadcast, and so is the
       crash site. The cause was never found — it was `getNetworkInfo(TYPE_WIFI)` returning null, and

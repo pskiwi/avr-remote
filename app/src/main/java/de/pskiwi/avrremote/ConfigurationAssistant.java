@@ -171,6 +171,15 @@ public final class ConfigurationAssistant {
 						visible.set(false);
 					}
 				});
+		// Ohne den Listener bleibt visible stehen, sobald der Dialog mit der
+		// Zurueck-Taste oder einem Tipp daneben verschwindet - und alles, was
+		// dieser Assistent spaeter noch zu sagen haette, faengt mit
+		// "if (visible.get()) return;" an. Dasselbe wie in showIPDialog().
+		builder.setOnCancelListener(new OnCancelListener() {
+			public void onCancel(DialogInterface dialog) {
+				visible.set(false);
+			}
+		});
 		builder.create().show();
 	}
 
@@ -203,6 +212,13 @@ public final class ConfigurationAssistant {
 						ctx.startActivity(intent);
 					}
 				});
+		// siehe alertLocalNetworkBlocked()
+		builder.setOnCancelListener(new OnCancelListener() {
+			public void onCancel(DialogInterface dialog) {
+				Logger.setLocation("alertNoWLan-4");
+				visible.set(false);
+			}
+		});
 		AlertDialog alert = builder.create();
 		alert.show();
 	}
