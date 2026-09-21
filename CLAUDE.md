@@ -45,12 +45,12 @@ for `android-37` and fails with *"Failed to find target with hash string"*. AGP 
 up to compile SDK 36.1 and warns about 37.2 in every build, which is what
 `android.suppressUnsupportedCompileSdk` in `gradle.properties` silences.
 
-**There is almost no test coverage.** `src/test` holds eleven JVM test classes on JUnit 4, the only
+**There is almost no test coverage.** `src/test` holds twelve JVM test classes on JUnit 4, the only
 dependency in the project — `http/HTTPSupportTest`, `http/Series08ParserTest`,
 `core/ThreadHandlerTest`, `core/InDataTest`, `core/display/NetDisplayTest`,
 `core/display/TunerDisplayTest`, `models/ModelConfiguratorTest`, `ReceiverStatusTest`,
-`http/AVRXMLInfoParserTest`, `scan/ScanRangeTest` and `scan/SSDPDiscoveryTest` — and there is no
-`src/androidTest` at all. `./gradlew test` runs a few
+`http/AVRXMLInfoParserTest`, `http/DeviceDescriptionTest`, `scan/ScanRangeTest` and
+`scan/SSDPDiscoveryTest` — and there is no `src/androidTest` at all. `./gradlew test` runs a few
 dozen cases and nothing else (twice, in fact: once per build variant), so do not report a change as
 verified because the build passed; verify on a device or emulator instead. Six limits are worth
 knowing before writing more tests:
@@ -83,6 +83,10 @@ knowing before writing more tests:
   and its neighbour `ssdp-notify.txt` is *derived* from it rather than captured, because the
   receiver repeats its advertisement only every ~900 s. The test's Javadoc says which is which; keep
   it that way rather than letting the next reader assume both are real.
+- A second XML parser, a second approach: `http/DeviceDescription` reads five flat fields out of
+  the receiver's UPnP `description.xml` with regexes rather than SAX, precisely so it *can* be
+  tested here — `http/AVRXMLInfoParser` cannot, for the `localName` reason above. Five fields
+  without nesting do not buy enough from a parser to be worth losing that.
 - **A static initialiser that touches Android locks the whole class out of JVM tests.** Three
   different behaviours in the stub `android.jar`, and only the third one throws by itself:
   constructors are no-ops (`new Handler()` works), **field reads return null or 0**

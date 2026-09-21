@@ -22,6 +22,8 @@ import android.widget.Button;
 import de.pskiwi.avrremote.EnableManager.IStatusListener;
 import de.pskiwi.avrremote.EnableManager.StatusFlag;
 import de.pskiwi.avrremote.http.AVRHTTPClient;
+import de.pskiwi.avrremote.http.DeviceDescription;
+import de.pskiwi.avrremote.models.ModelConfigurator;
 import de.pskiwi.avrremote.http.AVRXMLInfo;
 import de.pskiwi.avrremote.log.Logger;
 
@@ -82,7 +84,12 @@ public final class StatusAreaManager implements IStatusListener {
 		infoView.setBackgroundResource(R.drawable.connection_problem);
 		if (currentStatus.is(StatusFlag.Reachable)) {
 			infoView.setText(R.string.DisconnectedReachable);
-
+			// Auch ohne Verbindung holen: erreichbar heisst, Ping und Port 80
+			// antworten, und genau aus diesem Zustand - Receiver da, Telnet
+			// belegt oder stumm - kommen die Berichte, in denen die Angabe am
+			// meisten wert ist. Die Stundenbremse in loadXMLStatus() gilt auch
+			// hier.
+			loadXMLStatus();
 		} else {
 			infoView.setText(R.string.DisconnectedUnreachable);
 		}
@@ -110,14 +117,18 @@ public final class StatusAreaManager implements IStatusListener {
 			@Override
 			public void run() {
 				try {
-					final AVRXMLInfo state = new AVRHTTPClient(activity
-							.getApp().getModelConfigurator())
-							.readState(activity.getApp().getModelConfigurator());
+					final ModelConfigurator configurator = activity.getApp()
+							.getModelConfigurator();
+					final AVRXMLInfo state = new AVRHTTPClient(configurator)
+							.readState(configurator);
 					if (state.isDefined()) {
-						activity.getApp().getModelConfigurator()
-								.setXMLInfol(state);
+						configurator.setXMLInfol(state);
 					}
-
+					// Haengt hier mit dran statt an einem eigenen Thread: es
+					// ist derselbe Receiver, dieselbe Stundenbremse, und der
+					// Wert wird nur fuer den Feedback-Bericht gebraucht.
+					configurator.setDeviceDescription(DeviceDescription
+							.read(configurator.getConnectionConfig()));
 				} catch (Exception e) {
 					Logger.error("Read state failed", e);
 				}

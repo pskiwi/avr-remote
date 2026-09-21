@@ -394,6 +394,16 @@ answered. Every candidate then goes through the existing `AVRTargetTester.testAd
 what keeps printers, TVs and routers — they all answer `ssdp:all` — out of the result, and is why
 nothing else about the scan had to change.
 
+Separately from the search, `http/DeviceDescription` fetches the receiver's UPnP description once
+an hour from `http://<ip>:8080/description.xml` — hard-coded port, because port 80 answers that path
+with a 404 on an AVR-3310 and the authoritative `LOCATION` exists only during a scan. It runs on the
+background thread in `StatusAreaManager` that already fetches the XML state, and on `Reachable`
+rather than only on `Connected`: a receiver that answers ping and port 80 but holds its single
+control channel is exactly the state field reports come from, and the description is what says which
+device is really there — as opposed to which one the user picked from the list of 60. It lands in
+the feedback report and nowhere else. `serialNumber` and `UDN` are deliberately not read: both carry
+the device's MAC, and a report travels by mail.
+
 Both searches hand their addresses to the same `AVRScanner.testAll()`, which fans them out over
 `SCAN_THREADS` threads. That matters more for SSDP than it looks: a candidate costs up to four
 connect timeouts, so testing a household's worth of UPnP devices one after another would take

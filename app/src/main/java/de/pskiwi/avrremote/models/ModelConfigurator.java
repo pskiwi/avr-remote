@@ -29,6 +29,7 @@ import de.pskiwi.avrremote.core.Zone;
 import de.pskiwi.avrremote.core.ZoneState.OptionGroup;
 import de.pskiwi.avrremote.core.display.DisplayManager.DisplayType;
 import de.pskiwi.avrremote.http.AVRXMLInfo;
+import de.pskiwi.avrremote.http.DeviceDescription;
 import de.pskiwi.avrremote.log.Logger;
 
 public final class ModelConfigurator {
@@ -164,6 +165,20 @@ public final class ModelConfigurator {
 		return xmlState.getInfo();
 	}
 
+	public void setDeviceDescription(DeviceDescription description) {
+		this.deviceDescription = description;
+	}
+
+	/**
+	 * Was der Receiver per UPnP ueber sich sagt, oder null. Steht im
+	 * Feedback-Bericht und wird dort nur gelesen - der Abruf laeuft im
+	 * Hintergrund (StatusAreaManager), damit kein Netzzugriff am
+	 * Berichtspfad haengt.
+	 */
+	public DeviceDescription getDeviceDescription() {
+		return deviceDescription;
+	}
+
 	public Selection getInputSelection() {
 		return inputSelection;
 	}
@@ -260,6 +275,7 @@ public final class ModelConfigurator {
 			AVRGeneric.DEFAULT_VIDEO_SELECT);
 
 	private AVRXMLInfo xmlState;
+	private volatile DeviceDescription deviceDescription;
 	private final Context ctx;
 	private ModelArea area = ModelArea.Other;
 	private IAVRModel model = new AVRGeneric();

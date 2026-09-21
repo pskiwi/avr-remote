@@ -64,25 +64,26 @@ still 36, so none of it is in force. What is left is the part no build can answe
       so checks for 37's behaviour changes do not exist in this lint at all. Its silence is not a
       pass. Changes that apply to *all* apps on Android 17 regardless of target are a different
       matter — those are already in force, and the app ran normally on the Pixel 8 under Android 17.
-- [ ] **Read the model name out of `description.xml` and stop asking the user.** SSDP already
-      hands over `LOCATION` (`SSDPDiscovery.Response.getLocation()`, currently only logged); on an
-      AVR-3310 that is `http://<ip>:8080/description.xml`, and it contains
-      `<modelName>AVR-3310</modelName>` — the exact string `@array/modelNames` holds and
-      `ModelConfigurator` resolves by reflection, dashes and all. Also there: `<manufacturer>DENON`
-      (Denon vs Marantz), `<friendlyName>DENON:[AVR-3310]`, and `<presentationURL>`, which is the
-      receiver's web UI stated by the device rather than guessed. Today the user picks from a list
-      of 60. The port-80 endpoint the app already reads
-      (`goform/formMainZone_MainZoneXml.xml`) does **not** carry it — its `<ModelId>` is an opaque
-      `1`. Unknown, and the reason this is not already done: whether `modelName` matches the list
-      verbatim on other generations. Only an AVR-3310 was available.
+- [ ] **Select the model from `description.xml` instead of asking the user.** The description is
+      now fetched and lands in the feedback report (`http/DeviceDescription`, see
+      [CONNECTION.md](CONNECTION.md)); what is not done is acting on it. `<modelName>` is on an
+      AVR-3310 the exact string `@array/modelNames` holds and `ModelConfigurator` resolves by
+      reflection, dashes and all — `DeviceDescriptionTest.modelNameMatchesTheModelList()` pins that.
+      `<manufacturer>` would separate Denon from Marantz. Today the user picks from a list of 60.
 
-      `<presentationURL>` is worth a second look on its own, because it settles a guess made
-      elsewhere. `menu/OptionsMenu.java:240` opens the receiver's web UI by probing the configured
+      **Wait for field reports before building it.** Whether `modelName` matches the list verbatim
+      on other generations is unknown — only an AVR-3310 was available — and so is whether port 8080
+      carries the description at all on older or newer models. Both now show up in every feedback
+      report as the `UPnP` line, so the data arrives by itself. A report reading `not available`
+      answers the port question; one whose `modelName` is absent from `@array/modelNames` answers
+      the other.
+
+      `<presentationURL>` is worth taking at the same time, because it settles a guess made
+      elsewhere: `menu/OptionsMenu.java:240` opens the receiver's web UI by probing the configured
       page and treating **only** a 404 as proof that it is missing, then falling back to the bare
       base URL — a heuristic whose confirmation is still outstanding with the reporter of the
-      AVR-1912. The device states the answer instead of being guessed at: on the AVR-3310 the
-      value is exactly that bare base URL, which corroborates the fallback for this model at
-      least. Fetching it would replace the probe entirely.
+      AVR-1912. On the AVR-3310 `presentationURL` is exactly that bare base URL, which corroborates
+      the fallback for this model. Fetching it would replace the probe entirely.
 - [ ] The `NOTIFY` branch is untested against a real device in another sense too: `SSDPDiscovery`
       only ever looks at replies to its own `M-SEARCH`. If a receiver turns out to answer nothing
       (no `MulticastLock` — see [CONNECTION.md](CONNECTION.md)), the sweep fallback hides it, and
