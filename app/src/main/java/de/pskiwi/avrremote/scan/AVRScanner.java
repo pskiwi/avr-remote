@@ -165,13 +165,6 @@ public final class AVRScanner {
 		}
 		Logger.info("Scan: " + ip.getHostAddress() + "/" + prefixLength);
 
-		// Alles ab /24 liegt im letzten Oktett und ist damit in einem Durchgang
-		// absuchbar; darunter waeren es mindestens 512 Adressen.
-		if (prefixLength < 24) {
-			handler.error(ctx.getString(R.string.AutoScanNotSupported));
-			return;
-		}
-
 		Logger.setLocation("scan-1");
 		final ProgressDialog progress = ProgressDialog.show(ctx,
 				ctx.getString(R.string.PleaseWait),
@@ -193,6 +186,16 @@ public final class AVRScanner {
 						return viaSSDP;
 					}
 					Logger.info("SSDP found nothing, falling back to sweep");
+					// Alles ab /24 liegt im letzten Oktett und ist damit in
+					// einem Durchgang absuchbar; darunter waeren es mindestens
+					// 512 Adressen. Die Grenze gilt aber nur fuer den Sweep:
+					// SSDP fragt das ganze Netz mit einem Paket und ist damit
+					// von der Subnetzgroesse unabhaengig - in einem /16 ist es
+					// das einzige, was ueberhaupt etwas finden kann.
+					if (prefixLength < 24) {
+						Logger.info("no sweep below /24");
+						return Collections.emptyList();
+					}
 					return scanNetwork(ip, prefixLength);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -209,6 +212,12 @@ public final class AVRScanner {
 					progress.dismiss();
 					if (result.size() > 0) {
 						handler.finished(result);
+					} else if (prefixLength < 24) {
+						// SSDP hat nichts gefunden, und der Sweep ist hier
+						// nicht gelaufen - das ist der Unterschied zu
+						// "nichts gefunden"
+						handler.error(ctx
+								.getString(R.string.AutoScanNotSupported));
 					} else {
 						handler.error(ctx.getString(R.string.NoIpFound));
 					}

@@ -97,13 +97,6 @@ still 36, so none of it is in force. What is left is the part no build can answe
       only ever looks at replies to its own `M-SEARCH`. If a receiver turns out to answer nothing
       (no `MulticastLock` — see [CONNECTION.md](CONNECTION.md)), the sweep fallback hides it, and
       the only sign is `SSDP: 0 device(s) answered` in the log.
-- [ ] **The `/24` guard shuts SSDP out of the networks where it is the only thing that works.**
-      `AVRScanner.java:170` returns with *auto scan not supported* before the AsyncTask starts, so a
-      user on a `/16` or `/23` — some ISP routers, most corporate and guest Wi-Fi — never gets an
-      `M-SEARCH` sent at all. SSDP does not care about the subnet size; only the sweep does, and the
-      sweep is now the fallback rather than the main path. The guard belongs around `scanNetwork()`
-      inside `doInBackground`, with the "not supported" message left for the case where SSDP also
-      found nothing.
 - [ ] **`SSDPDiscovery`'s timing constants do not add up.** The third `M-SEARCH` goes out at
       `2 * SEND_INTERVAL` = 1600 ms and devices spread their answers over `MX` = 2 s, so a reply to
       it can arrive at 3600 ms — but the loop stops collecting at `SEARCH_DURATION` = 3000 ms and
