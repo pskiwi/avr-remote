@@ -16,6 +16,8 @@
  */
 package de.pskiwi.avrremote;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
@@ -201,17 +203,32 @@ public final class AVRSettings extends PreferenceActivity implements
 		return true;
 	}
 
+	/**
+	 * Bewusst eine Datei in getNoBackupFilesDir() und keine Einstellung: die
+	 * Default-Preferences wandern mit der Sicherung, das Manifest erlaubt sie
+	 * (allowBackup, ohne Ausschlussregel - siehe TODO.md). Auf einem neuen
+	 * Geraet waere dann beides wahr, "schon gefragt" aus der Sicherung und
+	 * "keine Begruendung noetig" mangels Ablehnung dort - und die App fragte nie.
+	 * Das Merkmal gilt fuer diese Installation auf diesem Geraet, und genau das
+	 * ist dieses Verzeichnis.
+	 */
 	private static boolean isLocalNetworkPermissionAsked(Context ctx) {
-		return PreferenceManager.getDefaultSharedPreferences(ctx).getBoolean(
-				LOCAL_NETWORK_ASKED, false);
+		return new File(ctx.getNoBackupFilesDir(), LOCAL_NETWORK_ASKED).exists();
 	}
 
 	private static void setLocalNetworkPermissionAsked(Context ctx, boolean asked) {
-		if (isLocalNetworkPermissionAsked(ctx) == asked) {
-			return;
+		final File marker = new File(ctx.getNoBackupFilesDir(),
+				LOCAL_NETWORK_ASKED);
+		try {
+			if (asked) {
+				marker.createNewFile();
+			} else {
+				marker.delete();
+			}
+		} catch (IOException x) {
+			// Schlimmstenfalls wird einmal zu oft gefragt
+			Logger.info("marker [" + marker + "] failed: " + x);
 		}
-		PreferenceManager.getDefaultSharedPreferences(ctx).edit()
-				.putBoolean(LOCAL_NETWORK_ASKED, asked).commit();
 	}
 
 	/**
@@ -555,7 +572,7 @@ public final class AVRSettings extends PreferenceActivity implements
 	private final static String AVRIP = "avrip";
 	private final static String AVRMACRO = "avrmacro_";
 	private final static String NOTIFICATION_KEY = "AVRNotification";
-	private final static String LOCAL_NETWORK_ASKED = "AVRLocalNetworkAsked";
+	private final static String LOCAL_NETWORK_ASKED = "local-network-asked";
 	protected static final int SELECT_IMAGE = 6789;
 	public static final int REQUEST_POST_NOTIFICATIONS = 1;
 	public static final int REQUEST_ACCESS_LOCAL_NETWORK = 2;
