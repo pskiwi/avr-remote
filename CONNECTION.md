@@ -358,8 +358,21 @@ entirely the wrong place. Hence two deliberate hints:
 - `AVRScanner.scan()` refuses to start and says why, instead of letting the user watch a
   progress dialog for ten seconds before "no receiver found".
 
-Both are gated on `AVRSettings.isLocalNetworkBlocked()`, which asks whether LNP applies **to this
-build** — the device is Android 17 *and* `getApplicationInfo().targetSdkVersion` is 37 — not merely
+A third one is where users actually meet it: `ConfigurationAssistant.checkStatus()` used to see
+`WLAN` true and `Reachable` false and announce that the configured address was invalid, offering a
+scan that could not work either — while the address was perfectly correct. Under LNP `Reachable` is
+always false, because both the ping and the port-80 probe go nowhere. That is the dialog a user sees
+at startup, so that is where the explanation belongs.
+
+Nothing raises a dialog from `AVRRemote.onCreate` any more, including the rationale that
+`shouldShowRequestPermissionRationale()` asks for. The connection progress dialog and the assistant
+open on top of it within seconds, so it was never seen — and because the old code called
+`requestPermissions()` from that dialog's button, the permission was never actually requested at
+all. Asking directly, as the `POST_NOTIFICATIONS` path beside it does, is what makes the system
+dialog appear.
+
+All of it is gated on `AVRSettings.isLocalNetworkBlocked()`, which asks whether LNP applies **to
+this build** — the device is Android 17 *and* `getApplicationInfo().targetSdkVersion` is 37 — not merely
 whether the permission is missing. At `targetSdk 36` the permission is absent without consequence,
 and warning about it there would be simply wrong. Reading the target from the running package rather
 than from a constant is what makes this arm itself on the day `build.gradle` moves to 37. The one

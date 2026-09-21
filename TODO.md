@@ -14,21 +14,29 @@ The code side is done — `scan/LocalNetwork`, the socket binding, the permissio
 are in, `compileSdk` is 37, and [CONNECTION.md](CONNECTION.md) describes the result. `targetSdk` is
 still 36, so none of it is in force. What is left is the part no build can answer.
 
-- [ ] **Finish verifying on an Android 17 device, then raise `targetSdk` in a commit of its own.**
-      That order matters: raising it together with anything else means a failure could be either,
-      and the device checks below are the only evidence there is.
+- [ ] **Raise `targetSdk` to 37, in a commit of its own.** Everything below has now been run on
+      a Pixel 8 against an AVR-3310, including against a real `targetSdk 37` build, so what is left
+      is the commit itself and a look at the Play Console rollout.
 
-      Done so far, on a Pixel 8 with
-      `adb shell am compat enable RESTRICT_LOCAL_NETWORK de.pskiwi.avrremote`: with the permission
-      granted the receiver connects normally; with it revoked the connection is swallowed —
-      `SocketTimeoutException` on port 23, no `SecurityException` — which is what the hints behind
-      `AVRSettings.isLocalNetworkBlocked()` now cover. **Those hints are gated on
-      `targetSdkVersion`, so the `am compat` route does not reach them**; they have been built and
-      never seen. Device state was restored afterwards (`am compat reset`, permission re-granted).
+      Verified with a `targetSdk 37` build installed: permission granted → `reachable true` and the
+      app behaves normally; revoked → `reachable false` and the ConfigurationAssistant explains why
+      instead of blaming the address. The scan refuses with the same explanation rather than
+      searching for ten seconds. SSDP found the receiver among five UPnP responders in 3.5 s
+      (`found 1 receiver(s) via SSDP`), and Wi-Fi off/on drove `StatusFlag.WLAN` and restarted the
+      reconnect (`WiFi lost` → `WLAN = false`, `WiFi available` → `WLAN = true` →
+      `Reconnector:start new connector`).
 
-      Still untried: the SSDP scan against a receiver, Wi-Fi off/on driving `StatusFlag.WLAN` and
-      the reconnect, and the case the whole construction exists for — mobile data on plus a Wi-Fi
-      without internet, where connection *and* scan must work and the connection did not before.
+      Two things that run through it are worth keeping in mind when reading a log from that
+      session: the receiver allows exactly one telnet session and had it occupied for most of the
+      day, so `ECONNREFUSED` on port 23 there says nothing about this code — `reachable` is the
+      signal that tracks Local Network Protection. And `RESTRICT_LOCAL_NETWORK` via `am compat`
+      does **not** reach the hints, which are gated on `targetSdkVersion`; only a real 37 build
+      does.
+
+- [ ] **The one case still untested: mobile data on beside a Wi-Fi without internet.** That is what
+      the socket binding exists for, and it is the one scenario the test Wi-Fi here cannot produce.
+      Until someone runs it, the binding is verified only in the sense that sockets demonstrably
+      leave from the Wi-Fi address.
 
 - [ ] Before that commit, know what else `targetSdk 37` switches on. All seventeen behaviour
       changes for apps targeting Android 17 were checked against this code in September 2026, and
@@ -56,10 +64,17 @@ still 36, so none of it is in force. What is left is the part no build can answe
       so checks for 37's behaviour changes do not exist in this lint at all. Its silence is not a
       pass. Changes that apply to *all* apps on Android 17 regardless of target are a different
       matter — those are already in force, and the app ran normally on the Pixel 8 under Android 17.
-- [ ] **The SSDP parser is pinned against constructed data, not a capture.** The two files under
-      `app/src/test/resources/de/pskiwi/avrremote/scan/` follow the UPnP spec and the known header
-      order of a Denon/HEOS device, but nobody recorded them off a receiver — unlike the AVR-3808
-      pages next door. Replace them with a real capture when one is at hand.
+- [ ] **Read the model name out of `description.xml` and stop asking the user.** SSDP already
+      hands over `LOCATION` (`SSDPDiscovery.Response.getLocation()`, currently only logged); on an
+      AVR-3310 that is `http://<ip>:8080/description.xml`, and it contains
+      `<modelName>AVR-3310</modelName>` — the exact string `@array/modelNames` holds and
+      `ModelConfigurator` resolves by reflection, dashes and all. Also there: `<manufacturer>DENON`
+      (Denon vs Marantz), `<friendlyName>DENON:[AVR-3310]`, and `<presentationURL>`, which is the
+      receiver's web UI stated by the device rather than guessed. Today the user picks from a list
+      of 60. The port-80 endpoint the app already reads
+      (`goform/formMainZone_MainZoneXml.xml`) does **not** carry it — its `<ModelId>` is an opaque
+      `1`. Unknown, and the reason this is not already done: whether `modelName` matches the list
+      verbatim on other generations. Only an AVR-3310 was available.
 - [ ] The `NOTIFY` branch is untested against a real device in another sense too: `SSDPDiscovery`
       only ever looks at replies to its own `M-SEARCH`. If a receiver turns out to answer nothing
       (no `MulticastLock` — see [CONNECTION.md](CONNECTION.md)), the sweep fallback hides it, and
