@@ -140,7 +140,10 @@ public final class AVRSettings extends PreferenceActivity implements
 	 *         darauf kommt asynchron in onRequestPermissionsResult, und bis
 	 *         dahin weist Android jede zweite Anfrage ab - wer hier true
 	 *         bekommt, darf weder selbst weiterfragen noch das Ergebnis schon
-	 *         auswerten.
+	 *         auswerten. Fehlende Permission allein genuegt dafuer nicht: nach
+	 *         einer endgueltigen Ablehnung zeigt requestPermissions() nichts
+	 *         mehr an, und dann ist hier nichts aufgegangen, worauf zu warten
+	 *         waere.
 	 */
 	public static boolean requestLocalNetworkPermission(Activity activity) {
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.CINNAMON_BUN) {
@@ -161,6 +164,21 @@ public final class AVRSettings extends PreferenceActivity implements
 		if (activity.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) {
 			return false;
 		}
+		// Endgueltig abgelehnt - ab Android 11 reicht dafuer ein einziges
+		// "Nicht zulassen". requestPermissions() zeigt dann nichts mehr an und
+		// liefert sofort "denied". Wer hier true bekaeme, wartete auf eine
+		// Antwort, die schon da ist: der Suchlauf braeche ab, ohne dass der
+		// Anwender irgendetwas zu sehen bekommt, und der Hinweis, der genau
+		// diesen Fall erklaert, wuerde nie erreicht.
+		//
+		// shouldShowRequestPermissionRationale() alleine trennt die beiden
+		// Faelle nicht: vor der allerersten Frage ist es ebenfalls false.
+		// Deshalb das Merkmal daneben - gefragt und trotzdem keine Begruendung
+		// erlaubt heisst endgueltig abgelehnt.
+		if (isLocalNetworkPermissionAsked(activity)
+				&& !activity.shouldShowRequestPermissionRationale(permission)) {
+			return false;
+		}
 		// Kein eigener Begruendungs-Dialog vorweg, obwohl
 		// shouldShowRequestPermissionRationale() ihn nahelegt: er kommt aus
 		// onCreate und landet damit unter dem Verbindungs-Fortschritt und dem
@@ -170,9 +188,16 @@ public final class AVRSettings extends PreferenceActivity implements
 		// (AVRRemote.onRequestPermissionsResult), beim Scan und im
 		// ConfigurationAssistant. Dasselbe Muster wie bei POST_NOTIFICATIONS
 		// oben, das auch direkt fragt.
+		PreferenceManager.getDefaultSharedPreferences(activity).edit()
+				.putBoolean(LOCAL_NETWORK_ASKED, true).commit();
 		activity.requestPermissions(new String[] { permission },
 				REQUEST_ACCESS_LOCAL_NETWORK);
 		return true;
+	}
+
+	private static boolean isLocalNetworkPermissionAsked(Context ctx) {
+		return PreferenceManager.getDefaultSharedPreferences(ctx).getBoolean(
+				LOCAL_NETWORK_ASKED, false);
 	}
 
 	/**
@@ -516,6 +541,7 @@ public final class AVRSettings extends PreferenceActivity implements
 	private final static String AVRIP = "avrip";
 	private final static String AVRMACRO = "avrmacro_";
 	private final static String NOTIFICATION_KEY = "AVRNotification";
+	private final static String LOCAL_NETWORK_ASKED = "AVRLocalNetworkAsked";
 	protected static final int SELECT_IMAGE = 6789;
 	public static final int REQUEST_POST_NOTIFICATIONS = 1;
 	public static final int REQUEST_ACCESS_LOCAL_NETWORK = 2;
