@@ -162,6 +162,13 @@ public final class AVRSettings extends PreferenceActivity implements
 		// Konstante zwar ein, aber sonst meldet Lint sie als InlinedApi.
 		final String permission = android.Manifest.permission.ACCESS_LOCAL_NETWORK;
 		if (activity.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) {
+			// Merkmal zuruecknehmen, solange wir sie haben: Android entzieht
+			// ungenutzten Apps ihre Berechtigungen von selbst und raeumt dabei
+			// auch die Ablehnung weg, auf die sich die Pruefung unten stuetzt.
+			// Bliebe das Merkmal stehen, waere danach beides wahr - "schon
+			// gefragt" und "keine Begruendung noetig" - und die App fragte nie
+			// wieder, obwohl der Dialog laengst wieder aufginge.
+			setLocalNetworkPermissionAsked(activity, false);
 			return false;
 		}
 		// Endgueltig abgelehnt - ab Android 11 reicht dafuer ein einziges
@@ -188,8 +195,7 @@ public final class AVRSettings extends PreferenceActivity implements
 		// (AVRRemote.onRequestPermissionsResult), beim Scan und im
 		// ConfigurationAssistant. Dasselbe Muster wie bei POST_NOTIFICATIONS
 		// oben, das auch direkt fragt.
-		PreferenceManager.getDefaultSharedPreferences(activity).edit()
-				.putBoolean(LOCAL_NETWORK_ASKED, true).commit();
+		setLocalNetworkPermissionAsked(activity, true);
 		activity.requestPermissions(new String[] { permission },
 				REQUEST_ACCESS_LOCAL_NETWORK);
 		return true;
@@ -198,6 +204,14 @@ public final class AVRSettings extends PreferenceActivity implements
 	private static boolean isLocalNetworkPermissionAsked(Context ctx) {
 		return PreferenceManager.getDefaultSharedPreferences(ctx).getBoolean(
 				LOCAL_NETWORK_ASKED, false);
+	}
+
+	private static void setLocalNetworkPermissionAsked(Context ctx, boolean asked) {
+		if (isLocalNetworkPermissionAsked(ctx) == asked) {
+			return;
+		}
+		PreferenceManager.getDefaultSharedPreferences(ctx).edit()
+				.putBoolean(LOCAL_NETWORK_ASKED, asked).commit();
 	}
 
 	/**
