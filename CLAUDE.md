@@ -240,9 +240,10 @@ Consequences:
   This does **not** extend to the UI bases above: those are a migration, not a style choice.
 - `minSdk 24`. Anything newer needs a `Build.VERSION.SDK_INT` guard. Lint reports this as `NewApi`,
   but `abortOnError false` means the build still succeeds — it will only fail on the device.
-  Note `compileSdk` is 37 while `targetSdk` is 36, so constants from newer platforms (for instance
+  `compileSdk` and `targetSdk` are both 37, so constants from that platform (for instance
   `Manifest.permission.ACCESS_LOCAL_NETWORK` and `VERSION_CODES.CINNAMON_BUN`) can be named
-  directly: the compiler inlines them, nothing is looked up at runtime.
+  directly: the compiler inlines them, nothing is looked up at runtime. That says nothing about
+  whether the *feature* exists on the device — `minSdk 24` still means a guard.
 - **Anything that opens a socket into the local network binds it first.** `LocalNetwork.bind(Socket)`,
   `LocalNetwork.bind(DatagramSocket)` and `LocalNetwork.openConnection(URL)` are the only way in —
   `core/Connector`, `http/HTTPSupport`, `scan/AVRTargetTester` and `scan/SSDPDiscovery` all go
@@ -257,7 +258,7 @@ Consequences:
 
 ### When adding an Activity
 
-Three things are easy to forget and all are required at `targetSdk 36`:
+Three things are easy to forget and all are required at `targetSdk 37`:
 
 1. `android:exported` in the manifest. For a component **with** an intent filter, omitting it is a
    build error; without a filter it is optional but set explicitly here for consistency.
@@ -270,5 +271,7 @@ Three things are easy to forget and all are required at `targetSdk 36`:
 
 ## What comes next
 
-The next platform deadline is Local Network Protection at Android 17, and it is the first item in
-[TODO.md](TODO.md). The connection side of it is in [CONNECTION.md](CONNECTION.md).
+Local Network Protection is **in force**: `targetSdk` is 37, so without `ACCESS_LOCAL_NETWORK` no
+socket reaches the local network — silently, by timeout, with no `SecurityException` to catch. That
+is the first section in [TODO.md](TODO.md), which holds what is left of it, and the connection side
+is in [CONNECTION.md](CONNECTION.md).

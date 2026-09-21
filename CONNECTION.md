@@ -334,8 +334,8 @@ probe on port 80, so the fallback if it misbehaves on a device is to drop it, no
 
 ### Local Network Protection
 
-The binding is also what Android 17 requires. Local Network Protection becomes mandatory at
-**targetSdk 37** and gates *every* socket into the local network behind
+The binding is also what Android 17 requires. Local Network Protection is mandatory at
+**targetSdk 37**, which this app now targets, and gates *every* socket into the local network behind
 `ACCESS_LOCAL_NETWORK` — telnet 23 and the HTTP scraping as much as the search. Without it the app
 is not scan-less, it is dead.
 
@@ -373,18 +373,25 @@ dialog appear.
 
 All of it is gated on `AVRSettings.isLocalNetworkBlocked()`, which asks whether LNP applies **to
 this build** — the device is Android 17 *and* `getApplicationInfo().targetSdkVersion` is 37 — not merely
-whether the permission is missing. At `targetSdk 36` the permission is absent without consequence,
-and warning about it there would be simply wrong. Reading the target from the running package rather
-than from a constant is what makes this arm itself on the day `build.gradle` moves to 37. The one
-thing it does not cover is the `am compat` override above, which is a test tool rather than a state
-a user can be in.
+whether the permission is missing. That was written while the target was still 36, where the
+permission is absent without consequence and a warning about it would have been simply wrong;
+reading the target from the running package rather than from a constant is what armed the hints by
+itself on the day `build.gradle` moved to 37. `AVRSettings.requestLocalNetworkPermission()` carries
+the same condition, so the app does not spend the user's one refusal on a permission that cannot yet
+do anything.
 
-`targetSdk` is still 36, so none of this is in force yet; `compileSdk 37` is what makes the constants
-available. To exercise it before raising the target, force the restriction on an Android 17 device:
+To exercise the blocked state now, take the permission away:
 
 ```sh
-adb shell am compat enable RESTRICT_LOCAL_NETWORK de.pskiwi.avrremote
+adb shell pm revoke de.pskiwi.avrremote android.permission.ACCESS_LOCAL_NETWORK
 ```
+
+Measured on a Pixel 8 that way in September 2026: `Reconnector:reachable ... : false` while the
+receiver is plainly there, the assistant explains it instead of blaming the address, and the scan
+stops with the same explanation. Granting it again produces `reachable true` and a reconnect within
+the next cycle. The older route, `adb shell am compat enable RESTRICT_LOCAL_NETWORK`, forces the
+restriction itself but **not** the hints, which are gated on `targetSdkVersion` — it was the way to
+see the blocking before the target moved, and it is the weaker test now.
 
 ### Searching instead of sweeping
 

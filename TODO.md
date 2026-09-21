@@ -8,62 +8,32 @@ Finished items are removed rather than ticked — the git history holds what was
 this file stayed readable only by not accumulating them. What a closed item established and a live
 one still depends on has been folded into the live one.
 
-## Next platform deadline: targetSdk 37
+## Android 17: Local Network Protection
 
-The code side is done — `scan/LocalNetwork`, the socket binding, the permission and SSDP discovery
-are in, `compileSdk` is 37, and [CONNECTION.md](CONNECTION.md) describes the result. `targetSdk` is
-still 36, so none of it is in force. What is left is the part no build can answer.
+`targetSdk` is **37**, so it is in force: without `ACCESS_LOCAL_NETWORK` no socket reaches the local
+network, silently and by timeout. The machinery is described in [CONNECTION.md](CONNECTION.md), and
+the commit that raised the target carries the survey of all seventeen behaviour changes for apps
+targeting Android 17 — only this one touches this app. No release has shipped with it yet; the Play
+Console side is in [RELEASE.md](RELEASE.md).
 
-- [ ] **Raise `targetSdk` to 37, in a commit of its own.** Everything below has now been run on
-      a Pixel 8 against an AVR-3310, including against a real `targetSdk 37` build, so what is left
-      is the commit itself and a look at the Play Console rollout.
+Verified on a Pixel 8 against an AVR-3310 in September 2026, with the permission granted, revoked
+and granted again: `reachable` follows it, the assistant explains the block instead of blaming the
+address, the scan stops with the same explanation rather than searching for ten seconds, SSDP finds
+the receiver among five UPnP responders in 3.7 s, and Wi-Fi off/on drives `StatusFlag.WLAN` and
+restarts the reconnect. Two things to keep in mind when reading a log from such a session: the
+receiver allows exactly one telnet session, so `ECONNREFUSED` on port 23 says nothing about this
+code — `reachable` is the signal that tracks LNP — and `RESTRICT_LOCAL_NETWORK` via `am compat` does
+not reach the hints, which are gated on `targetSdkVersion`.
 
-      Verified with a `targetSdk 37` build installed: permission granted → `reachable true` and the
-      app behaves normally; revoked → `reachable false` and the ConfigurationAssistant explains why
-      instead of blaming the address. The scan refuses with the same explanation rather than
-      searching for ten seconds. SSDP found the receiver among five UPnP responders in 3.5 s
-      (`found 1 receiver(s) via SSDP`), and Wi-Fi off/on drove `StatusFlag.WLAN` and restarted the
-      reconnect (`WiFi lost` → `WLAN = false`, `WiFi available` → `WLAN = true` →
-      `Reconnector:start new connector`).
-
-      Two things that run through it are worth keeping in mind when reading a log from that
-      session: the receiver allows exactly one telnet session and had it occupied for most of the
-      day, so `ECONNREFUSED` on port 23 there says nothing about this code — `reachable` is the
-      signal that tracks Local Network Protection. And `RESTRICT_LOCAL_NETWORK` via `am compat`
-      does **not** reach the hints, which are gated on `targetSdkVersion`; only a real 37 build
-      does.
+What is left is the part no build can answer.
 
 - [ ] **The one case still untested: mobile data on beside a Wi-Fi without internet.** That is what
       the socket binding exists for, and it is the one scenario the test Wi-Fi here cannot produce.
-      Until someone runs it, the binding is verified only in the sense that sockets demonstrably
-      leave from the Wi-Fi address.
+      The September 2026 run had mobile data active beside the Wi-Fi, but that Wi-Fi had internet
+      and stayed the default network, so it proves only that the binding does no harm there. Until
+      someone runs the real case, the binding is verified in the sense that sockets demonstrably
+      leave from the Wi-Fi address, and no further.
 
-- [ ] Before that commit, know what else `targetSdk 37` switches on. All seventeen behaviour
-      changes for apps targeting Android 17 were checked against this code in September 2026, and
-      **only Local Network Protection applies**. The rest, so nobody has to re-derive it:
-
-      | Change | Why it misses this app |
-      |---|---|
-      | RemoteViews memory limit | no `RemoteViews` anywhere; the app widget is long gone |
-      | Lock-free `MessageQueue`, `static final` no longer writable | no `setAccessible`/`getDeclaredField` — the only reflection is `Class.forName` in `ModelConfigurator` |
-      | ECH, Certificate Transparency | the app opens no TLS connection at all; the one `https://` outside the GPL headers is a URL handed to the browser (`menu/OptionsMenu.java:193`) |
-      | Safer native DCL | no native libraries |
-      | Background audio hardening | no `AudioManager`, no `MediaSession` — volume goes to the receiver over telnet |
-      | Orientation/resizability on large screens | no `screenOrientation` in the manifest, so there is no constraint to ignore |
-      | Passwords hidden on physical keyboards | no password fields |
-      | CP2 PII columns, CP2 strict SQL, OTP SMS, `setContentCaptureEnabled`, accessibility IME, `BluetoothSocket.read()` | those APIs are not used |
-
-      One is a judgement rather than a grep: **BAL hardening**. There is a single `PendingIntent`
-      (`StatusbarManager.java:45`, notification → activity, `FLAG_IMMUTABLE`), launched by the user
-      tapping the notification, and the two `startActivity` calls outside an Activity
-      (`ScreenMenu.java:311`, `core/display/NetDisplay.java:1107`) go through an Activity reference
-      from a foreground interaction. No background launch — but that is reasoning, not a test.
-
-      A trial build with `targetSdk 37` is clean and removes exactly one lint entry,
-      `OldTargetApi`. **That proves very little:** AGP 8.13.0 is tested only to compile SDK 36.1,
-      so checks for 37's behaviour changes do not exist in this lint at all. Its silence is not a
-      pass. Changes that apply to *all* apps on Android 17 regardless of target are a different
-      matter — those are already in force, and the app ran normally on the Pixel 8 under Android 17.
 - [ ] **Select the model from `description.xml` instead of asking the user.** The description is
       now fetched and lands in the feedback report (`http/DeviceDescription`, see
       [CONNECTION.md](CONNECTION.md)); what is not done is acting on it. `<modelName>` is on an
