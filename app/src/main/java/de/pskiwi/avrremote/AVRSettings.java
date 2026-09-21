@@ -197,10 +197,33 @@ public final class AVRSettings extends PreferenceActivity implements
 		// (AVRRemote.onRequestPermissionsResult), beim Scan und im
 		// ConfigurationAssistant. Dasselbe Muster wie bei POST_NOTIFICATIONS
 		// oben, das auch direkt fragt.
-		setLocalNetworkPermissionAsked(activity, true);
 		activity.requestPermissions(new String[] { permission },
 				REQUEST_ACCESS_LOCAL_NETWORK);
 		return true;
+	}
+
+	/**
+	 * Was aus der Frage geworden ist - aus onRequestPermissionsResult zu
+	 * melden, von jeder Activity, die fragen kann.
+	 *
+	 * Das Merkmal wird hier gesetzt und nicht schon beim Fragen. Die Abfrage
+	 * kann naemlich unterbrochen werden - Zurueck-Taste auf dem System-Dialog,
+	 * oder der Prozess stirbt, waehrend er steht -, und dann kommen leere
+	 * Ergebnisse zurueck und Android hat sich nichts gemerkt: keine Ablehnung,
+	 * also auch keine Begruendung noetig. Stuende das Merkmal da schon, waere
+	 * die Frage fuer immer erledigt, ohne dass sie je beantwortet wurde. Unter
+	 * Local Network Protection heisst das: die App kommt nicht mehr ins lokale
+	 * Netz, und aus der App heraus fuehrt kein Weg zurueck.
+	 */
+	public static void localNetworkPermissionResult(Context ctx,
+			int[] grantResults) {
+		if (grantResults.length == 0) {
+			// abgebrochen - beim naechsten Mal wieder fragen
+			Logger.info("local network permission request was interrupted");
+			return;
+		}
+		setLocalNetworkPermissionAsked(ctx,
+				grantResults[0] != PackageManager.PERMISSION_GRANTED);
 	}
 
 	/**

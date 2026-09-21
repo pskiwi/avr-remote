@@ -250,6 +250,7 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 				getApp().getStatusbarManager().update();
 			}
 		} else if (requestCode == AVRSettings.REQUEST_ACCESS_LOCAL_NETWORK) {
+			AVRSettings.localNetworkPermissionResult(this, grantResults);
 			if (granted) {
 				// Der Verbindungsversuch beim Start lief ohne die Permission
 				// und ist unter Local Network Protection ins Leere gegangen

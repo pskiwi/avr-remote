@@ -288,6 +288,21 @@ public final class OnScreenDisplayActivity extends ListActivity implements
 		return optionsMenu.onOptionsItemSelected(item);
 	}
 
+	/**
+	 * Der Suchlauf im Optionsmenue fragt nach ACCESS_LOCAL_NETWORK, also kommt
+	 * die Antwort auch hier heraus - und AVRSettings muss sie erfahren, sonst
+	 * merkt sich niemand eine Ablehnung und der naechste Suchlauf fragt
+	 * wieder, ohne dass noch ein Dialog aufginge.
+	 */
+	@Override
+	public void onRequestPermissionsResult(int requestCode,
+			String[] permissions, int[] grantResults) {
+		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+		if (requestCode == AVRSettings.REQUEST_ACCESS_LOCAL_NETWORK) {
+			AVRSettings.localNetworkPermissionResult(this, grantResults);
+		}
+	}
+
 	public boolean isShowing() {
 		return showing;
 	}
