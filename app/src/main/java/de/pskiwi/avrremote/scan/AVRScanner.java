@@ -32,6 +32,7 @@ import android.content.DialogInterface.OnCancelListener;
 import android.net.LinkAddress;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.widget.Toast;
 
 import de.pskiwi.avrremote.AVRApplication;
 import de.pskiwi.avrremote.AVRSettings;
@@ -350,7 +351,14 @@ public final class AVRScanner {
 				// endgueltig abgelehnt, geht kein Dialog auf, und dann laeuft
 				// der Scan weiter bis zu seinem eigenen Hinweis - siehe
 				// requestLocalNetworkPermission().
+				// Aus dem Optionsmenue fuehrt dieser Rueckweg sonst ins Leere:
+				// dort ist runFinished leer, der Anwender beantwortet die
+				// Frage und sieht danach nichts - kein Fortschritt, keine
+				// Meldung, keine Liste. Der Hinweis legt sich ueber den
+				// System-Dialog und sagt, was zu tun ist.
 				Logger.info("Scan: asked for local network permission first");
+				Toast.makeText(ctx, R.string.ScanAfterPermission,
+						Toast.LENGTH_LONG).show();
 				runFinished.run();
 				return;
 			}

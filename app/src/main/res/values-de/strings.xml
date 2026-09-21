@@ -120,6 +120,7 @@
 	<string name="ScanningNetwork">Receiver wird gesucht &#8230;</string>
 	<string name="OpeningReceiverWebsite">Receiver Website wird geöffnet &#8230;</string>
 	<string name="LocalNetworkPermission">AVR-Remote findet und steuert den Receiver in Ihrem lokalen Netz. Ohne Zugriff darauf funktioniert weder die Suche noch die Verbindung.</string>
+	<string name="ScanAfterPermission">Bitte starten Sie die Suche erneut, sobald der Zugriff erlaubt ist.</string>
 
 	<string name="NoIpFound">Es konnte kein Receiver gefunden werden.\n
 		Entweder
