@@ -79,6 +79,20 @@ public final class LocalNetwork {
 	 * Handler-Überladung von registerNetworkCallback() wäre der direktere Weg,
 	 * ist aber erst API 26 und damit oberhalb von minSdk 24 - handler.post() im
 	 * Callback leistet dasselbe ohne Versionsweiche.
+	 *
+	 * Ein bereits verbundenes WLAN meldet registerNetworkCallback von selbst nach,
+	 * für "gar kein WLAN" gibt es dagegen keine Meldung: onLost kommt nur für ein
+	 * Netz, das vorher verfügbar war. Der abgelöste BroadcastReceiver bekam
+	 * NETWORK_STATE_CHANGED_ACTION sticky zugestellt und hat StatusFlag.WLAN
+	 * deshalb immer sofort definiert. Ohne das Nachziehen unten bliebe das Flag
+	 * beim Start ohne WLAN undefiniert - und ConfigurationAssistant.checkStatus
+	 * zeigt "WLAN nicht aktiv" genau dann nicht an, wenn es zutrifft.
+	 *
+	 * Verzögert, weil die Nachmeldung über einen Binder-Thread kommt und synchron
+	 * nicht zu haben ist: was nach SEED_DELAY nicht gemeldet wurde, gibt es auch
+	 * nicht. Kommt sie später doch, korrigiert sie das Flag - die umgekehrte
+	 * Richtung darf es nicht geben, ein gemeldetes WLAN nachträglich als "kein
+	 * WLAN" zu überschreiben würde den Dialog für den falschen Fall aufmachen.
 	 */
 	public void register(Handler handler, IWiFiListener listener) {
 		this.handler = handler;
@@ -86,6 +100,13 @@ public final class LocalNetwork {
 		final NetworkRequest request = new NetworkRequest.Builder()
 				.addTransportType(NetworkCapabilities.TRANSPORT_WIFI).build();
 		connectivity.registerNetworkCallback(request, callback);
+		handler.postDelayed(new Runnable() {
+			public void run() {
+				if (!reported) {
+					notifyListener(false);
+				}
+			}
+		}, SEED_DELAY);
 	}
 
 	/** Ist ein WLAN mit brauchbarer IPv4-Adresse da ? */
@@ -199,6 +220,7 @@ public final class LocalNetwork {
 	};
 
 	private void notifyListener(final boolean connected) {
+		reported = true;
 		Logger.info("LocalNetwork: WiFi " + (connected ? "available" : "lost")
 				+ " " + this);
 		final Handler h = handler;
@@ -225,4 +247,7 @@ public final class LocalNetwork {
 	private volatile LinkProperties linkProperties;
 	private volatile Handler handler;
 	private volatile IWiFiListener listener;
+	/** Hat der Callback schon einmal etwas gemeldet ? Siehe {@link #register}. */
+	private volatile boolean reported;
+	private static final long SEED_DELAY = 1000;
 }
