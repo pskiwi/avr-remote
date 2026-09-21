@@ -78,9 +78,11 @@ knowing before writing more tests:
   directory on the test classpath and tracks it as a task input by itself, so it needs neither an
   `inputs.file` entry nor the module/root path dance above. Keep such captures byte-exact — one of
   the two has CRLF line endings and both pad their values with spaces, and the tests exist to pin
-  what the parsers do with that. The two SSDP files beside them in `scan/` follow the same rules
-  (CRLF, byte-exact) but are **not** captures: they were built from the UPnP spec, which the test's
-  Javadoc and [TODO.md](TODO.md) both say. Do not cite them as evidence of what a receiver sends.
+  what the parsers do with that. `scan/ssdp-search-response.txt` beside them is an AVR-3310's reply
+  to an M-SEARCH with exactly one field changed — the half of the UUID that is the device's MAC —
+  and its neighbour `ssdp-notify.txt` is *derived* from it rather than captured, because the
+  receiver repeats its advertisement only every ~900 s. The test's Javadoc says which is which; keep
+  it that way rather than letting the next reader assume both are real.
 - **A static initialiser that touches Android locks the whole class out of JVM tests.** Three
   different behaviours in the stub `android.jar`, and only the third one throws by itself:
   constructors are no-ops (`new Handler()` works), **field reads return null or 0**
