@@ -34,6 +34,24 @@ What is left is the part no build can answer.
       someone runs the real case, the binding is verified in the sense that sockets demonstrably
       leave from the Wi-Fi address, and no further.
 
+- [ ] **With no Wi-Fi at all, the reconnect loop goes out over mobile data and waits 2.5 s a
+      time.** `LocalNetwork.bind()` binds only when a network is known and otherwise lets the
+      socket go wherever the default route points — deliberately, so the caller is not locked out
+      (`scan/LocalNetwork.java:130`). The measured consequence, Pixel 8 on 2026-09-25 with Wi-Fi
+      switched off and mobile data on:
+
+      ```
+      LocalNetwork: WiFi lost LocalNetwork [null] no address
+      SocketTimeoutException: failed to connect to /192.168.10.30 (port 23)
+              from /10.41.229.114 (port 60314) after 2500ms
+      ```
+
+      Every round of the backoff pays the full `AVR_CONNECT_TIMEOUT` on a LAN address that cellular
+      cannot reach. Nothing breaks — `StatusFlag.WLAN` is already false and the UI says so — but the
+      attempt cannot succeed by construction. Skipping the connect while `WLAN` is false would make
+      the loop cheaper and the log readable; the argument against is that `boundNetwork` and the
+      flag can disagree for a moment, and a connect that would have worked must not be dropped.
+
 - [ ] **Select the model from `description.xml` instead of asking the user.** The description is
       now fetched and lands in the feedback report (`http/DeviceDescription`, see
       [CONNECTION.md](CONNECTION.md)); what is not done is acting on it. `<modelName>` is on an
