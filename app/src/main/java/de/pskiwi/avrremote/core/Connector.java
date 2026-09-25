@@ -259,12 +259,19 @@ public final class Connector implements ISender, IConnector {
 			in = socket.getInputStream();
 			out = new OutputStreamWriter(socket.getOutputStream());
 			Thread.sleep(1000);
+			// Beide Threads erst bauen, dann starten: der Receiver ruft beim
+			// Aufgeben close() auf, und das fasst sendThread an. Startete er
+			// vor dessen Zuweisung, liefe close() in eine NPE - und die
+			// beendet auf Android den Prozess. Das Fenster ist winzig, aber
+			// erreichbar: der Receiver laesst nur eine Telnet-Sitzung zu und
+			// legt eine zweite sofort wieder auf, das erste read() steht dann
+			// schon auf dem Stream-Ende.
 			readThread = new Thread(new Receiver(), "receiver");
 			readThread.setDaemon(true);
-			readThread.start();
 			sender = new Sender();
 			sendThread = new Thread(sender, "sender");
 			sendThread.setDaemon(true);
+			readThread.start();
 			sendThread.start();
 			ok = true;
 		} finally {
