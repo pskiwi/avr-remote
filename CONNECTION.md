@@ -164,6 +164,12 @@ actually gets is the busy-port dialog (*`Reachable` says nothing about port 23*)
 correctly in exactly this situation. Whether another model behaves differently is unknown — there
 is one receiver to test against and 60 model classes.
 
+It does let go eventually. The same session was still refused 13 minutes after the ghost was
+created and was accepted again 28 minutes after it, so this receiver times its dead sessions out
+somewhere in between — the window is that wide because nothing was watching in between. Worth
+knowing when reading the busy dialog's advice: pulling the mains plug is the reliable fix, not the
+only one, and a user who waits half an hour may report the problem as having "fixed itself".
+
 ## Who decides when to hang up
 
 `ActiveHandler` is the only owner of the disconnect policy. `AVRApplication.activityResumed()` and
