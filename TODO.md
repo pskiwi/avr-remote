@@ -64,10 +64,20 @@ What is left is the part no build can answer.
       that null was not reproducible on a Pixel 8 with the finished Android 17 (three Wi-Fi off/on
       cycles, airplane mode, Data Saver on a metered Wi-Fi in the background). Closed by removal, not
       by understanding; worth knowing if something similar turns up in `LocalNetwork`.
+- [ ] **`Connector.Receiver.run()` logs a read error and tries again, without closing anything**
+      (`core/Connector.java:168`). Predates the read watchdog, which only covers the timeout path.
+      An `IOException` that persists — a `Software caused connection abort` on a socket whose
+      `isClosed()` is still false — would be thrown again immediately by the next `read()`, so the
+      thread spins at full speed, `closeSignal` never counts down, and `ResilentConnector` stays
+      parked in `waitUntilClosed()` with no reconnect behind it. Not observed: in the Doze log in
+      [CONNECTION.md](CONNECTION.md) the next `read()` returned end-of-stream 3 ms later and the
+      thread left through the normal path. Closing on any `IOException` is the obvious fix and is
+      exactly what the surrounding comments decided against, so it needs a case first — a captured
+      log with the same error repeating would be one.
 
 ## Structural
 
-- [ ] **Test coverage is eleven JVM classes and no instrumentation tests.** The cheapest places to add
+- [ ] **Test coverage is thirteen JVM classes and no instrumentation tests.** The cheapest places to add
       more are `models/` (pure capability logic, no Android types) and `core/ZoneState.java`
       (1237 lines). `core/display/` is now part done: `NetDisplayTest` covers the line reader and
       `TunerDisplayTest` the frequency conversion, but the rest of `TunerDisplay` (presets, HD Radio,

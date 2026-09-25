@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 
@@ -52,22 +53,85 @@ public final class Connector implements ISender, IConnector {
 
 		}
 
+		/**
+		 * Liest ein Zeichen und überbrückt dabei den Lese-Timeout. Der ist
+		 * nicht dazu da, eine Antwort zu erzwingen - von sich aus sendet ein
+		 * Receiver nichts -, sondern damit Schweigen überhaupt auffällt: ohne
+		 * ihn stünde read() für immer, auch auf einem Socket, den das Netz
+		 * längst gekappt hat, ohne dass ein FIN angekommen wäre.
+		 *
+		 * Das gilt mitten in einer Zeile genauso wie am Zeilenanfang. Die halb
+		 * gelesene Nachricht geht dabei verloren, und das ist richtig so: wenn
+		 * die Verbindung aufgegeben wird, ist sie nicht mehr zu retten. Sie
+		 * stehenzulassen hieße, den Watchdog für den Rest der Zeile
+		 * abzuschalten - und eine Verbindung, die nach dem ersten Byte einer
+		 * Zeile stirbt, hinge dann für immer.
+		 *
+		 * @return -1, wenn die Verbindung aufgegeben wird - wie ein Stream-Ende
+		 */
+		private int readChar() throws IOException {
+			while (true) {
+				try {
+					final int ch = in.read();
+					if (ch != -1) {
+						// jedes Byte ist ein Lebenszeichen, nicht erst die
+						// vollständige Zeile
+						idleMillis = 0;
+						probeSentAt = NO_PROBE;
+					}
+					return ch;
+				} catch (SocketTimeoutException x) {
+					if (!stillAlive()) {
+						return -1;
+					}
+				}
+			}
+		}
+
+		/**
+		 * Zählt die Stille und klopft einmal an, bevor die Verbindung
+		 * aufgegeben wird. Gezählt wird in Timeout-Schritten, nicht nach Uhr:
+		 * gemeint ist "wir waren wach und haben nichts gehört", und ein
+		 * eingefrorener Thread zählt dann gar nicht, während die Uhr weiterliefe.
+		 *
+		 * @return false, wenn auch die Probe unbeantwortet blieb
+		 */
+		private boolean stillAlive() {
+			idleMillis += readTimeout;
+			if (idleMillis < idleProbe) {
+				return true;
+			}
+			if (probeSentAt == NO_PROBE) {
+				probeSentAt = idleMillis;
+				Logger.info("nothing received for " + idleMillis
+						+ "ms -> probing");
+				doSend(ALIVE_PROBE);
+				return true;
+			}
+			if (idleMillis - probeSentAt < probeGrace) {
+				return true;
+			}
+			Logger.error("no answer to the probe after " + idleMillis
+					+ "ms -> closing the connection", null);
+			return false;
+		}
+
 		public InData read() throws IOException {
 			final char[] line = new char[MAX_LINE];
-			int ch = in.read();
+			int ch = readChar();
 			int count;
 			do {
 				count = 0;
 				while (ch != -1 && !detectCR(line, count, ch)
 						&& count < MAX_LINE) {
 					line[count++] = (char) ch;
-					ch = in.read();
+					ch = readChar();
 				}
 				if (count == MAX_LINE) {
 					// read garbage
 					// avr braucht restart ???
 					while (ch != -1 && ch != CR) {
-						ch = in.read();
+						ch = readChar();
 					}
 					Logger.error("max input size exeeded ! ["
 							+ new String(line, 0, count) + "]", null);
@@ -88,7 +152,10 @@ public final class Connector implements ISender, IConnector {
 				try {
 					final InData val = read();
 					if (val == null) {
-						socket.close();
+						// close() statt socket.close(): sonst bleibt der
+						// Sender-Thread in take() stehen und überlebt die
+						// Verbindung, die er bedient hat
+						Connector.this.close();
 						closeSignal.countDown();
 						Logger.info("receiver socket closed -> return");
 						return;
@@ -111,7 +178,12 @@ public final class Connector implements ISender, IConnector {
 			}
 		}
 
+		// nur vom Receiver-Thread gelesen und geschrieben
+		private int idleMillis;
+		private int probeSentAt = NO_PROBE;
+
 		private static final int MAX_LINE = 256;
+		private static final int NO_PROBE = -1;
 	}
 
 	private final class Sender implements Runnable {
@@ -145,8 +217,22 @@ public final class Connector implements ISender, IConnector {
 
 	public Connector(ConnectionConfiguration connectionConfiguration,
 			int sendDelay, IEventListener eventListener) throws Exception {
+		this(connectionConfiguration, sendDelay, eventListener, READ_TIMEOUT,
+				IDLE_PROBE, PROBE_GRACE);
+	}
+
+	// Paketprivat mit expliziten Zeiten, damit ConnectorTest "die Verbindung
+	// verstummt" in Millisekunden durchspielen kann statt in Minuten.
+	// Gleiches Muster wie ResilentConnector.ThreadHandler und
+	// ModelConfigurator.createModel(String).
+	Connector(ConnectionConfiguration connectionConfiguration, int sendDelay,
+			IEventListener eventListener, int readTimeout, int idleProbe,
+			int probeGrace) throws Exception {
 		this.connectionConfiguration = connectionConfiguration;
 		this.sendDelay = sendDelay;
+		this.readTimeout = readTimeout;
+		this.idleProbe = idleProbe;
+		this.probeGrace = probeGrace;
 		listener = eventListener;
 		socket = new Socket();
 
@@ -166,18 +252,26 @@ public final class Connector implements ISender, IConnector {
 			// bindSocket() tut das nicht.
 			LocalNetwork.bind(socket);
 			socket.setTcpNoDelay(true);
+			socket.setSoTimeout(readTimeout);
 			socket.connect(connectionConfiguration.getSocketAddress(),
 					AVR_CONNECT_TIMEOUT);
 
 			in = socket.getInputStream();
 			out = new OutputStreamWriter(socket.getOutputStream());
 			Thread.sleep(1000);
+			// Beide Threads erst bauen, dann starten: der Receiver ruft beim
+			// Aufgeben close() auf, und das fasst sendThread an. Startete er
+			// vor dessen Zuweisung, liefe close() in eine NPE - und die
+			// beendet auf Android den Prozess. Das Fenster ist winzig, aber
+			// erreichbar: der Receiver laesst nur eine Telnet-Sitzung zu und
+			// legt eine zweite sofort wieder auf, das erste read() steht dann
+			// schon auf dem Stream-Ende.
 			readThread = new Thread(new Receiver(), "receiver");
 			readThread.setDaemon(true);
-			readThread.start();
 			sender = new Sender();
 			sendThread = new Thread(sender, "sender");
 			sendThread.setDaemon(true);
+			readThread.start();
 			sendThread.start();
 			ok = true;
 		} finally {
@@ -287,9 +381,20 @@ public final class Connector implements ISender, IConnector {
 	private final Thread sendThread;
 	private final ConnectionConfiguration connectionConfiguration;
 	private final int sendDelay;
+	private final int readTimeout;
+	private final int idleProbe;
+	private final int probeGrace;
 	private final ArrayBlockingQueue<String> sendQueue = new ArrayBlockingQueue<String>(
 			MAX_QUEUE_SIZE);
 	private final CountDownLatch closeSignal = new CountDownLatch(1);
 	private static final int AVR_CONNECT_TIMEOUT = 2500;
+	// Taktrate des Receiver-Threads, wenn nichts hereinkommt - nicht die
+	// Zeit, nach der etwas passiert, das sind IDLE_PROBE und PROBE_GRACE.
+	private static final int READ_TIMEOUT = 5000;
+	// so lange darf es still sein, bevor nachgefragt wird ...
+	private static final int IDLE_PROBE = 60000;
+	// ... und so lange darf die Antwort darauf ausbleiben
+	private static final int PROBE_GRACE = 10000;
+	private static final String ALIVE_PROBE = "PW?";
 	private final static int MAX_QUEUE_SIZE = 100;
 }

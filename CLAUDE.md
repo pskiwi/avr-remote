@@ -45,9 +45,9 @@ for `android-37` and fails with *"Failed to find target with hash string"*. AGP 
 up to compile SDK 36.1 and warns about 37.2 in every build, which is what
 `android.suppressUnsupportedCompileSdk` in `gradle.properties` silences.
 
-**There is almost no test coverage.** `src/test` holds twelve JVM test classes on JUnit 4, the only
+**There is almost no test coverage.** `src/test` holds thirteen JVM test classes on JUnit 4, the only
 dependency in the project — `http/HTTPSupportTest`, `http/Series08ParserTest`,
-`core/ThreadHandlerTest`, `core/InDataTest`, `core/display/NetDisplayTest`,
+`core/ThreadHandlerTest`, `core/ConnectorTest`, `core/InDataTest`, `core/display/NetDisplayTest`,
 `core/display/TunerDisplayTest`, `models/ModelConfiguratorTest`, `ReceiverStatusTest`,
 `http/AVRXMLInfoParserTest`, `http/DeviceDescriptionTest`, `scan/ScanRangeTest` and
 `scan/SSDPDiscoveryTest` — and there is no `src/androidTest` at all. `./gradlew test` runs a few
@@ -105,6 +105,12 @@ knowing before writing more tests:
   field initialiser is harmless — and reaches the inner `DisplayStatusReader` directly, because for
   `NETWORK` the constructor touches neither argument. `TunerDisplayTest` reaches `TunerFrequency`
   the same way.
+  **Deferring the field only moved the NPE from load time to call time**, and `toDebugString()` is
+  called on every line the receiver sends (`Connector.Receiver.run()`). On a JVM that killed the
+  `receiver` thread at the first byte — silently, because the default uncaught handler writes to
+  stderr and nothing in the test asserts on the thread. `EmulationDetector` therefore guards both
+  `Build` reads now; on a device neither can be null, so nothing changes there. Without that guard
+  no test can exercise a receive path at all.
 - `core/ThreadHandlerTest` asserts on wall-clock time, as does `Series08ParserTest`'s
   `largeLineStaysFast`. Its threshold sits between "no wait" and the `join(1000)` it replaced
   (measured 1003 ms), so keep that margin if you touch it. It reaches
@@ -114,6 +120,11 @@ knowing before writing more tests:
   `ModelConfigurator.createModel(String)`. What it does *not* cover is the load-bearing half of the
   argument — that a detached thread publishes nothing after `stop()` returns — and no JVM test
   reaches that; see [CONNECTION.md](CONNECTION.md) → *The generation counter*.
+  `core/ConnectorTest` is on the clock as well. It injects its three timings through a
+  package-private `Connector` constructor, so the suite spends milliseconds where the app waits
+  minutes; its floor is the `Thread.sleep(1000)` in that constructor — one second per test,
+  whatever the timings say. Two of its three cases fail with the watchdog removed; the third is
+  the positive control and passes either way.
 
 **A log a user sent in** (`log/SDLogger` writes it, `log/FeedbackReporter` mails it) has one
 header line per entry and carries a `#seq` and a thread name. Sort by `#seq`, never by timestamp
@@ -229,7 +240,7 @@ Consequences:
 - **Within Java 11, write modern Java.** The code dates from 2010 and mostly predates it, but new and
   touched code should not imitate that. In particular use **try-with-resources** rather than the
   manual `try { … } finally { x.close(); }` pattern — `http/HTTPSupport` is the reference. The tree
-  was converted in August 2026 and `core/Connector.java:153` is the only manual block left: it is
+  was converted in August 2026 and `core/Connector.java:240` is the only manual block left: it is
   not convertible at all, it closes the socket only on the failure path (`if (!ok)`) — on success
   the socket has to outlive the constructor. It covers the whole setup, binding and connect
   included, and that is deliberate: `Network.bindSocket()` forces the file descriptor into
