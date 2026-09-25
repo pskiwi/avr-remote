@@ -105,6 +105,12 @@ knowing before writing more tests:
   field initialiser is harmless — and reaches the inner `DisplayStatusReader` directly, because for
   `NETWORK` the constructor touches neither argument. `TunerDisplayTest` reaches `TunerFrequency`
   the same way.
+  **Deferring the field only moved the NPE from load time to call time**, and `toDebugString()` is
+  called on every line the receiver sends (`Connector.Receiver.run()`). On a JVM that killed the
+  `receiver` thread at the first byte — silently, because the default uncaught handler writes to
+  stderr and nothing in the test asserts on the thread. `EmulationDetector` therefore guards both
+  `Build` reads now; on a device neither can be null, so nothing changes there. Without that guard
+  no test can exercise a receive path at all.
 - `core/ThreadHandlerTest` asserts on wall-clock time, as does `Series08ParserTest`'s
   `largeLineStaysFast`. Its threshold sits between "no wait" and the `join(1000)` it replaced
   (measured 1003 ms), so keep that margin if you touch it. It reaches
