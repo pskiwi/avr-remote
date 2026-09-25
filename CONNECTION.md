@@ -90,6 +90,80 @@ Two of those guards need more than a check:
   ping and port timeouts. The guard narrows the window; what actually closes it is
   `publishConnector()` underneath.
 
+## When a connection goes quiet
+
+`Socket.isConnected()` stays `true` forever once a connect succeeded, including for a socket that
+Doze or a network change severed minutes ago. Nothing else notices either: receivers send nothing
+on their own, so no traffic is not evidence of anything. The reading loop therefore watches the
+silence itself.
+
+**The read watchdog.** The socket carries `setSoTimeout(READ_TIMEOUT)` (5 s), which is a tick rate
+and not a deadline — a quiet connection is normal. After `IDLE_PROBE` (60 s) without a single byte
+the receiver thread sends one `PW?` itself; if `PROBE_GRACE` (10 s) passes with no answer it closes
+the connection and the reconnect loop builds a new one. `PW?` because every model answers it in
+every state — a receiver in standby replies `PWSTANDBY`, which is where `StatusFlag.Power` comes
+from in the first place.
+
+Silence is counted in timeout ticks rather than by the clock, because the question is "were we
+awake and heard nothing": a frozen thread stops counting, where the clock would run on.
+
+**What it costs is one probe per minute, forever.** Nothing else sends on the control channel while
+the user is idle, so the watchdog never finds the line busy: measured on an AVR-3310, four probes in
+four minutes, each answered within 22–118 ms. A resting connection used to rest; now it ticks.
+
+**Doze is less of a worry than it looks**, and for a reason outside this file: with the screen off
+`ActiveHandler` hangs up 10 s after the activity pauses (*Who decides when to hang up*), so there is
+no connection left for the watchdog to take down. Measured 2026-09-25 on a Pixel 8 in forced deep
+idle:
+
+```
+19:50:04.415  ActiveHandler.activity paused AVRRemote
+19:50:04.415  auto disconnect :10sec
+19:50:09.438  read failed ... Software caused connection abort
+                at Connector$Receiver.readChar(Connector.java:76)
+19:50:09.446  Reconnector:connection to [192.168.10.30] closed
+19:50:14.418  run stopConnectorRunnable
+```
+
+The abort came from the suspended network, not from the watchdog — it arrives through `readChar()`
+like any other `IOException` and is passed on. What remains untested is a foreground connection
+held across a real Doze window; there the ticks would accumulate while the network is down.
+
+Two rules in the reading loop are load-bearing:
+
+- **A timeout in the middle of a line gives up like any other.** The half-read message is lost, and
+  that is right: the connection is being abandoned. Keeping it would mean switching the watchdog
+  off for the rest of the line, and a connection that dies one byte into a message would hang for
+  good. Every byte read resets the idle count, so a slow-but-alive sender is never mistaken for a
+  dead one.
+- **The teardown calls `Connector.close()`, not `socket.close()`**, because only that also
+  interrupts the sender — otherwise it stays parked in `sendQueue.take()` and outlives the
+  connection it served. That leak predates the watchdog; the watchdog just reaches the path often
+  enough for it to matter.
+
+`core/ConnectorTest` covers both on the JVM against a fake receiver on a local `ServerSocket`, with
+the three timings injected through a package-private constructor so the suite spends milliseconds
+where the app spends minutes.
+
+### What the receiver does when its one session is taken
+
+Worth knowing before building anything here, because it was assumed the other way round for a while.
+The receiver allows exactly one telnet session, and Android kills the app's process on a package
+update the same way it does on a force-stop — no `onDestroy`, no `finally`. The kernel sends the FIN
+instead, unless the Wi-Fi is asleep or gone at that moment, and then the receiver holds a session
+that no longer exists.
+
+Measured on an AVR-3310 on 2026-09-25, in four arrangements — session held by another device,
+session held by the app's own superseded connect, Wi-Fi lost and restored with the process alive,
+and the real thing (Wi-Fi off, force-stop, Wi-Fi on, restart):
+
+**It refuses.** `ECONNREFUSED` on port 23, every time, while ping and port 80 keep answering. It
+never once accepted the socket and then stayed silent. That is why there is no handshake in the
+connect path: the case it would catch has not been observed on this model, and what the user
+actually gets is the busy-port dialog (*`Reachable` says nothing about port 23*), which fired
+correctly in exactly this situation. Whether another model behaves differently is unknown — there
+is one receiver to test against and 60 model classes.
+
 ## Who decides when to hang up
 
 `ActiveHandler` is the only owner of the disconnect policy. `AVRApplication.activityResumed()` and
@@ -108,7 +182,10 @@ Two of those guards need more than a check:
 The 60 s are a cap, not the window, and the reason for the cap is that the disconnect time may be
 set as high as two hours while `isRunning()` is only worth seconds: it rests on
 `Socket.isConnected()`, which stays `true` forever once a connect succeeded, including for a socket
-Doze severed long ago. The shortcut is for rotation, dialogs and tab switches.
+Doze severed long ago. The shortcut is for rotation, dialogs and tab switches. The read watchdog
+does take such a socket down now, but only some 70 s after it went quiet and only while the
+receiver thread is really running — which in the background is exactly what is not guaranteed. So
+the cap stays.
 
 `StopConnectorTask` also checks whether an activity became active again before it fires, and
 reconnects itself if a resume slipped in between its check and the stop. Both belong to the Doze
