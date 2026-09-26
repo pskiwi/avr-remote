@@ -79,11 +79,13 @@ What is left is the part no build can answer.
       burnt reconnect rounds without a Wi-Fi (`LocalNetwork.mayConnect(String)`, the guard at the top
       of `ResilentConnector.Reconnector.run()`, the preference in `res/xml/settings.xml`); the
       reasoning is in [CONNECTION.md](CONNECTION.md) → *One network callback*. `LocalNetworkTest`
-      covers the prefix arithmetic, which is the decision's core but not its input: whether
-      `NetworkInterface.getNetworkInterfaces()` reports what this expects — the cellular interface and
-      its prefix, and nothing that accidentally contains the receiver address — can only be seen on a
-      device. Everything else in the gate fails open, so a surprise there costs timeouts, not
-      reachability.
+      covers the prefix arithmetic, and the enumeration behind it is no longer a guess either: on an
+      Android 17 emulator the startup line reads `LocalNetwork: interfaces eth0:10.0.2.15/24
+      wlan0:10.0.2.17/24` — so `NetworkInterface` works there, and it reports an Ethernet interface
+      that the Wi-Fi-only callback never mentions, which is the whole argument for asking about the
+      address. What is still unseen is a **cellular** interface: whether it appears with a prefix that
+      excludes a LAN address, as the measurement suggests, or with something wide enough to contain
+      one. Getting that wrong costs a timeout, not reachability — everything in the gate fails open.
 
       What to check: Wi-Fi off with mobile data on should log
       `... is in no local subnet [rmnet_data0:10.x.x.x/30] and mobile is disabled -> no attempt` once

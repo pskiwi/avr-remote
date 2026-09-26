@@ -108,6 +108,12 @@ public final class LocalNetwork {
 		final NetworkRequest request = new NetworkRequest.Builder()
 				.addTransportType(NetworkCapabilities.TRANSPORT_WIFI).build();
 		connectivity.registerNetworkCallback(request, callback);
+		// Einmal beim Start, weil es sonst nirgends auftaucht: welche
+		// Schnittstellen dieses Geraet ueberhaupt hat. Das ist die Eingabe von
+		// isDirectlyConnected(), und es ist der einzige Weg, Ethernet oder
+		// Tethering in einem eingeschickten Log zu sehen - ein Network sind die
+		// nicht, der Callback oben meldet sie also nie.
+		Logger.info("LocalNetwork: interfaces " + getLocalAddresses());
 		handler.postDelayed(new Runnable() {
 			public void run() {
 				notifyListenerIfNothingReported();
