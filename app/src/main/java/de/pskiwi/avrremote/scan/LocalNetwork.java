@@ -52,7 +52,7 @@ import de.pskiwi.avrremote.log.Logger;
  *
  * Der zweite Grund für die Klasse: unter Local Network Protection (Pflicht ab
  * Android 17) muss jeder Socket ins lokale Netz an genau dieses Network gebunden
- * werden, nicht nur der Suchlauf. {@link #bind(Socket)},
+ * werden, nicht nur der Suchlauf. {@link #bind(Socket, InetAddress)},
  * {@link #bind(DatagramSocket)} und {@link #openConnection(URL)} sind die Quelle
  * dafür.
  */

@@ -221,9 +221,16 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 		// Die Prüfung läuft bis in die Timeouts von HTTPSupport, wenn der
 		// Receiver aus ist. Solange nur ein Dialog: ohne ihn wirkt der
 		// Menüpunkt tot, und jeder weitere Tipp öffnete einen Browser mehr.
-		if (websiteProgress != null) {
+		//
+		// Der Einzelflug hängt am eigenen Merkmal und nicht am Dialog:
+		// contextPaused() räumt den Dialog bei jeder Pause ab, auch bei einer,
+		// die der Anwender übersteht - Bildschirm aus und wieder an. Am Dialog
+		// gemessen wäre die Sperre danach weg, und der nächste Tipp startete
+		// eine zweite Prüfung mit einem zweiten Browser am Ende.
+		if (websiteCheckRunning) {
 			return;
 		}
+		websiteCheckRunning = true;
 		websiteProgress = ProgressDialog.show(activity,
 				activity.getString(R.string.PleaseWait),
 				activity.getString(R.string.OpeningReceiverWebsite), true,
@@ -242,6 +249,7 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 						: pageURL;
 				activity.runOnUiThread(new Runnable() {
 					public void run() {
+						websiteCheckRunning = false;
 						// Kann schon weg sein: contextPaused() räumt ihn ab,
 						// sobald die Activity pausiert - siehe dort.
 						dismissWebsiteProgress();
@@ -312,6 +320,8 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 
 	/** Läuft gerade eine Prüfung? Nur vom UI-Thread angefasst. */
 	private ProgressDialog websiteProgress;
+	/** Läuft gerade eine Website-Prüfung ? Nur vom Main-Thread angefasst. */
+	private boolean websiteCheckRunning;
 
 	private final Activity activity;
 	private final ModelConfigurator configurator;

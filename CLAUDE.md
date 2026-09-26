@@ -240,7 +240,8 @@ Consequences:
 - **Within Java 11, write modern Java.** The code dates from 2010 and mostly predates it, but new and
   touched code should not imitate that. In particular use **try-with-resources** rather than the
   manual `try { … } finally { x.close(); }` pattern — `http/HTTPSupport` is the reference. The tree
-  was converted in August 2026 and `core/Connector.java:250` is the only manual block left: it is
+  was converted in August 2026 and `core/Connector.java:250` — the `boolean ok = false` ahead of the
+  constructor's `try` — is the only manual block left: it is
   not convertible at all, it closes the socket only on the failure path (`if (!ok)`) — on success
   the socket has to outlive the constructor. It covers the whole setup, binding and connect
   included, and that is deliberate: `Network.bindSocket()` forces the file descriptor into
