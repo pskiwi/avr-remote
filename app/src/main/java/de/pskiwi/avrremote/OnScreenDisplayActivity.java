@@ -262,6 +262,7 @@ public final class OnScreenDisplayActivity extends ListActivity implements
 		super.onPause();
 		showing = false;
 		getApp().activityPaused(this);
+		optionsMenu.contextPaused();
 	}
 
 	@Override

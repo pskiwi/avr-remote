@@ -81,7 +81,7 @@ public final class AVRTargetTester {
 	private static boolean testPort(InetAddress ia, int port) {
 		try {
 			try (Socket socket = new Socket()) {
-				LocalNetwork.bind(socket);
+				LocalNetwork.bind(socket, ia);
 				socket
 						.connect(new InetSocketAddress(ia, port),
 								CONNECT_TIMEOUT);

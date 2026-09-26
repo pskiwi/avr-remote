@@ -261,7 +261,7 @@ public final class Connector implements ISender, IConnector {
 			// Ein gescheitertes connect() raeumt seinen Deskriptor selbst ab
 			// (nachgemessen: 12 fehlschlagende Versuche, fd-Zahl unveraendert),
 			// bindSocket() tut das nicht.
-			LocalNetwork.bind(socket);
+			LocalNetwork.bind(socket, connectionConfiguration.getIP());
 			socket.setTcpNoDelay(true);
 			socket.setSoTimeout(readTimeout);
 			socket.connect(connectionConfiguration.getSocketAddress(),
