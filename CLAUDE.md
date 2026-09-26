@@ -260,11 +260,12 @@ Consequences:
   `core/Connector`, `http/HTTPSupport`, `scan/AVRTargetTester` and `scan/SSDPDiscovery` all go
   through them. Without the binding the connection takes the default network, which beside active
   mobile data is not the Wi-Fi, and under Local Network Protection it is refused outright. Never
-  `ConnectivityManager.bindProcessToNetwork()`: it applies process-wide. When nothing can be bound
-  **and** the default route is pure mobile data, those three throw rather than leaving the socket
-  unbound, unless the *Use mobile network* preference is on — `LocalNetwork.mayConnect()` is the one
-  place that decides it, and the reconnect loop asks the same method before spending a round. The
-  condition is deliberately not "no Wi-Fi": Ethernet leaves `boundNetwork` null too. The reasoning is in [CONNECTION.md](CONNECTION.md).
+  `ConnectivityManager.bindProcessToNetwork()`: it applies process-wide. Without a Wi-Fi the socket
+  stays unbound, as it always has — what is new is that the reconnect loop asks
+  `LocalNetwork.mayConnect(ip)` before spending a round on an address that is in no subnet this
+  device is attached to. The question is deliberately about the address and not about the default
+  network's transport, because an unbound socket reaches every interface's own subnet; Ethernet and
+  tethering leave `boundNetwork` null too. The reasoning is in [CONNECTION.md](CONNECTION.md).
 - Indentation is tabs. Comments are a mix of German and English.
 - `android.nonFinalResIds=false` in `gradle.properties` is load-bearing: it keeps `R` fields final so
   the `switch`/`case R.id.*` in `menu/OptionsMenu.java` compiles. Do not remove it without rewriting

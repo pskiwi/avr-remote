@@ -142,6 +142,7 @@ public final class FeedbackReporter {
 		try {
 			final LocalNetwork localNetwork = ((AVRApplication) ctx
 					.getApplicationContext()).getLocalNetwork();
+			out.println("IPv4    : " + LocalNetwork.getLocalAddresses());
 			out.println("WiFi    : "
 					+ (localNetwork.isConnected() ? "connected"
 							: "not connected") + " ("

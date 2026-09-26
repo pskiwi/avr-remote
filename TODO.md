@@ -75,24 +75,25 @@ What is left is the part no build can answer.
       exactly what the surrounding comments decided against, so it needs a case first — a captured
       log with the same error repeating would be one.
 
-- [ ] **The "Use mobile network" switch is verified by build and JVM tests only.** It is the fix for
-      the burnt reconnect rounds without a Wi-Fi (`LocalNetwork.mayConnect()`, the guard at the top of
-      `ResilentConnector.Reconnector.run()`, the preference in `res/xml/settings.xml`); the reasoning
-      and the two bypasses are in [CONNECTION.md](CONNECTION.md) → *One network callback*. What no
-      build can answer is the device: Wi-Fi off with mobile data on should now log
-      `mobile network only and disabled -> no attempt` once per backoff round and nothing else — no
-      `SocketTimeoutException` from a carrier address — while the assistant still says "WLAN nicht
-      aktiv", which depends on the skipped round setting `Reachable` false so that `Connected` becomes
-      *defined*. With the switch on, the old behaviour must come back verbatim.
+- [ ] **The "Use mobile network" switch is verified on the desktop JVM only.** It is the fix for the
+      burnt reconnect rounds without a Wi-Fi (`LocalNetwork.mayConnect(String)`, the guard at the top
+      of `ResilentConnector.Reconnector.run()`, the preference in `res/xml/settings.xml`); the
+      reasoning is in [CONNECTION.md](CONNECTION.md) → *One network callback*. `LocalNetworkTest`
+      covers the prefix arithmetic, which is the decision's core but not its input: whether
+      `NetworkInterface.getNetworkInterfaces()` reports what this expects — the cellular interface and
+      its prefix, and nothing that accidentally contains the receiver address — can only be seen on a
+      device. Everything else in the gate fails open, so a surprise there costs timeouts, not
+      reachability.
 
-      Two cases cannot be produced here at all. A receiver behind DynDNS with mobile data as the only
-      network — what the switch is for — has never been reported by anyone. And a device whose local
-      network arrives over **Ethernet**, which is why the gate asks for cellular rather than for a
-      missing Wi-Fi: `boundNetwork` is null there too, and refusing it would have left the receiver
-      unreachable for good. That one answers itself over time — `LocalNetwork.toString()` now prints
-      the transports of the default network, so it rides along in every feedback report
-      (`WiFi : ... default:ETHERNET`), the same way the `UPnP` line answers the `description.xml`
-      question above.
+      What to check: Wi-Fi off with mobile data on should log
+      `... is in no local subnet [rmnet_data0:10.x.x.x/30] and mobile is disabled -> no attempt` once
+      per backoff round and nothing else — no `SocketTimeoutException` from a carrier address — while
+      the assistant still says "WLAN nicht aktiv", which depends on the skipped round setting
+      `Reachable` false so that `Connected` becomes *defined*. With the switch on, the old behaviour
+      must come back verbatim. Neither of the two cases the address test exists for can be produced
+      here: a receiver behind DynDNS or a VPN (what the switch is for, never reported by anyone), and
+      a device whose local network arrives over Ethernet or its own hotspot. Those now ride along in
+      every feedback report as the `IPv4` line, so a report answers them by itself.
 
 ## Structural
 

@@ -19,9 +19,14 @@ package de.pskiwi.avrremote.scan;
 import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.InterfaceAddress;
+import java.net.NetworkInterface;
 import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.UnknownHostException;
+import java.util.Enumeration;
 
 import android.content.Context;
 import android.net.ConnectivityManager;
@@ -127,16 +132,15 @@ public final class LocalNetwork {
 	 * Verbindung scheitert. Genau das Szenario, das die Netzerkennung hier
 	 * muehsam als "verbunden" erkennt.
 	 *
-	 * Ist kein WLAN bekannt, entscheidet {@link #mayConnect()}: zeigt die
-	 * Default-Route in reinen Mobilfunk, gibt es ohne "Mobilfunk nutzen" keine
-	 * ungebundene Verbindung mehr, sondern eine IOException.
+	 * Ist kein WLAN bekannt, bleibt der Socket ungebunden: der Aufrufer kommt
+	 * sonst gar nicht mehr zum Zug, und ungebunden ist nicht hoffnungslos -
+	 * siehe {@link #mayConnect(String)}. Wer wiederholt aufbaut, fragt vorher
+	 * dort; hier wird nichts verweigert.
 	 */
 	public static void bind(Socket socket) throws IOException {
 		final Network n = boundNetwork;
 		if (n != null) {
 			n.bindSocket(socket);
-		} else {
-			checkUnboundAllowed();
 		}
 	}
 
@@ -145,61 +149,48 @@ public final class LocalNetwork {
 		final Network n = boundNetwork;
 		if (n != null) {
 			n.bindSocket(socket);
-		} else {
-			checkUnboundAllowed();
 		}
 	}
 
 	/** Wie {@link #bind(Socket)}, fuer das HTTP-Scraping. */
 	public static URLConnection openConnection(URL url) throws IOException {
 		final Network n = boundNetwork;
-		if (n == null) {
-			checkUnboundAllowed();
-			return url.openConnection();
-		}
-		return n.openConnection(url);
+		return n != null ? n.openConnection(url) : url.openConnection();
 	}
 
 	/**
-	 * Darf ueberhaupt ein Socket aufgebaut werden ? Mit gebundenem WLAN immer,
-	 * sonst entscheidet {@link #mayConnectUnbound()}.
+	 * Lohnt ein Verbindungsversuch zu dieser Adresse ? Mit gebundenem WLAN
+	 * immer. Sonst nur, wenn die Adresse in einem Subnetz liegt, an dem dieses
+	 * Geraet direkt haengt: ohne Bindung nimmt der Socket die Default-Route, und
+	 * eine lokale Adresse ist von dort - Mobilfunk - nicht erreichbar. Jede
+	 * Runde des Reconnect-Loops zahlte dafuer den vollen Connect-Timeout, ohne je
+	 * ankommen zu koennen (gemessen: 2500ms pro Runde, Pixel 8 gegen einen
+	 * AVR-3310).
+	 *
+	 * Gefragt wird nach der Adresse, nicht nach dem Transport des Default-Netzes.
+	 * Ein Socket ohne Bindung erreicht das direkt angeschlossene Subnetz *jeder*
+	 * Schnittstelle, auch wenn die Default-Route ins Mobilfunknetz zeigt - genau
+	 * deshalb gibt es Local Network Protection ueberhaupt. Drei Faelle, die eine
+	 * Sperre auf "Default-Route ist Mobilfunk" ausgeschlossen haette und die die
+	 * Adressfrage ohne Fallunterscheidung richtig beantwortet: Ethernet am Geraet
+	 * neben aktivem Mobilfunk, ein Ethernet ohne WAN (das bleibt nicht
+	 * Default-Netz, {@link #register} meldet es ohnehin nicht) und der eigene
+	 * Hotspot, dessen Schnittstelle gar kein Network ist. In allen drei ist der
+	 * Receiver erreichbar, und eine Sperre haette ihn dauerhaft unerreichbar
+	 * gemacht.
 	 *
 	 * Geprueft wird {@link #boundNetwork} und nicht StatusFlag.WLAN: das Flag
 	 * laeuft ueber einen Handler-Post und kann dem Feld hinterherhinken, und ein
 	 * Connect, der geklappt haette, darf nicht an einem veralteten Wert
 	 * scheitern.
 	 */
-	public static boolean mayConnect() {
-		return boundNetwork != null || mayConnectUnbound();
-	}
-
-	private static void checkUnboundAllowed() throws IOException {
-		if (!mayConnectUnbound()) {
-			throw new IOException("mobile network only, disabled by setting");
+	public static boolean mayConnect(String host) {
+		if (boundNetwork != null) {
+			return true;
 		}
-	}
-
-	/**
-	 * Ohne Bindung geht der Socket dorthin, wo die Default-Route zeigt. Nur ein
-	 * Fall davon kann nachweislich nicht ankommen: reiner Mobilfunk - eine
-	 * lokale Adresse ist von dort nicht erreichbar, und jede Reconnect-Runde
-	 * zahlt trotzdem den vollen Connect-Timeout. Genau der bleibt ab Werk aus.
-	 *
-	 * Alles andere ist erlaubt, und das ist keine Grosszuegigkeit, sondern
-	 * Notwendigkeit: {@link #register} fragt nur TRANSPORT_WIFI ab, also ist
-	 * {@link #boundNetwork} auch dann null, wenn das lokale Netz per Ethernet
-	 * am Gerät hängt - Dongle am Tablet, DeX, ein Android-Fernseher. Vor dieser
-	 * Sperre hat der ungebundene Socket dort funktioniert, und ohne die
-	 * Einschraenkung auf Mobilfunk waere der Receiver dauerhaft unerreichbar,
-	 * ohne dass ein Dialog sagen koennte warum. Zwei weitere Faelle kommen
-	 * gratis mit: ein VPN, das den Receiver zu Hause durchaus erreicht, und das
-	 * WLAN, das der Callback beim Start noch nicht gemeldet hat.
-	 */
-	private static boolean mayConnectUnbound() {
 		if (appContext == null) {
 			// JVM-Test: es gibt keine Preferences und keinen Application-Context,
-			// der danach fragen koennte. Offen lassen, sonst kommt
-			// HTTPSupportTest nicht mehr an seinen eigenen Socket.
+			// der danach fragen koennte.
 			return true;
 		}
 		if (EmulationDetector.isEmulator()) {
@@ -207,61 +198,113 @@ public final class LocalNetwork {
 			// Emulator taugt die Netzerkennung nicht als Grundlage.
 			return true;
 		}
-		if (!isCellularOnly()) {
+		if (isDirectlyConnected(host)) {
 			return true;
 		}
 		return AVRSettings.isUseMobileNetwork(appContext);
 	}
 
-	/** Zeigt die Default-Route in ein Netz, das nichts als Mobilfunk ist ? */
-	private static boolean isCellularOnly() {
-		final NetworkCapabilities caps = activeCapabilities();
-		// caps == null: gar kein Netz, oder keine Auskunft darueber. Der Connect
-		// scheitert dann sofort und ohne Timeout, dagegen muss nichts schuetzen.
-		return caps != null
-				&& caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
-				&& !caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-				&& !caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
-				&& !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN);
-	}
-
-	private static NetworkCapabilities activeCapabilities() {
-		final ConnectivityManager cm = (ConnectivityManager) appContext
-				.getSystemService(Context.CONNECTIVITY_SERVICE);
-		final Network active = cm.getActiveNetwork();
-		return active == null ? null : cm.getNetworkCapabilities(active);
+	/**
+	 * Liegt der Host in einem Subnetz, an dem dieses Geraet direkt haengt ?
+	 *
+	 * Ueber java.net und nicht ueber den ConnectivityManager, weil genau die
+	 * Schnittstellen zaehlen, die dort kein Network sind - Tethering vor allem.
+	 * Bei jeder Unklarheit true: die Sperre dahinter darf im Zweifel nichts
+	 * verhindern, sie spart nur Timeouts.
+	 */
+	static boolean isDirectlyConnected(String host) {
+		final InetAddress target;
+		try {
+			target = InetAddress.getByName(host);
+		} catch (UnknownHostException x) {
+			// Nicht aufloesbar: dann ist dort auch nichts zu erreichen. Der
+			// Aufrufer faellt auf die Einstellung zurueck.
+			return false;
+		}
+		if (!(target instanceof Inet4Address)) {
+			// Der Prefix-Vergleich unten ist IPv4. Nicht sperren, was er nicht
+			// beurteilen kann.
+			return true;
+		}
+		try {
+			final Enumeration<NetworkInterface> interfaces = NetworkInterface
+					.getNetworkInterfaces();
+			if (interfaces == null) {
+				return true;
+			}
+			while (interfaces.hasMoreElements()) {
+				final NetworkInterface ni = interfaces.nextElement();
+				if (ni.isLoopback() || !ni.isUp()) {
+					continue;
+				}
+				for (InterfaceAddress ia : ni.getInterfaceAddresses()) {
+					if (ia.getAddress() instanceof Inet4Address
+							&& sameSubnet(ia.getAddress().getAddress(),
+									target.getAddress(),
+									ia.getNetworkPrefixLength())) {
+						return true;
+					}
+				}
+			}
+		} catch (Exception x) {
+			Logger.debug("interface lookup failed " + x);
+			return true;
+		}
+		return false;
 	}
 
 	/**
-	 * Was das Default-Netz traegt, nur fuer das Log - und zwar fuer die eine
-	 * Frage, die sich hier nicht nachstellen laesst: ob ein Geraet sein lokales
-	 * Netz per Ethernet bekommt. {@link #mayConnectUnbound()} laesst den Fall
-	 * durch, gesehen hat ihn niemand. Weil die Zeile in {@link #toString()}
-	 * steht, steht sie auch im Feedback-Report - ein Report mit "ETHERNET" hier
-	 * beantwortet die Frage von selbst.
+	 * Gleiches IPv4-Subnetz ? Vergleicht die ersten prefixLength Bits. Paketprivat
+	 * fuer {@link de.pskiwi.avrremote.scan.LocalNetworkTest} - das ist die eine
+	 * Stelle hier, die sich auf der JVM pruefen laesst.
 	 */
-	private static String defaultTransports() {
-		if (appContext == null) {
-			return "?";
+	static boolean sameSubnet(byte[] a, byte[] b, int prefixLength) {
+		if (a.length != 4 || b.length != 4 || prefixLength < 0
+				|| prefixLength > 32) {
+			return false;
 		}
-		final NetworkCapabilities caps = activeCapabilities();
-		if (caps == null) {
-			return "none";
+		int rest = prefixLength;
+		for (int i = 0; i < 4 && rest > 0; i++) {
+			final int mask = rest >= 8 ? 0xFF : (0xFF << (8 - rest)) & 0xFF;
+			if (((a[i] ^ b[i]) & mask) != 0) {
+				return false;
+			}
+			rest -= 8;
 		}
+		return true;
+	}
+
+	/**
+	 * Alle lokalen IPv4-Adressen samt Schnittstelle, fuer den Feedback-Report.
+	 * Beantwortet, was hier keine Hardware beantworten kann: ob ein Geraet sein
+	 * lokales Netz per Ethernet oder Tethering bekommt - {@link #getNetwork()} und
+	 * damit die Bindung gibt es dort nicht, {@link #mayConnect(String)} laesst es
+	 * trotzdem durch.
+	 */
+	public static String getLocalAddresses() {
 		final StringBuilder sb = new StringBuilder();
-		if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-			sb.append("WIFI");
+		try {
+			final Enumeration<NetworkInterface> interfaces = NetworkInterface
+					.getNetworkInterfaces();
+			while (interfaces != null && interfaces.hasMoreElements()) {
+				final NetworkInterface ni = interfaces.nextElement();
+				if (ni.isLoopback() || !ni.isUp()) {
+					continue;
+				}
+				for (InterfaceAddress ia : ni.getInterfaceAddresses()) {
+					if (ia.getAddress() instanceof Inet4Address) {
+						sb.append(sb.length() == 0 ? "" : " ")
+								.append(ni.getName()).append(":")
+								.append(ia.getAddress().getHostAddress())
+								.append("/")
+								.append(ia.getNetworkPrefixLength());
+					}
+				}
+			}
+		} catch (Exception x) {
+			return "unavailable (" + x + ")";
 		}
-		if (caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
-			sb.append(sb.length() == 0 ? "" : "+").append("CELLULAR");
-		}
-		if (caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
-			sb.append(sb.length() == 0 ? "" : "+").append("ETHERNET");
-		}
-		if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
-			sb.append(sb.length() == 0 ? "" : "+").append("VPN");
-		}
-		return sb.length() == 0 ? "other" : sb.toString();
+		return sb.length() == 0 ? "none" : sb.toString();
 	}
 
 	/** Eigene IPv4-Adresse samt Prefix-Länge, oder null. */
@@ -299,8 +342,7 @@ public final class LocalNetwork {
 		final LinkAddress address = getIPv4();
 		return "LocalNetwork [" + getInterfaceName() + "] "
 				+ (address == null ? "no address" : address.getAddress()
-						.getHostAddress() + "/" + address.getPrefixLength())
-				+ " default:" + defaultTransports();
+						.getHostAddress() + "/" + address.getPrefixLength());
 	}
 
 	/**
@@ -412,7 +454,7 @@ public final class LocalNetwork {
 	private static final long SEED_DELAY = 3000;
 
 	/**
-	 * Fuer {@link #mayConnectUnbound()}. Statisch und volatile wie boundNetwork
+	 * Fuer {@link #mayConnect(String)}. Statisch und volatile wie boundNetwork
 	 * daneben: geschrieben wird im Konstruktor auf dem Main-Thread, gelesen vom
 	 * Reconnect-Thread und von den HTTP-Threads.
 	 */
