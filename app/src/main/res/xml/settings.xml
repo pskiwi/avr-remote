@@ -7,6 +7,10 @@
 		<EditTextPreference android:title="@string/SettingPDA"
 			android:key="pdaweb" android:summary="@string/SettingPDASummary"
 			android:defaultValue="/IPHONE/top.asp" />
+
+		<CheckBoxPreference android:key="AVRUseMobileNetwork"
+			android:title="@string/UseMobileNetwork" android:summary="@string/UseMobileNetworkSummary"
+			android:defaultValue="false" />
 	</PreferenceCategory>
 
 	<PreferenceCategory android:title="@string/ModelSettings">

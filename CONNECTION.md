@@ -410,6 +410,50 @@ exactly the case the paragraph above works so hard to recognise. `bindSocket` pe
 `bindProcessToNetwork()` — the latter applies to the whole process, including connections that have
 no business on the local network.
 
+**What the binding cannot do is make an unreachable address reachable.** With no Wi-Fi the socket
+stays unbound and follows the default route; beside active mobile data that is the mobile network,
+where a LAN address cannot arrive. `bind()` tolerates that as it always has — refusing there would
+take every caller out of the game, and a one-off HTTP scrape that times out is nobody's problem. The
+reconnect loop is, because it repeats forever: it paid the full `AVR_CONNECT_TIMEOUT` plus about two
+seconds of `checkAddress()` ping and port timeouts every 16 s for as long as the Wi-Fi stayed away.
+
+So the loop asks first, and it asks about the address:
+`LocalNetwork.mayConnect(connectionConfig.getIP())` — a bound Wi-Fi, or the address lies in a subnet
+this device is directly attached to, or the *Use mobile network* preference is on. Otherwise the round
+is skipped whole, `checkAddress()` included. It still sets `Reachable` false, because the fallthrough
+is what makes `Connected` *defined*, and the `ConfigurationAssistant` hint for "no Wi-Fi" hangs on
+that.
+
+Three things about that question are deliberate:
+
+- **It asks about the address, not about the transport of the default network.** An unbound socket
+  reaches the directly-connected subnet of *every* interface, whatever the default route is — that is
+  the whole reason Local Network Protection had to be invented. A gate on "the default network is
+  cellular" would therefore have refused three working setups: Ethernet on the device beside active
+  mobile data, an Ethernet link without WAN (which never becomes the default network, and which
+  `register()` does not report either, since it asks for `TRANSPORT_WIFI` only), and the device's own
+  hotspot, whose interface is not a `Network` at all. In all three the receiver is reachable, and
+  refusing would have left it unreachable for good with no dialog able to explain why. The address
+  answers all three without a case distinction: `isDirectlyConnected()` walks `NetworkInterface` —
+  java.net, not the `ConnectivityManager`, precisely because the interfaces that matter here are the
+  ones that are no `Network` — and compares prefixes. `LocalNetworkTest` pins that arithmetic; it is
+  the one part of this area a JVM test can reach.
+- **Every uncertainty answers "try anyway".** An unresolvable name, IPv6, an enumeration that throws:
+  the gate saves timeouts, so in doubt it must not prevent anything. Same for the two bypasses of the
+  preference — no Application context, which is what keeps `HTTPSupportTest` and `ConnectorTest` able
+  to reach their own sockets, and an emulator, where the network detection has nothing to go on
+  (`ConfigurationAssistant.checkStatus` and `AVRScanner.scan` make the same exception).
+- **It reads `boundNetwork`, not `StatusFlag.WLAN`.** The flag travels through a `Handler.post()` and
+  can lag the field; a connect that would have worked must not die on a stale value. The field is the
+  one the binding itself would use, read at the moment of the connect. A Wi-Fi the callback has not
+  reported yet is covered twice over, because its subnet is on the interface list either way.
+
+The switch is for one scenario and only that: a receiver reachable from outside, over a forwarded port
+or a VPN. `ConnectionConfiguration` resolves its address with `InetAddress.getByName()`, so a DynDNS
+name is a valid configuration, and a hard rule would have broken it silently. What interfaces a device
+actually has now rides along in every feedback report as the `IPv4` line, and in the log line of a
+skipped round.
+
 One thing cannot be bound: `InetAddress.isReachable()` offers no way to. The scan's ping may
 therefore still leave over the wrong interface. It is only a fast negative filter ahead of the TCP
 probe on port 80, so the fallback if it misbehaves on a device is to drop it, not to reach for

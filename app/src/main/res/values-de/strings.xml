@@ -157,6 +157,11 @@
 	<string name="SettingIPSummary">Receiver IP Adresse ($value$)</string>
 	<string name="SettingPDA">Receiver Website</string>
 	<string name="SettingPDASummary">Receiver Website (http://avraddress/$value$)</string>
+	<string name="UseMobileNetwork">Mobilfunk nutzen</string>
+	<string name="UseMobileNetworkSummary">Auch verbinden, wenn die Receiver-Adresse in keinem
+		lokalen Netz liegt - nötig für einen Receiver, der von außen erreichbar ist (VPN,
+		Portweiterleitung).
+	</string>
 
 	<string name="SettingModelSummary">Receiver Modell : $value$</string>
 	<string name="SettingModelAreaSummary">Receiver Region : $value$</string>

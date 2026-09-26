@@ -25,6 +25,20 @@ receiver allows exactly one telnet session, so `ECONNREFUSED` on port 23 says no
 code — `reachable` is the signal that tracks LNP — and `RESTRICT_LOCAL_NETWORK` via `am compat` does
 not reach the hints, which are gated on `targetSdkVersion`.
 
+The switch that stops the reconnect loop from dialling into the mobile network was verified the same
+way on 2026-09-26, Wi-Fi off with mobile data on. What the log shows: the interfaces are
+`wlan0:192.168.10.119/24 rmnet1:10.17.65.161/32`, so the cellular interface is a **/32** and no LAN
+address can fall inside it; every round is then skipped with one line
+(`… is in no local subnet [rmnet1:10.17.65.161/32] …`) instead of 2.5 s of connect timeout plus a
+second of `checkAddress`; a cold start in that state still defines `Connected` through the
+`Reachable=false` of the skipped round, so the assistant shows "WLAN ist nicht aktiviert" — that is
+the load-bearing half of the guard and it was seen on the device; Wi-Fi returning drives
+`triggerReconnect()` within a second rather than waiting out the 16 s backoff; and with the switch on
+the old behaviour returns verbatim, `SocketTimeoutException … from /10.17.65.161 … after 2500ms` once
+per round. One thing to know when repeating this: the receiver holds its single telnet session for a
+while after the Wi-Fi drops, so the reconnect afterwards runs into `ECONNREFUSED` and the
+control-port dialog, which says nothing about any of the above.
+
 What is left is the part no build can answer.
 
 - [ ] **The one case still untested: mobile data on beside a Wi-Fi without internet.** That is what
@@ -75,9 +89,20 @@ What is left is the part no build can answer.
       exactly what the surrounding comments decided against, so it needs a case first — a captured
       log with the same error repeating would be one.
 
+- [ ] **Two cases behind the "Use mobile network" switch that no hardware here can produce.** The
+      switch and the address test behind it (`LocalNetwork.mayConnect(String)`, the guard at the top
+      of `ResilentConnector.Reconnector.run()`) were verified on a Pixel 8 against an AVR-3310 on
+      2026-09-26 — see the paragraph above. What that run could not touch: a receiver reachable only
+      from outside, over a VPN or a forwarded port, which is what the switch exists for and which
+      nobody has ever reported using; and a device whose local network arrives over **Ethernet** or
+      its own hotspot, where `boundNetwork` is null although the receiver is reachable. The second is
+      the reason the gate asks about the address rather than about the default network's transport,
+      and both now answer themselves in the field: every feedback report carries the `IPv4` line, and
+      every log the startup line `LocalNetwork: interfaces …`. A report showing `eth0:…` settles it.
+
 ## Structural
 
-- [ ] **Test coverage is thirteen JVM classes and no instrumentation tests.** The cheapest places to add
+- [ ] **Test coverage is fourteen JVM classes and no instrumentation tests.** The cheapest places to add
       more are `models/` (pure capability logic, no Android types) and `core/ZoneState.java`
       (1237 lines). `core/display/` is now part done: `NetDisplayTest` covers the line reader and
       `TunerDisplayTest` the frequency conversion, but the rest of `TunerDisplay` (presets, HD Radio,

@@ -26,6 +26,7 @@ import de.pskiwi.avrremote.EnableManager;
 import de.pskiwi.avrremote.EnableManager.StatusFlag;
 import de.pskiwi.avrremote.log.Logger;
 import de.pskiwi.avrremote.models.ModelConfigurator;
+import de.pskiwi.avrremote.scan.LocalNetwork;
 
 /** Hält die Verbindung zum AVR. */
 public final class ResilentConnector implements ISender {
@@ -138,6 +139,29 @@ public final class ResilentConnector implements ISender {
 						// sonst laeuft ein laengst abgeloester Thread noch durch
 						// checkAddress() - gut 2sec Ping- und Port-Timeouts
 						return;
+					}
+					if (!LocalNetwork.mayConnect(connectionConfig.getIP())) {
+						// Die Adresse liegt in keinem Subnetz, an dem dieses
+						// Geraet haengt, und "Mobilfunk nutzen" ist aus: die
+						// Runde hat keine Chance, sie zahlte nur den vollen
+						// Connect-Timeout. Auch checkAddress() bleibt deshalb
+						// aus, das sind nochmal rund zwei Sekunden Ping- und
+						// Port-Timeout.
+						Logger.info("Reconnector:" + connectionConfig
+								+ " is in no local subnet ["
+								+ LocalNetwork.getLocalAddresses()
+								+ "] and mobile is disabled -> no attempt");
+						if (isCurrent()) {
+							// Reachable=false definiert per Fallthrough auch
+							// Connected, und genau daran haengt, ob der
+							// ConfigurationAssistant seinen Hinweis zeigt -
+							// beim Start ohne WLAN setzt es sonst niemand.
+							enableManager.setStatus(StatusFlag.Reachable, false);
+						}
+						if (!waitBeforeRetry()) {
+							return;
+						}
+						continue;
 					}
 					Logger.info("Reconnector:build new connection to ["
 							+ connectionConfig + "]");
@@ -253,18 +277,29 @@ public final class ResilentConnector implements ISender {
 				if (!isCurrent()) {
 					return;
 				}
-				try {
-					if (reconnectDelayIndex < RECONNECT_DELAY.length - 1) {
-						reconnectDelayIndex++;
-					}
-					Logger.info("Reconnector:wait "
-							+ RECONNECT_DELAY[reconnectDelayIndex]
-							+ " sec. for reconnect");
-					Thread.sleep(RECONNECT_DELAY[reconnectDelayIndex] * 1000);
-				} catch (InterruptedException e) {
-					Logger.info("Reconnector:connector interrupted -> return");
+				if (!waitBeforeRetry()) {
 					return;
 				}
+			}
+		}
+
+		/**
+		 * Backoff-Pause vor der naechsten Runde. false: unterbrochen, der Thread
+		 * ist fertig.
+		 */
+		private boolean waitBeforeRetry() {
+			try {
+				if (reconnectDelayIndex < RECONNECT_DELAY.length - 1) {
+					reconnectDelayIndex++;
+				}
+				Logger.info("Reconnector:wait "
+						+ RECONNECT_DELAY[reconnectDelayIndex]
+						+ " sec. for reconnect");
+				Thread.sleep(RECONNECT_DELAY[reconnectDelayIndex] * 1000);
+				return true;
+			} catch (InterruptedException e) {
+				Logger.info("Reconnector:connector interrupted -> return");
+				return false;
 			}
 		}
 
