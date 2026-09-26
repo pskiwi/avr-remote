@@ -296,10 +296,13 @@ public final class Connector implements ISender, IConnector {
 	}
 
 	private void doSend(String cmd) {
-		// sonst falls voll "IllegalStateException"
-		if (sendQueue.size() < MAX_QUEUE_SIZE) {
-			sendQueue.add(cmd);
-		} else {
+		// offer() statt size()-Pruefung und add(): die Pruefung ist nicht atomar,
+		// und add() wirft bei voller Queue eine IllegalStateException. Producer
+		// sind der Main-Thread, die Refresh-Threads und seit der Alive-Probe auch
+		// der Receiver-Thread - dort faengt run() nur IOException, eine
+		// ungepruefte Exception nimmt also den Empfang mit und der
+		// Default-Handler den Prozess.
+		if (!sendQueue.offer(cmd)) {
 			// hier stimmt was nicht ...
 			Logger.error("Queue overflow. clear", null);
 			sendQueue.clear();
