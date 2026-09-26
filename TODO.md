@@ -80,7 +80,7 @@ What is left is the part no build can answer.
       `ResilentConnector.Reconnector.run()`, the preference in `res/xml/settings.xml`); the reasoning
       and the two bypasses are in [CONNECTION.md](CONNECTION.md) → *One network callback*. What no
       build can answer is the device: Wi-Fi off with mobile data on should now log
-      `no WiFi, mobile network disabled -> no attempt` once per backoff round and nothing else — no
+      `mobile network only and disabled -> no attempt` once per backoff round and nothing else — no
       `SocketTimeoutException` from a carrier address — while the assistant still says "WLAN nicht
       aktiv", which depends on the skipped round setting `Reachable` false so that `Connected` becomes
       *defined*. With the switch on, the old behaviour must come back verbatim. The case the switch is

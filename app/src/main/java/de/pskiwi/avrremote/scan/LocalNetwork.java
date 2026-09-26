@@ -127,16 +127,16 @@ public final class LocalNetwork {
 	 * Verbindung scheitert. Genau das Szenario, das die Netzerkennung hier
 	 * muehsam als "verbunden" erkennt.
 	 *
-	 * Ist kein WLAN bekannt, entscheidet {@link #mayConnect()}: ohne
-	 * "Mobilfunk nutzen" gibt es hier keine ungebundene Verbindung mehr,
-	 * sondern eine IOException.
+	 * Ist kein WLAN bekannt, entscheidet {@link #mayConnect()}: zeigt die
+	 * Default-Route in reinen Mobilfunk, gibt es ohne "Mobilfunk nutzen" keine
+	 * ungebundene Verbindung mehr, sondern eine IOException.
 	 */
 	public static void bind(Socket socket) throws IOException {
 		final Network n = boundNetwork;
 		if (n != null) {
 			n.bindSocket(socket);
 		} else {
-			checkMobileAllowed();
+			checkUnboundAllowed();
 		}
 	}
 
@@ -146,7 +146,7 @@ public final class LocalNetwork {
 		if (n != null) {
 			n.bindSocket(socket);
 		} else {
-			checkMobileAllowed();
+			checkUnboundAllowed();
 		}
 	}
 
@@ -154,41 +154,48 @@ public final class LocalNetwork {
 	public static URLConnection openConnection(URL url) throws IOException {
 		final Network n = boundNetwork;
 		if (n == null) {
-			checkMobileAllowed();
+			checkUnboundAllowed();
 			return url.openConnection();
 		}
 		return n.openConnection(url);
 	}
 
 	/**
-	 * Darf ueberhaupt ein Socket aufgebaut werden ? Ohne WLAN geht er ueber die
-	 * Default-Route, und das ist neben aktivem Mobilfunk das Mobilfunknetz: eine
-	 * lokale Adresse ist von dort grundsaetzlich nicht erreichbar, jeder Versuch
-	 * zahlt nur den vollen Connect-Timeout. Darum ab Werk aus. An gehoert der
-	 * Schalter fuer den einen Fall, den das sonst kaputt macht - einen Receiver,
-	 * der von draussen erreichbar ist, ueber VPN oder eine Portweiterleitung;
-	 * ConnectionConfiguration loest die Adresse per InetAddress.getByName auf,
-	 * ein DynDNS-Name ist also erlaubt.
+	 * Darf ueberhaupt ein Socket aufgebaut werden ? Mit gebundenem WLAN immer,
+	 * sonst entscheidet {@link #mayConnectUnbound()}.
 	 *
 	 * Geprueft wird {@link #boundNetwork} und nicht StatusFlag.WLAN: das Flag
 	 * laeuft ueber einen Handler-Post und kann dem Feld hinterherhinken, und ein
 	 * Connect, der geklappt haette, darf nicht an einem veralteten Wert
-	 * scheitern. Ganz dicht ist auch das nicht - beim Start meldet der Callback
-	 * erst nach einem Moment, und bis dahin ist das Feld null, obwohl das WLAN
-	 * da ist. Das kostet eine Runde: onAvailable loest ueber
-	 * AVRApplication.wifiChanged() triggerReconnect() aus.
+	 * scheitern.
 	 */
 	public static boolean mayConnect() {
-		return boundNetwork != null || isMobileAllowed();
+		return boundNetwork != null || mayConnectUnbound();
 	}
 
-	private static void checkMobileAllowed() throws IOException {
-		if (!isMobileAllowed()) {
-			throw new IOException("no WiFi, mobile network disabled");
+	private static void checkUnboundAllowed() throws IOException {
+		if (!mayConnectUnbound()) {
+			throw new IOException("mobile network only, disabled by setting");
 		}
 	}
 
-	private static boolean isMobileAllowed() {
+	/**
+	 * Ohne Bindung geht der Socket dorthin, wo die Default-Route zeigt. Nur ein
+	 * Fall davon kann nachweislich nicht ankommen: reiner Mobilfunk - eine
+	 * lokale Adresse ist von dort nicht erreichbar, und jede Reconnect-Runde
+	 * zahlt trotzdem den vollen Connect-Timeout. Genau der bleibt ab Werk aus.
+	 *
+	 * Alles andere ist erlaubt, und das ist keine Grosszuegigkeit, sondern
+	 * Notwendigkeit: {@link #register} fragt nur TRANSPORT_WIFI ab, also ist
+	 * {@link #boundNetwork} auch dann null, wenn das lokale Netz per Ethernet
+	 * am Gerät hängt - Dongle am Tablet, DeX, ein Android-Fernseher. Vor dieser
+	 * Sperre hat der ungebundene Socket dort funktioniert, und ohne die
+	 * Einschraenkung auf Mobilfunk waere der Receiver dauerhaft unerreichbar,
+	 * ohne dass ein Dialog sagen koennte warum. Zwei weitere Faelle kommen
+	 * gratis mit: ein VPN, das den Receiver zu Hause durchaus erreicht, und das
+	 * WLAN, das der Callback beim Start noch nicht gemeldet hat.
+	 */
+	private static boolean mayConnectUnbound() {
 		if (appContext == null) {
 			// JVM-Test: es gibt keine Preferences und keinen Application-Context,
 			// der danach fragen koennte. Offen lassen, sonst kommt
@@ -196,11 +203,32 @@ public final class LocalNetwork {
 			return true;
 		}
 		if (EmulationDetector.isEmulator()) {
-			// wie in ConfigurationAssistant.checkStatus: im Emulator taugt die
-			// WLAN-Erkennung nicht als Grundlage, dort gibt es keins.
+			// wie in ConfigurationAssistant.checkStatus und AVRScanner.scan: im
+			// Emulator taugt die Netzerkennung nicht als Grundlage.
+			return true;
+		}
+		if (!isCellularOnly()) {
 			return true;
 		}
 		return AVRSettings.isUseMobileNetwork(appContext);
+	}
+
+	/** Zeigt die Default-Route in ein Netz, das nichts als Mobilfunk ist ? */
+	private static boolean isCellularOnly() {
+		final ConnectivityManager cm = (ConnectivityManager) appContext
+				.getSystemService(Context.CONNECTIVITY_SERVICE);
+		final Network active = cm.getActiveNetwork();
+		if (active == null) {
+			// Gar kein Netz: der Connect scheitert sofort und ohne Timeout,
+			// dagegen muss nichts schuetzen.
+			return false;
+		}
+		final NetworkCapabilities caps = cm.getNetworkCapabilities(active);
+		return caps != null
+				&& caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+				&& !caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+				&& !caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+				&& !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN);
 	}
 
 	/** Eigene IPv4-Adresse samt Prefix-Länge, oder null. */
@@ -349,6 +377,10 @@ public final class LocalNetwork {
 	 */
 	private static final long SEED_DELAY = 3000;
 
-	/** Fuer {@link #isMobileAllowed()}; statisch wie boundNetwork selbst. */
-	private static Context appContext;
+	/**
+	 * Fuer {@link #mayConnectUnbound()}. Statisch und volatile wie boundNetwork
+	 * daneben: geschrieben wird im Konstruktor auf dem Main-Thread, gelesen vom
+	 * Reconnect-Thread und von den HTTP-Threads.
+	 */
+	private static volatile Context appContext;
 }

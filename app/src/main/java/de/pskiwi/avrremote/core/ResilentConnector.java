@@ -141,13 +141,13 @@ public final class ResilentConnector implements ISender {
 						return;
 					}
 					if (!LocalNetwork.mayConnect()) {
-						// Ohne WLAN und ohne "Mobilfunk nutzen" hat die Runde
-						// keine Chance: der Socket ginge ueber die Default-Route
-						// ins Mobilfunknetz und zahlte dort den vollen
-						// Connect-Timeout auf eine lokale Adresse. Auch
-						// checkAddress() bleibt deshalb aus, das sind nochmal
-						// rund zwei Sekunden Ping- und Port-Timeout.
-						Logger.info("Reconnector:no WiFi, mobile network disabled -> no attempt ["
+						// Kein gebundenes WLAN, Default-Route in reinen
+						// Mobilfunk, "Mobilfunk nutzen" aus: die Runde hat keine
+						// Chance, sie zahlte nur den vollen Connect-Timeout auf
+						// eine lokale Adresse. Auch checkAddress() bleibt
+						// deshalb aus, das sind nochmal rund zwei Sekunden Ping-
+						// und Port-Timeout.
+						Logger.info("Reconnector:mobile network only and disabled -> no attempt ["
 								+ connectionConfig + "]");
 						if (isCurrent()) {
 							// Reachable=false definiert per Fallthrough auch

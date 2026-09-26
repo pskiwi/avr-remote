@@ -414,26 +414,33 @@ no business on the local network.
 socket in that case, on the grounds that refusing would take the caller out of the game altogether —
 and the caller then paid the full `AVR_CONNECT_TIMEOUT` sending a LAN address into the mobile
 network, every reconnect round, forever. `LocalNetwork.mayConnect()` now answers that question in one
-place: `boundNetwork != null`, or the *Use mobile network* preference is on. Off is the default;
-`bind()` and `openConnection()` throw `IOException` instead of leaving unbound, and the reconnect
-loop checks the same method at the top of each round and skips it whole — `checkAddress()` included,
-which is another two seconds of ping and port timeouts that could not succeed either.
+place: a bound Wi-Fi, or — unbound — anything but a default route into pure mobile data. That last
+case is the only one that provably cannot arrive, and it is the only one refused, unless the *Use
+mobile network* preference is on. Off is the default; `bind()` and `openConnection()` throw
+`IOException` instead of leaving unbound, and the reconnect loop checks the same method at the top of
+each round and skips it whole — `checkAddress()` included, which is another two seconds of ping and
+port timeouts that could not succeed either.
 
 Three things about that check are deliberate:
 
+- **"No Wi-Fi" would have been the wrong condition, and was.** `register()` asks for
+  `TRANSPORT_WIFI` only, so `boundNetwork` is null on a device whose local network arrives over
+  Ethernet — a dongle on a tablet, DeX, an Android TV. The unbound socket worked there before, and a
+  gate on "no Wi-Fi" would have made the receiver permanently unreachable with no dialog able to
+  explain it. Hence `isCellularOnly()`: `getActiveNetwork()` must carry `TRANSPORT_CELLULAR` and
+  neither Wi-Fi, Ethernet nor VPN. A VPN reaching the receiver at home and a Wi-Fi the callback has
+  not reported yet come along for free, and no active network at all is not refused either — that
+  connect fails at once, with no timeout to save.
 - **It reads `boundNetwork`, not `StatusFlag.WLAN`.** The flag travels through a `Handler.post()` and
   can lag the field; a connect that would have worked must not die on a stale value. The field is the
   one the binding itself would use, read at the moment of the connect.
-- **It is not airtight, and does not need to be.** For the first moments after start the callback has
-  not reported yet, so the field is null while the Wi-Fi is there — one refused round. `onAvailable`
-  then drives `AVRApplication.wifiChanged()` into `triggerReconnect()`, which stops and starts the
-  loop outright rather than waiting out the backoff.
-- **The switch exists for one scenario**, and only that: a receiver reachable from outside, over VPN
-  or a forwarded port. `ConnectionConfiguration` resolves its address with `InetAddress.getByName()`,
-  so a DynDNS name is a valid configuration, and a hard rule would have broken it silently. Two
-  cases bypass the preference: no Application context at all — a JVM test, which is why
-  `HTTPSupportTest` can still talk to its own socket — and an emulator, where the Wi-Fi detection has
-  nothing to go on (`ConfigurationAssistant.checkStatus` makes the same exception).
+- **The switch exists for one scenario**, and only that: a receiver reachable from outside through a
+  forwarded port, with mobile data as the only network. `ConnectionConfiguration` resolves its
+  address with `InetAddress.getByName()`, so a DynDNS name is a valid configuration, and a hard rule
+  would have broken it silently. Two cases bypass the preference: no Application context at all — a
+  JVM test, which is why `HTTPSupportTest` can still talk to its own socket — and an emulator, where
+  the network detection has nothing to go on (`ConfigurationAssistant.checkStatus` and
+  `AVRScanner.scan` make the same exception).
 
 One thing cannot be bound: `InetAddress.isReachable()` offers no way to. The scan's ping may
 therefore still leave over the wrong interface. It is only a fast negative filter ahead of the TCP

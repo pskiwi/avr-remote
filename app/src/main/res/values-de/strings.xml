@@ -158,9 +158,9 @@
 	<string name="SettingPDA">Receiver Website</string>
 	<string name="SettingPDASummary">Receiver Website (http://avraddress/$value$)</string>
 	<string name="UseMobileNetwork">Mobilfunk nutzen</string>
-	<string name="UseMobileNetworkSummary">Auch ohne WLAN einen Verbindungsversuch wagen. Nur
-		sinnvoll für einen Receiver, der von außen erreichbar ist, über VPN oder eine
-		Portweiterleitung - bei einer lokalen Adresse läuft jeder Versuch in einen Timeout.
+	<string name="UseMobileNetworkSummary">Auch dann verbinden, wenn nur Mobilfunk verfügbar ist.
+		Nur sinnvoll für einen Receiver, der von außen über eine Portweiterleitung erreichbar ist -
+		bei einer lokalen Adresse läuft jeder Versuch in einen Timeout.
 	</string>
 
 	<string name="SettingModelSummary">Receiver Modell : $value$</string>
