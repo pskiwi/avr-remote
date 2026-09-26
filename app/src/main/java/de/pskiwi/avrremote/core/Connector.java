@@ -171,6 +171,17 @@ public final class Connector implements ISender, IConnector {
 									+ Thread.currentThread().isInterrupted()
 									+ " con:" + socket.isConnected()
 									+ " closed:" + socket.isClosed(), e);
+				} catch (Exception e) {
+					// Wie im Sender, und aus demselben Grund: eine ungepruefte
+					// Exception aus listener.received() nimmt sonst den Empfang
+					// mit, und der Default-Handler den Prozess. AVRState.received
+					// wirft IllegalArgumentException fuer jede Zeile "Z<Ziffer>",
+					// deren Ziffer nicht 2/3/4 ist - von einem Receiver kommt die
+					// nicht, von einem anderen Geraet auf Port 23 nach einer
+					// falsch eingetragenen IP durchaus. Die naechste Zeile liest
+					// der Thread danach normal weiter, das ist keine
+					// Endlosschleife.
+					Logger.error("received failed", e);
 				}
 			}
 			if (socket.isClosed()) {
