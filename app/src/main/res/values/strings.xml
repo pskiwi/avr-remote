@@ -152,6 +152,11 @@
 	<string name="SettingIPSummary">Receiver IP or host address ($value$)</string>
 	<string name="SettingPDA">Receiver website</string>
 	<string name="SettingPDASummary">Receiver website (http://avraddress/$value$)</string>
+	<string name="UseMobileNetwork">Use mobile network</string>
+	<string name="UseMobileNetworkSummary">Try to connect while no Wi-Fi is available. Only
+		useful for a receiver reachable from outside, over VPN or a forwarded port - on a local
+		address every attempt runs into a timeout.
+	</string>
 
 	<string name="SettingModelSummary">Receiver model : $value$</string>
 	<string name="SettingModelAreaSummary">Receiver region : $value$</string>

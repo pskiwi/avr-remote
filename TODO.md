@@ -34,24 +34,6 @@ What is left is the part no build can answer.
       someone runs the real case, the binding is verified in the sense that sockets demonstrably
       leave from the Wi-Fi address, and no further.
 
-- [ ] **With no Wi-Fi at all, the reconnect loop goes out over mobile data and waits 2.5 s a
-      time.** `LocalNetwork.bind()` binds only when a network is known and otherwise lets the
-      socket go wherever the default route points — deliberately, so the caller is not locked out
-      (`scan/LocalNetwork.java:130`). The measured consequence, Pixel 8 on 2026-09-25 with Wi-Fi
-      switched off and mobile data on:
-
-      ```
-      LocalNetwork: WiFi lost LocalNetwork [null] no address
-      SocketTimeoutException: failed to connect to /192.168.10.30 (port 23)
-              from /10.41.229.114 (port 60314) after 2500ms
-      ```
-
-      Every round of the backoff pays the full `AVR_CONNECT_TIMEOUT` on a LAN address that cellular
-      cannot reach. Nothing breaks — `StatusFlag.WLAN` is already false and the UI says so — but the
-      attempt cannot succeed by construction. Skipping the connect while `WLAN` is false would make
-      the loop cheaper and the log readable; the argument against is that `boundNetwork` and the
-      flag can disagree for a moment, and a connect that would have worked must not be dropped.
-
 - [ ] **Select the model from `description.xml` instead of asking the user.** The description is
       now fetched and lands in the feedback report (`http/DeviceDescription`, see
       [CONNECTION.md](CONNECTION.md)); what is not done is acting on it. `<modelName>` is on an
@@ -93,9 +75,21 @@ What is left is the part no build can answer.
       exactly what the surrounding comments decided against, so it needs a case first — a captured
       log with the same error repeating would be one.
 
+- [ ] **The "Use mobile network" switch is verified by build and JVM tests only.** It is the fix for
+      the burnt reconnect rounds without a Wi-Fi (`LocalNetwork.mayConnect()`, the guard at the top of
+      `ResilentConnector.Reconnector.run()`, the preference in `res/xml/settings.xml`); the reasoning
+      and the two bypasses are in [CONNECTION.md](CONNECTION.md) → *One network callback*. What no
+      build can answer is the device: Wi-Fi off with mobile data on should now log
+      `no WiFi, mobile network disabled -> no attempt` once per backoff round and nothing else — no
+      `SocketTimeoutException` from a carrier address — while the assistant still says "WLAN nicht
+      aktiv", which depends on the skipped round setting `Reachable` false so that `Connected` becomes
+      *defined*. With the switch on, the old behaviour must come back verbatim. The case the switch is
+      for — a receiver behind DynDNS or VPN — has never been reported by anyone and cannot be tested
+      here at all.
+
 ## Structural
 
-- [ ] **Test coverage is thirteen JVM classes and no instrumentation tests.** The cheapest places to add
+- [ ] **Test coverage is fourteen JVM classes and no instrumentation tests.** The cheapest places to add
       more are `models/` (pure capability logic, no Android types) and `core/ZoneState.java`
       (1237 lines). `core/display/` is now part done: `NetDisplayTest` covers the line reader and
       `TunerDisplayTest` the frequency conversion, but the rest of `TunerDisplay` (presets, HD Radio,

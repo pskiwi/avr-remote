@@ -45,12 +45,12 @@ for `android-37` and fails with *"Failed to find target with hash string"*. AGP 
 up to compile SDK 36.1 and warns about 37.2 in every build, which is what
 `android.suppressUnsupportedCompileSdk` in `gradle.properties` silences.
 
-**There is almost no test coverage.** `src/test` holds thirteen JVM test classes on JUnit 4, the only
+**There is almost no test coverage.** `src/test` holds fourteen JVM test classes on JUnit 4, the only
 dependency in the project — `http/HTTPSupportTest`, `http/Series08ParserTest`,
 `core/ThreadHandlerTest`, `core/ConnectorTest`, `core/InDataTest`, `core/display/NetDisplayTest`,
 `core/display/TunerDisplayTest`, `models/ModelConfiguratorTest`, `ReceiverStatusTest`,
-`http/AVRXMLInfoParserTest`, `http/DeviceDescriptionTest`, `scan/ScanRangeTest` and
-`scan/SSDPDiscoveryTest` — and there is no `src/androidTest` at all. `./gradlew test` runs a few
+`http/AVRXMLInfoParserTest`, `http/DeviceDescriptionTest`, `scan/ScanRangeTest`,
+`scan/SSDPDiscoveryTest` and `scan/LocalNetworkTest` — and there is no `src/androidTest` at all. `./gradlew test` runs a few
 dozen cases and nothing else (twice, in fact: once per build variant), so do not report a change as
 verified because the build passed; verify on a device or emulator instead. Six limits are worth
 knowing before writing more tests:
@@ -260,8 +260,10 @@ Consequences:
   `core/Connector`, `http/HTTPSupport`, `scan/AVRTargetTester` and `scan/SSDPDiscovery` all go
   through them. Without the binding the connection takes the default network, which beside active
   mobile data is not the Wi-Fi, and under Local Network Protection it is refused outright. Never
-  `ConnectivityManager.bindProcessToNetwork()`: it applies process-wide. The reasoning is in
-  [CONNECTION.md](CONNECTION.md).
+  `ConnectivityManager.bindProcessToNetwork()`: it applies process-wide. With no Wi-Fi at all those
+  three throw rather than leaving the socket unbound, unless the *Use mobile network* preference is
+  on — `LocalNetwork.mayConnect()` is the one place that decides it, and the reconnect loop asks the
+  same method before spending a round. The reasoning is in [CONNECTION.md](CONNECTION.md).
 - Indentation is tabs. Comments are a mix of German and English.
 - `android.nonFinalResIds=false` in `gradle.properties` is load-bearing: it keeps `R` fields final so
   the `switch`/`case R.id.*` in `menu/OptionsMenu.java` compiles. Do not remove it without rewriting

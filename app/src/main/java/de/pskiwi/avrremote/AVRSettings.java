@@ -433,6 +433,18 @@ public final class AVRSettings extends PreferenceActivity implements
 				"AVRDevelop", false);
 	}
 
+	/**
+	 * Ohne WLAN ueberhaupt einen Verbindungsversuch wagen ? Ab Werk nicht: der
+	 * Socket geht dann ueber die Default-Route, und das ist neben aktivem
+	 * Mobilfunk das Mobilfunknetz - auf eine lokale Adresse zahlt jede
+	 * Reconnect-Runde dort den vollen Timeout, ohne je ankommen zu koennen.
+	 * Gelesen wird der Wert in {@link de.pskiwi.avrremote.scan.LocalNetwork}.
+	 */
+	public static boolean isUseMobileNetwork(Context ctx) {
+		return PreferenceManager.getDefaultSharedPreferences(ctx).getBoolean(
+				"AVRUseMobileNetwork", false);
+	}
+
 	public static boolean isUseReceiverSettings(Context ctx) {
 		return PreferenceManager.getDefaultSharedPreferences(ctx).getBoolean(
 				"AVRUseReceiverSettings", true);
