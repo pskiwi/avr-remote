@@ -215,20 +215,53 @@ public final class LocalNetwork {
 
 	/** Zeigt die Default-Route in ein Netz, das nichts als Mobilfunk ist ? */
 	private static boolean isCellularOnly() {
-		final ConnectivityManager cm = (ConnectivityManager) appContext
-				.getSystemService(Context.CONNECTIVITY_SERVICE);
-		final Network active = cm.getActiveNetwork();
-		if (active == null) {
-			// Gar kein Netz: der Connect scheitert sofort und ohne Timeout,
-			// dagegen muss nichts schuetzen.
-			return false;
-		}
-		final NetworkCapabilities caps = cm.getNetworkCapabilities(active);
+		final NetworkCapabilities caps = activeCapabilities();
+		// caps == null: gar kein Netz, oder keine Auskunft darueber. Der Connect
+		// scheitert dann sofort und ohne Timeout, dagegen muss nichts schuetzen.
 		return caps != null
 				&& caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
 				&& !caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
 				&& !caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
 				&& !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN);
+	}
+
+	private static NetworkCapabilities activeCapabilities() {
+		final ConnectivityManager cm = (ConnectivityManager) appContext
+				.getSystemService(Context.CONNECTIVITY_SERVICE);
+		final Network active = cm.getActiveNetwork();
+		return active == null ? null : cm.getNetworkCapabilities(active);
+	}
+
+	/**
+	 * Was das Default-Netz traegt, nur fuer das Log - und zwar fuer die eine
+	 * Frage, die sich hier nicht nachstellen laesst: ob ein Geraet sein lokales
+	 * Netz per Ethernet bekommt. {@link #mayConnectUnbound()} laesst den Fall
+	 * durch, gesehen hat ihn niemand. Weil die Zeile in {@link #toString()}
+	 * steht, steht sie auch im Feedback-Report - ein Report mit "ETHERNET" hier
+	 * beantwortet die Frage von selbst.
+	 */
+	private static String defaultTransports() {
+		if (appContext == null) {
+			return "?";
+		}
+		final NetworkCapabilities caps = activeCapabilities();
+		if (caps == null) {
+			return "none";
+		}
+		final StringBuilder sb = new StringBuilder();
+		if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+			sb.append("WIFI");
+		}
+		if (caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+			sb.append(sb.length() == 0 ? "" : "+").append("CELLULAR");
+		}
+		if (caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+			sb.append(sb.length() == 0 ? "" : "+").append("ETHERNET");
+		}
+		if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
+			sb.append(sb.length() == 0 ? "" : "+").append("VPN");
+		}
+		return sb.length() == 0 ? "other" : sb.toString();
 	}
 
 	/** Eigene IPv4-Adresse samt Prefix-Länge, oder null. */
@@ -266,7 +299,8 @@ public final class LocalNetwork {
 		final LinkAddress address = getIPv4();
 		return "LocalNetwork [" + getInterfaceName() + "] "
 				+ (address == null ? "no address" : address.getAddress()
-						.getHostAddress() + "/" + address.getPrefixLength());
+						.getHostAddress() + "/" + address.getPrefixLength())
+				+ " default:" + defaultTransports();
 	}
 
 	/**

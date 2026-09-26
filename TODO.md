@@ -83,9 +83,16 @@ What is left is the part no build can answer.
       `mobile network only and disabled -> no attempt` once per backoff round and nothing else — no
       `SocketTimeoutException` from a carrier address — while the assistant still says "WLAN nicht
       aktiv", which depends on the skipped round setting `Reachable` false so that `Connected` becomes
-      *defined*. With the switch on, the old behaviour must come back verbatim. The case the switch is
-      for — a receiver behind DynDNS or VPN — has never been reported by anyone and cannot be tested
-      here at all.
+      *defined*. With the switch on, the old behaviour must come back verbatim.
+
+      Two cases cannot be produced here at all. A receiver behind DynDNS with mobile data as the only
+      network — what the switch is for — has never been reported by anyone. And a device whose local
+      network arrives over **Ethernet**, which is why the gate asks for cellular rather than for a
+      missing Wi-Fi: `boundNetwork` is null there too, and refusing it would have left the receiver
+      unreachable for good. That one answers itself over time — `LocalNetwork.toString()` now prints
+      the transports of the default network, so it rides along in every feedback report
+      (`WiFi : ... default:ETHERNET`), the same way the `UPnP` line answers the `description.xml`
+      question above.
 
 ## Structural
 
