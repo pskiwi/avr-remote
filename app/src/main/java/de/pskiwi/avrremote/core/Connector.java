@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.net.Socket;
+import java.util.Arrays;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -121,6 +122,12 @@ public final class Connector implements ISender, IConnector {
 			int ch = readChar();
 			int count;
 			do {
+				// Der Puffer wird nach einer Muellzeile ein zweites Mal
+				// beschrieben, und InData haelt ihn ganz: extractLine() liest
+				// bis data.length und endet erst an der ersten 0. Ohne das
+				// Leeren haengen an der naechsten Zeile die Reste der
+				// verworfenen - sichtbar auf dem OSD.
+				Arrays.fill(line, '\0');
 				count = 0;
 				while (ch != -1 && !detectCR(line, count, ch)
 						&& count < MAX_LINE) {
@@ -261,7 +268,7 @@ public final class Connector implements ISender, IConnector {
 			// Ein gescheitertes connect() raeumt seinen Deskriptor selbst ab
 			// (nachgemessen: 12 fehlschlagende Versuche, fd-Zahl unveraendert),
 			// bindSocket() tut das nicht.
-			LocalNetwork.bind(socket);
+			LocalNetwork.bind(socket, connectionConfiguration.getIP());
 			socket.setTcpNoDelay(true);
 			socket.setSoTimeout(readTimeout);
 			socket.connect(connectionConfiguration.getSocketAddress(),

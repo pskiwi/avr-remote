@@ -389,6 +389,7 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 		getApp().activityPaused(this);
 		getApp().getEnableManager().removeClassListener(ViewList.class);
 		connectionProgressMonitor.doPause();
+		optionsMenu.contextPaused();
 	}
 
 	// http://www.ceveni.com/2009/08/how-to-get-screen-orientation-in.html

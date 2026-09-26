@@ -240,7 +240,7 @@ Consequences:
 - **Within Java 11, write modern Java.** The code dates from 2010 and mostly predates it, but new and
   touched code should not imitate that. In particular use **try-with-resources** rather than the
   manual `try { … } finally { x.close(); }` pattern — `http/HTTPSupport` is the reference. The tree
-  was converted in August 2026 and `core/Connector.java:240` is the only manual block left: it is
+  was converted in August 2026 and `core/Connector.java:250` is the only manual block left: it is
   not convertible at all, it closes the socket only on the failure path (`if (!ok)`) — on success
   the socket has to outlive the constructor. It covers the whole setup, binding and connect
   included, and that is deliberate: `Network.bindSocket()` forces the file descriptor into
@@ -255,10 +255,13 @@ Consequences:
   `Manifest.permission.ACCESS_LOCAL_NETWORK` and `VERSION_CODES.CINNAMON_BUN`) can be named
   directly: the compiler inlines them, nothing is looked up at runtime. That says nothing about
   whether the *feature* exists on the device — `minSdk 24` still means a guard.
-- **Anything that opens a socket into the local network binds it first.** `LocalNetwork.bind(Socket)`,
-  `LocalNetwork.bind(DatagramSocket)` and `LocalNetwork.openConnection(URL)` are the only way in —
+- **Anything that opens a socket into the local network goes through `LocalNetwork`.**
+  `bind(Socket, …)`, `bind(DatagramSocket)` and `openConnection(URL)` are the only way in —
   `core/Connector`, `http/HTTPSupport`, `scan/AVRTargetTester` and `scan/SSDPDiscovery` all go
-  through them. Without the binding the connection takes the default network, which beside active
+  through them. A unicast target is bound **only when it lies in the Wi-Fi's own subnet**: the
+  binding names a `Network`, and only Wi-Fi ones are tracked, so binding a target on another
+  interface — Ethernet, tethering, a VPN — would pin it to the wrong routing table. SSDP binds
+  unconditionally; its target is a multicast group and the binding is what picks the interface. Without the binding the connection takes the default network, which beside active
   mobile data is not the Wi-Fi, and under Local Network Protection it is refused outright. Never
   `ConnectivityManager.bindProcessToNetwork()`: it applies process-wide. Without a Wi-Fi the socket
   stays unbound, as it always has — what is new is that the reconnect loop asks

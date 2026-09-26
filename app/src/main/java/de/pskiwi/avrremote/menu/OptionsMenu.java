@@ -242,16 +242,9 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 						: pageURL;
 				activity.runOnUiThread(new Runnable() {
 					public void run() {
-						final ProgressDialog progress = websiteProgress;
-						websiteProgress = null;
-						// dismiss() wirft erst, wenn das Fenster der Activity
-						// weg ist. Pausiert ist nicht weg: hier auf
-						// isShowing() zu prüfen ließe den Dialog, der sich
-						// nicht abbrechen lässt, für immer stehen
-						if (!activity.isFinishing()
-								&& !activity.isDestroyed()) {
-							progress.dismiss();
-						}
+						// Kann schon weg sein: contextPaused() räumt ihn ab,
+						// sobald die Activity pausiert - siehe dort.
+						dismissWebsiteProgress();
 						openURL(url);
 					}
 				});
@@ -259,9 +252,46 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 		}.start();
 	}
 
+	/**
+	 * Fortschrittsdialog der Website-Prüfung schließen, falls einer steht.
+	 *
+	 * Wird auch aus onPause() der beiden Activities gerufen, die dieses Menü
+	 * halten, und das ist der Punkt: die Prüfung läuft bis in die Timeouts von
+	 * HTTPSupport, und eine Drehung in diesem Fenster zerstört die Activity mit
+	 * dem Dialog daran. Ohne das Abräumen meldet das Framework beim Zerstören
+	 * einen WindowLeaked, und der Dialog wäre ohnehin verloren - die neue
+	 * Activity hat ein neues OptionsMenu mit leerem Feld.
+	 */
+	public void contextPaused() {
+		dismissWebsiteProgress();
+	}
+
+	private void dismissWebsiteProgress() {
+		final ProgressDialog progress = websiteProgress;
+		websiteProgress = null;
+		if (progress == null) {
+			return;
+		}
+		try {
+			progress.dismiss();
+		} catch (Exception x) {
+			// dismiss() wirft, wenn das Fenster der Activity schon weg ist.
+			// Der Dialog ist dann mit ihm verschwunden, es bleibt nichts zu tun.
+			Logger.debug("dismiss failed " + x);
+		}
+	}
+
 	private void openURL(String url) {
 		final Intent i = new Intent(Intent.ACTION_VIEW);
 		i.setData(Uri.parse(url));
+		if (activity.isFinishing() || activity.isDestroyed()) {
+			// Nach einer Drehung gehört die Anfrage einer Activity, die es
+			// nicht mehr gibt. Über den Application-Context geht sie trotzdem
+			// auf - sonst hätte der Anwender getippt und bekäme nichts.
+			i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			activity.getApplicationContext().startActivity(i);
+			return;
+		}
 		activity.startActivity(i);
 	}
 

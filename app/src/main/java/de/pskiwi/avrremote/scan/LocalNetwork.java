@@ -132,25 +132,45 @@ public final class LocalNetwork {
 	}
 
 	/**
-	 * Socket an das WLAN binden, vor dem connect(). Ohne Bindung nimmt der
-	 * Verbindungsaufbau das Default-Netz, und das ist neben aktivem Mobilfunk
-	 * nicht das WLAN - der Receiver ist dann ueber Mobilfunk zu suchen und die
-	 * Verbindung scheitert. Genau das Szenario, das die Netzerkennung hier
-	 * muehsam als "verbunden" erkennt.
+	 * Socket an das WLAN binden, vor dem connect() - aber nur fuer ein Ziel, das
+	 * im WLAN selbst liegt. Ohne Bindung nimmt der Verbindungsaufbau das
+	 * Default-Netz, und das ist neben aktivem Mobilfunk nicht das WLAN; der
+	 * Receiver waere dann ueber Mobilfunk zu suchen und die Verbindung
+	 * scheitert. Genau das Szenario, das die Netzerkennung hier muehsam als
+	 * "verbunden" erkennt.
 	 *
-	 * Ist kein WLAN bekannt, bleibt der Socket ungebunden: der Aufrufer kommt
-	 * sonst gar nicht mehr zum Zug, und ungebunden ist nicht hoffnungslos -
-	 * siehe {@link #mayConnect(String)}. Wer wiederholt aufbaut, fragt vorher
-	 * dort; hier wird nichts verweigert.
+	 * Die Einschraenkung auf das eigene Subnetz ist kein Detail: gebunden wird
+	 * an ein Network, und {@link #register} fragt nur TRANSPORT_WIFI ab. Ein
+	 * Receiver, der an einer anderen direkt angeschlossenen Schnittstelle haengt
+	 * - Ethernet im Dock oder am Fernseher, Tethering, ein VPN -, waere mit
+	 * Bindung auf die WLAN-Routingtabelle festgenagelt und unerreichbar, obwohl
+	 * ihn ein ungebundener Socket nach Ziel erreicht. Das Binden nuetzt nur
+	 * dort, wo das Ziel im WLAN liegt, und genau dort wird es getan.
+	 *
+	 * Ist kein WLAN bekannt oder das Ziel nicht darin, bleibt der Socket
+	 * ungebunden: der Aufrufer kommt sonst gar nicht mehr zum Zug, und
+	 * ungebunden ist nicht hoffnungslos - siehe {@link #mayConnect(String)}. Wer
+	 * wiederholt aufbaut, fragt vorher dort; hier wird nichts verweigert.
 	 */
-	public static void bind(Socket socket) throws IOException {
+	public static void bind(Socket socket, InetAddress target)
+			throws IOException {
 		final Network n = boundNetwork;
-		if (n != null) {
+		if (n != null && isInBoundNetwork(target)) {
 			n.bindSocket(socket);
 		}
 	}
 
-	/** Wie {@link #bind(Socket)}, fuer den SSDP-Suchlauf. */
+	/** Wie {@link #bind(Socket, InetAddress)}, fuer einen Host aus der Konfiguration. */
+	public static void bind(Socket socket, String host) throws IOException {
+		bind(socket, resolve(host));
+	}
+
+	/**
+	 * Fuer den SSDP-Suchlauf, und als einziger Aufruf ohne Ziel bedingungslos:
+	 * das Ziel ist die Multicast-Gruppe 239.255.255.250, die in keinem Subnetz
+	 * liegt. Ueber welche Schnittstelle die M-SEARCH hinausgeht, entscheidet
+	 * genau diese Bindung - ohne sie sucht der Suchlauf im Default-Netz.
+	 */
 	public static void bind(DatagramSocket socket) throws IOException {
 		final Network n = boundNetwork;
 		if (n != null) {
@@ -158,10 +178,43 @@ public final class LocalNetwork {
 		}
 	}
 
-	/** Wie {@link #bind(Socket)}, fuer das HTTP-Scraping. */
+	/** Wie {@link #bind(Socket, InetAddress)}, fuer das HTTP-Scraping. */
 	public static URLConnection openConnection(URL url) throws IOException {
 		final Network n = boundNetwork;
-		return n != null ? n.openConnection(url) : url.openConnection();
+		if (n != null && isInBoundNetwork(resolve(url.getHost()))) {
+			return n.openConnection(url);
+		}
+		return url.openConnection();
+	}
+
+	/** Liegt das Ziel im Subnetz des gebundenen WLANs ? */
+	private static boolean isInBoundNetwork(InetAddress target) {
+		if (!(target instanceof Inet4Address)) {
+			// Nicht aufloesbar, oder IPv6, das der Prefix-Vergleich nicht
+			// beurteilt: nicht binden. Ein Ziel, das es nicht gibt, ist auch
+			// gebunden nicht zu erreichen.
+			return false;
+		}
+		final LinkProperties properties = linkProperties;
+		if (properties == null) {
+			return false;
+		}
+		for (LinkAddress address : properties.getLinkAddresses()) {
+			if (address.getAddress() instanceof Inet4Address
+					&& sameSubnet(address.getAddress().getAddress(),
+							target.getAddress(), address.getPrefixLength())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static InetAddress resolve(String host) {
+		try {
+			return InetAddress.getByName(host);
+		} catch (UnknownHostException x) {
+			return null;
+		}
 	}
 
 	/**
@@ -440,7 +493,10 @@ public final class LocalNetwork {
 	// im Prozess, auch auf Verbindungen, die gar nicht ins lokale Netz gehen.
 	// Auf dem Binder-Thread des Callbacks geschrieben, von jedem Thread gelesen.
 	private static volatile Network boundNetwork;
-	private volatile LinkProperties linkProperties;
+	// Statisch aus demselben Grund wie boundNetwork daneben: bind() ist
+	// statisch und braucht das Praefix, um ein Ziel im WLAN von einem ausserhalb
+	// zu unterscheiden. Geschrieben wird beides im selben Callback.
+	private static volatile LinkProperties linkProperties;
 	private volatile Handler handler;
 	private volatile IWiFiListener listener;
 	/**
