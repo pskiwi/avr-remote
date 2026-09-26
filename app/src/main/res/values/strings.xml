@@ -153,9 +153,8 @@
 	<string name="SettingPDA">Receiver website</string>
 	<string name="SettingPDASummary">Receiver website (http://avraddress/$value$)</string>
 	<string name="UseMobileNetwork">Use mobile network</string>
-	<string name="UseMobileNetworkSummary">Keep trying even when the receiver address is not in a
-		network this device is attached to. Needed for a receiver reachable from outside, over a
-		forwarded port or a VPN - otherwise every attempt runs into a timeout.
+	<string name="UseMobileNetworkSummary">Keep trying when the receiver address is in no local
+		network - needed for a receiver reachable from outside (VPN, forwarded port).
 	</string>
 
 	<string name="SettingModelSummary">Receiver model : $value$</string>

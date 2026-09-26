@@ -25,6 +25,20 @@ receiver allows exactly one telnet session, so `ECONNREFUSED` on port 23 says no
 code — `reachable` is the signal that tracks LNP — and `RESTRICT_LOCAL_NETWORK` via `am compat` does
 not reach the hints, which are gated on `targetSdkVersion`.
 
+The switch that stops the reconnect loop from dialling into the mobile network was verified the same
+way on 2026-09-26, Wi-Fi off with mobile data on. What the log shows: the interfaces are
+`wlan0:192.168.10.119/24 rmnet1:10.17.65.161/32`, so the cellular interface is a **/32** and no LAN
+address can fall inside it; every round is then skipped with one line
+(`… is in no local subnet [rmnet1:10.17.65.161/32] …`) instead of 2.5 s of connect timeout plus a
+second of `checkAddress`; a cold start in that state still defines `Connected` through the
+`Reachable=false` of the skipped round, so the assistant shows "WLAN ist nicht aktiviert" — that is
+the load-bearing half of the guard and it was seen on the device; Wi-Fi returning drives
+`triggerReconnect()` within a second rather than waiting out the 16 s backoff; and with the switch on
+the old behaviour returns verbatim, `SocketTimeoutException … from /10.17.65.161 … after 2500ms` once
+per round. One thing to know when repeating this: the receiver holds its single telnet session for a
+while after the Wi-Fi drops, so the reconnect afterwards runs into `ECONNREFUSED` and the
+control-port dialog, which says nothing about any of the above.
+
 What is left is the part no build can answer.
 
 - [ ] **The one case still untested: mobile data on beside a Wi-Fi without internet.** That is what
@@ -75,27 +89,16 @@ What is left is the part no build can answer.
       exactly what the surrounding comments decided against, so it needs a case first — a captured
       log with the same error repeating would be one.
 
-- [ ] **The "Use mobile network" switch is verified on the desktop JVM only.** It is the fix for the
-      burnt reconnect rounds without a Wi-Fi (`LocalNetwork.mayConnect(String)`, the guard at the top
-      of `ResilentConnector.Reconnector.run()`, the preference in `res/xml/settings.xml`); the
-      reasoning is in [CONNECTION.md](CONNECTION.md) → *One network callback*. `LocalNetworkTest`
-      covers the prefix arithmetic, and the enumeration behind it is no longer a guess either: on an
-      Android 17 emulator the startup line reads `LocalNetwork: interfaces eth0:10.0.2.15/24
-      wlan0:10.0.2.17/24` — so `NetworkInterface` works there, and it reports an Ethernet interface
-      that the Wi-Fi-only callback never mentions, which is the whole argument for asking about the
-      address. What is still unseen is a **cellular** interface: whether it appears with a prefix that
-      excludes a LAN address, as the measurement suggests, or with something wide enough to contain
-      one. Getting that wrong costs a timeout, not reachability — everything in the gate fails open.
-
-      What to check: Wi-Fi off with mobile data on should log
-      `... is in no local subnet [rmnet_data0:10.x.x.x/30] and mobile is disabled -> no attempt` once
-      per backoff round and nothing else — no `SocketTimeoutException` from a carrier address — while
-      the assistant still says "WLAN nicht aktiv", which depends on the skipped round setting
-      `Reachable` false so that `Connected` becomes *defined*. With the switch on, the old behaviour
-      must come back verbatim. Neither of the two cases the address test exists for can be produced
-      here: a receiver behind DynDNS or a VPN (what the switch is for, never reported by anyone), and
-      a device whose local network arrives over Ethernet or its own hotspot. Those now ride along in
-      every feedback report as the `IPv4` line, so a report answers them by itself.
+- [ ] **Two cases behind the "Use mobile network" switch that no hardware here can produce.** The
+      switch and the address test behind it (`LocalNetwork.mayConnect(String)`, the guard at the top
+      of `ResilentConnector.Reconnector.run()`) were verified on a Pixel 8 against an AVR-3310 on
+      2026-09-26 — see the paragraph above. What that run could not touch: a receiver reachable only
+      from outside, over a VPN or a forwarded port, which is what the switch exists for and which
+      nobody has ever reported using; and a device whose local network arrives over **Ethernet** or
+      its own hotspot, where `boundNetwork` is null although the receiver is reachable. The second is
+      the reason the gate asks about the address rather than about the default network's transport,
+      and both now answer themselves in the field: every feedback report carries the `IPv4` line, and
+      every log the startup line `LocalNetwork: interfaces …`. A report showing `eth0:…` settles it.
 
 ## Structural
 
