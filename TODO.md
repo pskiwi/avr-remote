@@ -79,7 +79,9 @@ What is left is the part no build can answer.
       cycles, airplane mode, Data Saver on a metered Wi-Fi in the background). Closed by removal, not
       by understanding; worth knowing if something similar turns up in `LocalNetwork`.
 - [ ] **`Connector.Receiver.run()` logs a read error and tries again, without closing anything**
-      (`core/Connector.java:168`). Predates the read watchdog, which only covers the timeout path.
+      (`core/Connector.java:175`). Predates the read watchdog, which only covers the timeout path.
+      Only the `IOException` arm is meant here — the `catch (Exception)` beside it is new and does its
+      job, keeping an unchecked throw from taking the receive path down.
       An `IOException` that persists — a `Software caused connection abort` on a socket whose
       `isClosed()` is still false — would be thrown again immediately by the next `read()`, so the
       thread spins at full speed, `closeSignal` never counts down, and `ResilentConnector` stays
@@ -95,10 +97,24 @@ What is left is the part no build can answer.
       2026-09-26 — see the paragraph above. What that run could not touch: a receiver reachable only
       from outside, over a VPN or a forwarded port, which is what the switch exists for and which
       nobody has ever reported using; and a device whose local network arrives over **Ethernet** or
-      its own hotspot, where `boundNetwork` is null although the receiver is reachable. The second is
-      the reason the gate asks about the address rather than about the default network's transport,
-      and both now answer themselves in the field: every feedback report carries the `IPv4` line, and
-      every log the startup line `LocalNetwork: interfaces …`. A report showing `eth0:…` settles it.
+      its own hotspot.
+
+      That second case has to clear **two** gates, and both are unverified. The address test lets it
+      through because the receiver is in a subnet the device is attached to, and `bind()` leaves the
+      socket unbound because the target is not in the Wi-Fi's own prefix — the latter was the whole
+      point of that fix, since binding to the Wi-Fi would have pinned such a socket to the wrong
+      routing table. Both answer themselves in the field: every feedback report carries the `IPv4`
+      line, every log the startup line `LocalNetwork: interfaces …`. A report showing `eth0:…`
+      settles whether such devices are out there at all.
+
+- [ ] **A scan that finishes while the app is in the background strands its dialog.**
+      `AVRScanner`'s `onPostExecute` does everything inside `if (showing.isShowing())`
+      (`scan/AVRScanner.java:224`), `progress.dismiss()` included, and the sweep runs for minutes.
+      Press Home during one and come back: a "Scanning network" dialog that cannot be cancelled
+      (`ProgressDialog.show(…, true, false)` at `:183`), no result, no error — and
+      `ConfigurationAssistant.visible` stays true, so the assistant says nothing for the rest of that
+      activity's life. The guard predates the LNP work; what makes it worth an entry now is that the
+      same method gained a cancel path (`scanIP`'s `setOnCancelListener`) which this defeats.
 
 ## Structural
 
@@ -199,6 +215,9 @@ What is left is the part no build can answer.
       `res/drawable/icon_small.png` (32×32) is the last leftover of the old 2010 icon and is
       referenced nowhere.
 - [ ] `misc/file-copyright.txt` is referenced by nothing since `misc/add-copyright.sh` was deleted.
+- [ ] `LocalNetwork.getNetwork()` has no callers. It predates the binding helpers — everything that
+      needs the `Network` now goes through `bind()` or `openConnection()`, which hold it themselves.
+      Left in place rather than deleted, like the rest of the dead code in this section.
 - [ ] **`ScreenInfo` measures the window, not the display.** The class builds its diagonal from
       `getDefaultDisplay().getMetrics()` (`ScreenInfo.java:28-33`), and every caller hands it an
       Activity — so in multi-window the numbers describe the activity's window, which is exactly why

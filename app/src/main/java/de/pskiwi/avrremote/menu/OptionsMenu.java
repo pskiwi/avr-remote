@@ -221,9 +221,16 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 		// Die Prüfung läuft bis in die Timeouts von HTTPSupport, wenn der
 		// Receiver aus ist. Solange nur ein Dialog: ohne ihn wirkt der
 		// Menüpunkt tot, und jeder weitere Tipp öffnete einen Browser mehr.
-		if (websiteProgress != null) {
+		//
+		// Der Einzelflug hängt am eigenen Merkmal und nicht am Dialog:
+		// contextPaused() räumt den Dialog bei jeder Pause ab, auch bei einer,
+		// die der Anwender übersteht - Bildschirm aus und wieder an. Am Dialog
+		// gemessen wäre die Sperre danach weg, und der nächste Tipp startete
+		// eine zweite Prüfung mit einem zweiten Browser am Ende.
+		if (websiteCheckRunning) {
 			return;
 		}
+		websiteCheckRunning = true;
 		websiteProgress = ProgressDialog.show(activity,
 				activity.getString(R.string.PleaseWait),
 				activity.getString(R.string.OpeningReceiverWebsite), true,
@@ -242,16 +249,10 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 						: pageURL;
 				activity.runOnUiThread(new Runnable() {
 					public void run() {
-						final ProgressDialog progress = websiteProgress;
-						websiteProgress = null;
-						// dismiss() wirft erst, wenn das Fenster der Activity
-						// weg ist. Pausiert ist nicht weg: hier auf
-						// isShowing() zu prüfen ließe den Dialog, der sich
-						// nicht abbrechen lässt, für immer stehen
-						if (!activity.isFinishing()
-								&& !activity.isDestroyed()) {
-							progress.dismiss();
-						}
+						websiteCheckRunning = false;
+						// Kann schon weg sein: contextPaused() räumt ihn ab,
+						// sobald die Activity pausiert - siehe dort.
+						dismissWebsiteProgress();
 						openURL(url);
 					}
 				});
@@ -259,9 +260,46 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 		}.start();
 	}
 
+	/**
+	 * Fortschrittsdialog der Website-Prüfung schließen, falls einer steht.
+	 *
+	 * Wird auch aus onPause() der beiden Activities gerufen, die dieses Menü
+	 * halten, und das ist der Punkt: die Prüfung läuft bis in die Timeouts von
+	 * HTTPSupport, und eine Drehung in diesem Fenster zerstört die Activity mit
+	 * dem Dialog daran. Ohne das Abräumen meldet das Framework beim Zerstören
+	 * einen WindowLeaked, und der Dialog wäre ohnehin verloren - die neue
+	 * Activity hat ein neues OptionsMenu mit leerem Feld.
+	 */
+	public void contextPaused() {
+		dismissWebsiteProgress();
+	}
+
+	private void dismissWebsiteProgress() {
+		final ProgressDialog progress = websiteProgress;
+		websiteProgress = null;
+		if (progress == null) {
+			return;
+		}
+		try {
+			progress.dismiss();
+		} catch (Exception x) {
+			// dismiss() wirft, wenn das Fenster der Activity schon weg ist.
+			// Der Dialog ist dann mit ihm verschwunden, es bleibt nichts zu tun.
+			Logger.debug("dismiss failed " + x);
+		}
+	}
+
 	private void openURL(String url) {
 		final Intent i = new Intent(Intent.ACTION_VIEW);
 		i.setData(Uri.parse(url));
+		if (activity.isFinishing() || activity.isDestroyed()) {
+			// Nach einer Drehung gehört die Anfrage einer Activity, die es
+			// nicht mehr gibt. Über den Application-Context geht sie trotzdem
+			// auf - sonst hätte der Anwender getippt und bekäme nichts.
+			i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			activity.getApplicationContext().startActivity(i);
+			return;
+		}
 		activity.startActivity(i);
 	}
 
@@ -282,6 +320,8 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 
 	/** Läuft gerade eine Prüfung? Nur vom UI-Thread angefasst. */
 	private ProgressDialog websiteProgress;
+	/** Läuft gerade eine Website-Prüfung ? Nur vom Main-Thread angefasst. */
+	private boolean websiteCheckRunning;
 
 	private final Activity activity;
 	private final ModelConfigurator configurator;

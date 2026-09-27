@@ -402,13 +402,25 @@ Two details there are answers to real failures, not taste:
   thread change is not a free ride-along. The `Handler` overload of `registerNetworkCallback` would
   be the direct way to say it, and is API 26.
 
-Everything that opens a socket to the receiver binds it to that `Network` first —
-`core/Connector` (telnet 23), `http/HTTPSupport` (both entry points, via `Network.openConnection`),
+Everything that opens a socket to the receiver goes through `LocalNetwork` — `core/Connector`
+(telnet 23), `http/HTTPSupport` (both entry points, via `Network.openConnection`),
 `scan/AVRTargetTester` and the SSDP socket. Without the binding, `connect()` takes the default
 network, which beside active mobile data is *not* the Wi-Fi, and the receiver is unreachable in
 exactly the case the paragraph above works so hard to recognise. `bindSocket` per socket, never
 `bindProcessToNetwork()` — the latter applies to the whole process, including connections that have
 no business on the local network.
+
+**A unicast socket is bound only when its target lies in the Wi-Fi's own subnet.** The binding names
+a `Network`, and `register()` tracks Wi-Fi ones only, so binding says "reach this through the Wi-Fi's
+routing table" — right for a receiver on the Wi-Fi, wrong for one on any other directly connected
+interface. Ethernet in a dock or on a TV device, USB or Wi-Fi tethering, a VPN: there an unbound
+socket is routed to the correct interface by destination, while a bound one is pinned to the Wi-Fi
+and fails. Binding earns its keep in exactly one case — the receiver is on the Wi-Fi and the Wi-Fi is
+not the default network — and that case is what `isInBoundNetwork()` tests, with the prefix from
+`LinkProperties` and the same `sameSubnet()` the reconnect loop uses. An unresolvable host, an IPv6
+address or a missing prefix all mean "do not bind": what cannot be shown to be inside stays outside.
+The SSDP socket is the exception and binds unconditionally, because its target is the multicast group
+`239.255.255.250`, which lies in no subnet — there the binding *is* the interface choice.
 
 **What the binding cannot do is make an unreachable address reachable.** With no Wi-Fi the socket
 stays unbound and follows the default route; beside active mobile data that is the mobile network,
