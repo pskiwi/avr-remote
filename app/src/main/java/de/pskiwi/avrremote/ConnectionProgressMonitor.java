@@ -45,7 +45,7 @@ public final class ConnectionProgressMonitor implements IStatusListener {
 		}
 
 		Logger.setLocation("startProgressDialog-1");
-		connectProgress = ProgressDialog.show(activity, activity.getString(R.string.PleaseWait),
+		final ProgressDialog progress = ProgressDialog.show(activity, activity.getString(R.string.PleaseWait),
 				activity.getString(R.string.TryingToConnect), true, true,
 				new DialogInterface.OnCancelListener() {
 					public void onCancel(DialogInterface dialog) {
@@ -53,14 +53,17 @@ public final class ConnectionProgressMonitor implements IStatusListener {
 						checkReceiverStatus();
 					}
 				});
+		connectProgress = progress;
 
+		// Nur der eigene Dialog: ein Timer, der einen spaeteren schliesst,
+		// kaeme dessen 33 s zuvor und riefe den Assistenten zu frueh.
 		handler.postDelayed(new Runnable() {
 			public void run() {
 				Logger.setLocation("startProgressDialog-3");
-				if (!paused && connectProgress != null
-						&& connectProgress.isShowing()) {
+				if (!paused && connectProgress == progress
+						&& progress.isShowing()) {
 					Logger.setLocation("startProgressDialog-4");
-					connectProgress.dismiss();
+					progress.dismiss();
 					checkReceiverStatus();
 				}
 			}
@@ -90,8 +93,28 @@ public final class ConnectionProgressMonitor implements IStatusListener {
 		startProgressDialog();
 	}
 
+	/**
+	 * Schliesst den Dialog, statt ihn ueber die Pause zu retten. Sonst verfaellt
+	 * der 33-s-Timer, falls er in die Pause faellt - er tut dann bewusst nichts
+	 * -, und nach dem Resume sieht startProgressDialog() den noch offenen Dialog
+	 * und stellt keinen neuen: der Kreisel stand dann fuer immer, und der
+	 * Hinweis des Assistenten kam nie. Erreichbar schon beim ersten Start - der
+	 * System-Dialog der Permission pausiert die Activity, und wer ihn laenger
+	 * als 33 s liest und ablehnt, sah den Hinweis zur Ablehnung nicht.
+	 * checkOnResume() baut einen neuen mit frischem Timer.
+	 */
 	public void doPause() {
 		paused = true;
+		final ProgressDialog progress = connectProgress;
+		connectProgress = null;
+		if (progress != null) {
+			try {
+				progress.dismiss();
+			} catch (Exception x) {
+				// Fenster schon weg - dann ist der Dialog es auch
+				Logger.debug("progress dismiss failed " + x);
+			}
+		}
 	}
 
 	public void statusChanged(ReceiverStatus currentStatus) {

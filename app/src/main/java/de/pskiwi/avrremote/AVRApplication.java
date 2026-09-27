@@ -61,14 +61,17 @@ public final class AVRApplication extends Application {
 			Logger.info("AVRApplication.Wifi connected:" + newConnected + " "
 					+ activeHandler + " " + enableManager);
 
-			// Nur falls aktiv, Reconnect auslösen
-			if (activeHandler.isActive()) {
-				if (newConnected != connected) {
-					connected = newConnected;
-					Logger.info("Wifi-Connection State changed:" + newConnected);
-					if (connected) {
-						connector.triggerReconnect();
-					}
+			// Den Stand immer nachfuehren, den Reconnect nur ausloesen, wenn
+			// aktiv. Frueher lief beides nur im aktiven Zustand: fiel das WLAN
+			// im Hintergrund weg, blieb connected auf true, und kam es danach
+			// im Vordergrund zurueck, sah das hier wie "keine Aenderung" aus -
+			// der Reconnect wartete dann den Backoff ab, bis zu 16 s. Im
+			// Hintergrund braucht es keinen: onResume ruft forceReconnect.
+			if (newConnected != connected) {
+				connected = newConnected;
+				Logger.info("Wifi-Connection State changed:" + newConnected);
+				if (connected && activeHandler.isActive()) {
+					connector.triggerReconnect();
 				}
 			}
 		}

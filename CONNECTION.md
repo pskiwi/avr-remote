@@ -546,9 +546,11 @@ is not scan-less, it is dead.
 The permission is declared in the manifest and requested by
 `AVRSettings.requestLocalNetworkPermission()`, from `AVRRemote.onCreate` (gated on
 `savedInstanceState == null`) and again from `AVRScanner.scanIP()`, because the scan is reachable
-from the options menu and the setup assistant without `AVRRemote` having started. A rationale
-dialog appears only when Android asks for one, i.e. after a previous refusal. On a grant the
-connector is told to reconnect, because the attempt made at startup went nowhere.
+from the options menu and the setup assistant without `AVRRemote` having started. There is no
+rationale dialog of the app's own — the reasons are in the comment at the request. On a grant the
+connector is told to reconnect, from `AVRRemote` and `OnScreenDisplayActivity` alike, because the
+attempts made without it went nowhere; and if no address is configured yet, the grant came from the
+setup's scan, so the assistant reopens its IP dialog.
 
 **LNP blocks silently.** Measured on a Pixel 8 with the restriction forced on: without the
 permission the socket does not fail, it is swallowed — `InetAddress.isReachable()` says false and
@@ -558,11 +560,13 @@ permission. Left alone, the app would show its ordinary "not reachable" state an
 which reads as "receiver switched off or wrong IP" — the one diagnosis that sends a user looking in
 entirely the wrong place. Hence two deliberate hints:
 
-- `AVRRemote.onRequestPermissionsResult` shows the reason when the request is *refused*, and
+- `ConfigurationAssistant.checkStatus()` explains the block once the connection attempt has
+  failed, with a button to the app info page — the only way back after a final refusal; the main
+  menu has the same entry; and
 - `AVRScanner.scan()` refuses to start and says why, instead of letting the user watch a
   progress dialog for ten seconds before "no receiver found".
 
-A third one is where users actually meet it: `ConfigurationAssistant.checkStatus()` used to see
+The first is where users actually meet it. `ConfigurationAssistant.checkStatus()` used to see
 `WLAN` true and `Reachable` false and announce that the configured address was invalid, offering a
 scan that could not work either — while the address was perfectly correct. Under LNP `Reachable` is
 always false, because both the ping and the port-80 probe go nowhere. That is the dialog a user sees
@@ -581,14 +585,20 @@ whether the permission is missing. That was written while the target was still 3
 permission is absent without consequence and a warning about it would have been simply wrong;
 reading the target from the running package rather than from a constant is what armed the hints by
 itself on the day `build.gradle` moved to 37. `AVRSettings.requestLocalNetworkPermission()` carries
-the same condition, so the app does not spend the user's one refusal on a permission that cannot yet
-do anything.
+the same condition, so the app does not spend the user's refusals — the second one is final — on a
+permission that cannot yet do anything.
 
 To exercise the blocked state now, take the permission away:
 
 ```sh
 adb shell pm revoke de.pskiwi.avrremote android.permission.ACCESS_LOCAL_NETWORK
 ```
+
+`pm revoke` keeps the permission's `USER_SET`/`USER_FIXED` flags from earlier answers, and so does
+`pm grant`. A test that wants Android's own sequence — first refusal asks again, second is final,
+the back key counts as a refusal — has to start from `pm clear-permission-flags de.pskiwi.avrremote
+android.permission.ACCESS_LOCAL_NETWORK user-set user-fixed` and grant through the app info page,
+not `pm grant`. Without that, a single refusal can already come back as final.
 
 Measured on a Pixel 8 that way in September 2026: `Reconnector:reachable ... : false` while the
 receiver is plainly there, the assistant explains it instead of blaming the address, and the scan

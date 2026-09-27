@@ -63,6 +63,28 @@ What is left is the part no build can answer.
       `IPv4` line. It needs no device to fix once such a log exists — widen `refusedByVpn()` to the
       errno it shows.
 
+- [ ] **A restored `AVRRemote` never asks for the permission again.** The request in `onCreate` is
+      gated on `savedInstanceState == null`, so after a revoke in the settings — which kills the
+      process — the way back through recents restores the activity and nothing asks, although the
+      system dialog would still appear. The user is not stuck: the assistant's hint and the menu
+      entry lead to the app info page. Asking in the restore branch is not the fix, because a
+      rotation during the system dialog would then fire a second request that Android answers with
+      empty results; it needs its own "request pending" bookkeeping, e.g. in `onResume`.
+- [ ] **Two Wi-Fi networks at once would leave `boundNetwork` null.** `LocalNetwork` keeps the last
+      `onAvailable` and clears on `onLost` of that one. With A and B both up (STA+STA,
+      make-before-break, another app's local-only network), losing B leaves A unused and
+      `StatusFlag.WLAN` false until the Wi-Fi changes again. Not seen in any log; a report with two
+      `LocalNetwork: WiFi available` lines without a `lost` between them would confirm it. The fix
+      is a set of available Wi-Fi networks with a fallback on `onLost`.
+- [ ] **Auto-revoke with a stale asked marker.** The marker is only cleared when
+      `requestLocalNetworkPermission()` sees the permission granted. Refused once, granted later in
+      the settings, then only restored starts, then revoked for disuse: if that revoke also resets
+      the rationale flag, the app takes it for a final refusal and never asks. The hint's button
+      still leads out. Which flags the disuse revoke sets is unmeasured.
+- [ ] **The idle probe `PW?` is only measured on an AVR-3310.** A model that leaves it unanswered
+      in some state would see a healthy connection torn down and rebuilt about every 70 s — churn,
+      not a hang. A log full of `no answer to the probe` from an otherwise working setup is the sign.
+
 - [ ] **Select the model from `description.xml` instead of asking the user.** The description is
       now fetched and lands in the feedback report (`http/DeviceDescription`, see
       [CONNECTION.md](CONNECTION.md)); what is not done is acting on it. `<modelName>` is on an
@@ -94,7 +116,7 @@ What is left is the part no build can answer.
       cycles, airplane mode, Data Saver on a metered Wi-Fi in the background). Closed by removal, not
       by understanding; worth knowing if something similar turns up in `LocalNetwork`.
 - [ ] **`Connector.Receiver.run()` logs a read error and tries again, without closing anything**
-      (`core/Connector.java:175`). Predates the read watchdog, which only covers the timeout path.
+      (`core/Connector.java:168`). Predates the read watchdog, which only covers the timeout path.
       Only the `IOException` arm is meant here — the `catch (Exception)` beside it is new and does its
       job, keeping an unchecked throw from taking the receive path down.
       An `IOException` that persists — a `Software caused connection abort` on a socket whose
@@ -133,7 +155,7 @@ What is left is the part no build can answer.
 
 ## Structural
 
-- [ ] **Test coverage is fourteen JVM classes and no instrumentation tests.** The cheapest places to add
+- [ ] **Test coverage is fifteen JVM classes and no instrumentation tests.** The cheapest places to add
       more are `models/` (pure capability logic, no Android types) and `core/ZoneState.java`
       (1237 lines). `core/display/` is now part done: `NetDisplayTest` covers the line reader and
       `TunerDisplayTest` the frequency conversion, but the rest of `TunerDisplay` (presets, HD Radio,

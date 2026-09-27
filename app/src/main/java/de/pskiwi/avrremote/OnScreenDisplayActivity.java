@@ -20,6 +20,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import android.app.ListActivity;
+import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -301,6 +302,12 @@ public final class OnScreenDisplayActivity extends ListActivity implements
 		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 		if (requestCode == AVRSettings.REQUEST_ACCESS_LOCAL_NETWORK) {
 			AVRSettings.localNetworkPermissionResult(this, grantResults);
+			// wie in AVRRemote: der laufende Loop hat ohne die Permission ins
+			// Leere gewaehlt, und sein Backoff steht womoeglich schon auf 16 s
+			if (grantResults.length > 0
+					&& grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+				getApp().getConnector().triggerReconnect();
+			}
 		}
 	}
 
