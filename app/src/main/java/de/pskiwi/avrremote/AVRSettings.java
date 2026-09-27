@@ -171,6 +171,7 @@ public final class AVRSettings extends PreferenceActivity implements
 			// gefragt" und "keine Begruendung noetig" - und die App fragte nie
 			// wieder, obwohl der Dialog laengst wieder aufginge.
 			setLocalNetworkPermissionAsked(activity, false);
+			localNetworkDenial = null;
 			Logger.info("local network permission: granted");
 			return false;
 		}
@@ -187,6 +188,7 @@ public final class AVRSettings extends PreferenceActivity implements
 		// erlaubt heisst endgueltig abgelehnt.
 		if (isLocalNetworkPermissionAsked(activity)
 				&& !activity.shouldShowRequestPermissionRationale(permission)) {
+			localNetworkDenial = DENIED_FOR_GOOD;
 			Logger.info("local network permission: denied for good -> not asking");
 			return false;
 		}
@@ -232,11 +234,14 @@ public final class AVRSettings extends PreferenceActivity implements
 		// fuehrt nur noch die App-Info zurueck.
 		final String result;
 		if (granted) {
+			localNetworkDenial = null;
 			result = "granted";
 		} else if (activity.shouldShowRequestPermissionRationale(
 				android.Manifest.permission.ACCESS_LOCAL_NETWORK)) {
+			localNetworkDenial = DENIED_ASK_AGAIN;
 			result = "denied, Android will ask again";
 		} else {
+			localNetworkDenial = DENIED_FOR_GOOD;
 			result = "denied for good - only the app settings can grant it now";
 		}
 		Logger.info("local network permission result: " + result);
@@ -256,9 +261,29 @@ public final class AVRSettings extends PreferenceActivity implements
 			return "not enforced (SDK " + Build.VERSION.SDK_INT + ", target "
 					+ target + ")";
 		}
-		return (isLocalNetworkBlocked(ctx) ? "BLOCKED" : "granted")
-				+ " asked:" + isLocalNetworkPermissionAsked(ctx);
+		if (!isLocalNetworkBlocked(ctx)) {
+			return "granted asked:" + isLocalNetworkPermissionAsked(ctx);
+		}
+		final String denial = localNetworkDenial;
+		return "BLOCKED asked:" + isLocalNetworkPermissionAsked(ctx)
+				+ " denied:" + (denial == null ? "unknown" : denial);
 	}
+
+	/**
+	 * Ob eine Ablehnung endgueltig ist, weiss nur
+	 * shouldShowRequestPermissionRationale(), und das braucht eine Activity -
+	 * der Feedback-Bericht hat keine sicher, der Crash-Bericht nie. Deshalb
+	 * gemerkt, wo eine da ist: bei jedem Kaltstart in
+	 * requestLocalNetworkPermission() und bei jeder Antwort in
+	 * localNetworkPermissionResult(). Aendert der Anwender die Permission in
+	 * den Einstellungen, waehrend die App laeuft, bleibt der Wert bis zum
+	 * naechsten Aufruf alt; BLOCKED/granted daneben wird immer frisch gelesen.
+	 * null nach einem Prozessstart, bevor eine Activity gefragt hat - der
+	 * Bericht sagt dann "unknown".
+	 */
+	private static volatile String localNetworkDenial;
+	private static final String DENIED_FOR_GOOD = "for good";
+	private static final String DENIED_ASK_AGAIN = "will ask again";
 
 	/**
 	 * Bewusst eine Datei in getNoBackupFilesDir() und keine Einstellung: die

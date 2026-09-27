@@ -403,7 +403,7 @@ answer on its own. These lines are there for that:
 | --- | --- |
 | `IPv4` | every interface with its prefix — Ethernet or tethering show up here and nowhere else |
 | `WiFi` | whether a Wi-Fi is tracked, and its address and prefix |
-| `LocalNet` | `BLOCKED` / `granted` plus the asked marker, or `not enforced (SDK …, target …)` |
+| `LocalNet` | `BLOCKED` / `granted` plus the asked marker, or `not enforced (SDK …, target …)`; when blocked also `denied:for good` (only the app settings help), `will ask again` or `unknown` |
 | `Binding` | how the last socket to the Wi-Fi was set up — accepted, refused with `EPERM`, skipped and why, or none yet |
 | `CtrlPort` | `busy` if the last failed attempt found port 23 taken — decides the assistant's text |
 
