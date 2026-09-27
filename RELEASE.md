@@ -75,7 +75,7 @@ the alias CI actually signs with comes from the `KEY_ALIAS` secret and cannot be
    a new `<b>version</b>` block at the top of the list, with the version written exactly as in the
    tag but without the `v`. `AboutActivity` renders the file, and `AVRRemote` opens it automatically
    on the first start after an update, but only once a receiver is configured: the check at
-   `AVRRemote.java:118` is `getConnectionConfig().isDefined() && AVRSettings.isShowChangeLog(this)`.
+   `AVRRemote.java:139` is `getConnectionConfig().isDefined() && AVRSettings.isShowChangeLog(this)`.
    `isShowChangeLog()` compares `packageInfo.versionCode` against the stored `AVRLastVersionCode`
    preference, so **an unchanged `versionCode` means nobody ever sees the notes**.
 

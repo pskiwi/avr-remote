@@ -40,6 +40,7 @@ import de.pskiwi.avrremote.R;
 import de.pskiwi.avrremote.ScreenInfo;
 import de.pskiwi.avrremote.core.MacroManager;
 import de.pskiwi.avrremote.core.RenameService;
+import de.pskiwi.avrremote.core.ResilentConnector;
 import de.pskiwi.avrremote.http.DeviceDescription;
 import de.pskiwi.avrremote.scan.LocalNetwork;
 
@@ -65,12 +66,22 @@ public final class FeedbackReporter {
 		}
 	}
 
+	/**
+	 * @param includeLog Log mitschicken: im Logmodus "file" die Datei als
+	 *            Anhang, sonst die letzten Zeilen aus dem Ringpuffer im Text.
+	 *            Beides zusammen nicht - die Datei enthaelt den Puffer ohnehin.
+	 */
 	public static void sendFeedback(Context ctx, AVRApplication avr,
-			boolean attachLogs) {
+			boolean includeLog) {
 		final String xmlInfo = avr.getModelConfigurator().getXMLInfo();
-		sendMail(ctx, FEEDBACK_SUBJECT,
-				createInfoString(ctx, ctx.getString(R.string.FeedbackText))
-						+ "\n" + xmlInfo, attachLogs);
+		final boolean attachFile = includeLog && Logger.getSDLogger() != null;
+		String message = createInfoString(ctx,
+				ctx.getString(R.string.FeedbackText)) + "\n" + xmlInfo;
+		if (includeLog && !attachFile) {
+			message += "\n-----------------------\nLast log entries:\n"
+					+ Logger.getLastLogEntries();
+		}
+		sendMail(ctx, FEEDBACK_SUBJECT, message, attachFile);
 	}
 
 	public static void sendMail(Context ctx, String subject, String message,
@@ -164,12 +175,30 @@ public final class FeedbackReporter {
 			out.println("UPnP    : not available [" + x.getMessage() + "]");
 		}
 
+		try {
+			out.println("LocalNet: "
+					+ AVRSettings.describeLocalNetworkPermission(ctx));
+		} catch (Exception x) {
+			out.println("LocalNet: not available [" + x.getMessage() + "]");
+		}
+		// Aus dem Stand, nicht aus dem Log: die eine Zeile dazu ist im
+		// Ringpuffer nach ein paar Minuten Verbindung verdraengt
+		out.println("Binding : " + LocalNetwork.describeBinding());
+		// Der Befund aus dem letzten gescheiterten Verbindungsversuch - er
+		// entscheidet, welchen Text der ConfigurationAssistant zeigt. Der
+		// Connector kann fehlen: der Crash-Handler steht in
+		// AVRApplication.onCreate vor ihm.
+		final ResilentConnector connector = ((AVRApplication) ctx
+				.getApplicationContext()).getConnector();
+		out.println("CtrlPort: " + (connector == null ? "no connector"
+				: connector.isControlPortBusy() ? "busy" : "not busy"));
+
 		out.println("Log     : " + AVRSettings.getDebugMode(ctx));
 		out.println("Theme   : " + AVRSettings.getBackgroundTheme(ctx));
 		out.println("Rec.Set.: " + AVRSettings.isUseReceiverSettings(ctx));
 		out.println("Volume  : " + AVRSettings.getVolumeDisplay(ctx));
 		out.println("Napster : " + AVRSettings.isNapsterEnabled(ctx));
-		out.println("Notification   : " + AVRSettings.isNapsterEnabled(ctx));
+		out.println("Notification   : " + AVRSettings.isShowNotification(ctx));
 
 		out.println("-----------------------");
 		out.println("Model   : " + android.os.Build.MODEL);

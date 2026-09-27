@@ -381,6 +381,58 @@ Reconnector:connector stopped
 
 So: **a teardown line that is not followed by a new generation starting is the smell.**
 
+### What the network and permission lines tell you
+
+First, what arrives at all. The log mode defaults to `adb`, so there is no log file. What a feedback
+mail carries instead is the report header and — unless the user unticks *Include recent log lines*
+— the in-memory ring buffer at the end of the text (`Logger.RING_SIZE` lines, oldest first; crash
+reports carry it too). Its lines look like the file's, minus the `#seq` and with other level
+names — `DEBUG`/`INFO`/`ERROR` here, `FINE`/`WARNING` there:
+
+```
+2026-09-27  09:06:07.449 - ERROR : [ResilentThreadHandler-4] Reconnector:IOException [192.168.10.30] -> java.net.ConnectException: … ECONNREFUSED (Connection refused)
+```
+
+An error keeps its exception's type and message but no stack trace. The order is the order the
+entries reached the buffer, under one lock, which is good enough without a `#seq`. It covers
+minutes at most while a connection is up — every state query is dozens of `SEND`/`RECEIVED` lines
+— so for anything older, and for the header's snapshot of the network, the header still has to
+answer on its own. These lines are there for that:
+
+| header line | what it settles |
+| --- | --- |
+| `IPv4` | every interface with its prefix — Ethernet or tethering show up here and nowhere else |
+| `WiFi` | whether a Wi-Fi is tracked, and its address and prefix |
+| `LocalNet` | `BLOCKED` / `granted` plus the asked marker, or `not enforced (SDK …, target …)`; when blocked also `denied:for good` (only the app settings help), `will ask again` or `unknown` |
+| `Binding` | how the last socket to the Wi-Fi was set up — accepted, refused with `EPERM`, skipped and why, or none yet |
+| `CtrlPort` | `busy` if the last failed attempt found port 23 taken — decides the assistant's text |
+
+`LocalNet: BLOCKED` explains a log in which every connect times out and `reachable` stays false:
+under Local Network Protection that looks exactly like a receiver that is switched off.
+
+In a full log, these lines carry the same questions over time:
+
+| line | meaning |
+| --- | --- |
+| `LocalNetwork: WiFi available` / `lost` / `address arrived` | the callback; `lost` only for a Wi-Fi that was there |
+| `LocalNetwork: WiFi not present at startup` | the seed — no Wi-Fi was ever reported, nothing dropped |
+| `LocalNetwork: WiFi address changed from …` | new IPv4 address or prefix on the same Wi-Fi, e.g. roaming |
+| `binding accepted` / `binding refused with EPERM (VPN?)` | how sockets leave; logged on every change, the first one included |
+| `binding skipped: … outside the WiFi subnet` | the target was judged and is not in the Wi-Fi's prefix |
+| `binding skipped: the WiFi has no IPv4 address yet` / `… unresolvable or not IPv4` | not judged at all — says nothing about where the receiver is |
+| `local network permission: granted` / `requesting` / `denied for good -> not asking` | what the app did about the permission, once per start and per scan |
+| `local network permission result: granted` / `denied, Android will ask again` / `denied for good - …` | the answer to the request. From a fresh state the first denial asks again and the second is for good; the back key on the dialog counts as a denial. "For good" may come from Android itself, without a dialog |
+| `local network permission request was interrupted` | the dialog went away unanswered; the app asks again next time |
+| `assistant: opening app settings` / `menu: opening app settings` | the user went to the app info page — from the blocked-network hint's button, or from the main menu |
+| `Reconnector:connect failed, reachable:… controlPortBusy:…` | the verdict after a failed attempt |
+| `assistant: reset dialog, control port busy:…` / `assistant: local network blocked dialog` | which hint the user actually saw |
+| `testAddress failed <address>` | a probe — scan candidate or the reconnect loop's `checkAddress` — could not even try a port: usually a binding refused with an errno other than `EPERM`, or the ping itself threw |
+
+In the **file log**, no `binding …` line at all means no socket to the Wi-Fi was ever set up: either
+no Wi-Fi was tracked, or nothing has connected yet. In the ring buffer that conclusion does not
+hold — the one line is gone after a few minutes of connection — so read the `Binding` header line
+there instead, which comes from the state and not from the log.
+
 ## One network callback, and every socket bound to it
 
 `scan/LocalNetwork` is the only place that knows anything about the local network. It registers one

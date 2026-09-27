@@ -86,6 +86,10 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 		case R.id.itemInfo:
 			showAbout();
 			break;
+		case R.id.itemAndroidAppSettings:
+			Logger.info("menu: opening app settings");
+			AVRSettings.openAppSettings(activity);
+			break;
 		case R.id.itemProjectPage:
 			openProjectPage();
 			break;
@@ -155,20 +159,29 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 	}
 
 	private void sendFeedback() {
+		// Immer zu sehen, nicht nur im Logmodus "file": ohne Log-Datei gehen
+		// stattdessen die letzten Zeilen aus dem Ringpuffer in die Mail - und
+		// ohne die ist ein Bericht im Standardmodus nicht auszuwerten. Abwaehlbar,
+		// weil die Zeilen mehr enthalten als Technik: was der Receiver anzeigt,
+		// bei NET-Quellen also Titel, Kuenstler und Sender, die Suchbegriffe der
+		// NET-Suche (AVRHTTPClient.doSearch) und aus einem Suchlauf die
+		// SSDP-Antworten mit Adresse und USN - deren UUID traegt die MAC des
+		// Geraets, die DeviceDescription gerade deshalb auslaesst. Der Anwender sieht
+		// den Entwurf vor dem Senden. Der Crash-Bericht schickt denselben
+		// Puffer ohne diese Abwahl.
 		final CheckBox cb = new CheckBox(activity);
-		cb.setText(R.string.FeedbackAttachLogs);
+		cb.setText(Logger.getSDLogger() != null ? R.string.FeedbackAttachLogs
+				: R.string.FeedbackIncludeLogLines);
 		cb.setChecked(true);
 		AlertDialog.Builder builder = new AlertDialog.Builder(activity);
 		builder.setTitle(R.string.Confirm);
 		builder.setCancelable(true);
 		builder.setMessage(R.string.FeedbackQuestion);
-		if (Logger.getSDLogger() != null) {
-			builder.setView(cb);
-		}
+		builder.setView(cb);
 		builder.setPositiveButton(R.string.OK, new OnClickListener() {
 			public void onClick(DialogInterface dialog, int which) {
 				FeedbackReporter.sendFeedback(activity, getApp(),
-						cb.isChecked() && Logger.getSDLogger() != null);
+						cb.isChecked());
 			}
 		});
 		builder.setNegativeButton(R.string.Cancel, new OnClickListener() {

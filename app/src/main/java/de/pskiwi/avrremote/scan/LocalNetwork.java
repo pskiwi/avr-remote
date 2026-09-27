@@ -28,7 +28,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.net.UnknownHostException;
 import java.util.Enumeration;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import android.content.Context;
 import android.net.ConnectivityManager;
@@ -160,14 +160,14 @@ public final class LocalNetwork {
 	public static void bind(Socket socket, InetAddress target)
 			throws IOException {
 		final Network n = boundNetwork;
-		if (n != null && isInBoundNetwork(target)) {
+		if (n != null && belongsToWiFi(target)) {
 			try {
 				n.bindSocket(socket);
 			} catch (SocketException x) {
 				refusedByVpn(x);
 				return;
 			}
-			setBindingRefused(false);
+			setBinding(BINDING_ACCEPTED, ACCEPTED_TEXT);
 		}
 	}
 
@@ -191,7 +191,7 @@ public final class LocalNetwork {
 				refusedByVpn(x);
 				return;
 			}
-			setBindingRefused(false);
+			setBinding(BINDING_ACCEPTED, ACCEPTED_TEXT);
 		}
 	}
 
@@ -205,7 +205,7 @@ public final class LocalNetwork {
 	 */
 	public static URLConnection openConnection(URL url) throws IOException {
 		final Network n = boundNetwork;
-		if (n != null && isInBoundNetwork(resolve(url.getHost()))
+		if (n != null && belongsToWiFi(resolve(url.getHost()))
 				&& mayBind(n)) {
 			return n.openConnection(url);
 		}
@@ -219,8 +219,36 @@ public final class LocalNetwork {
 			refusedByVpn(x);
 			return false;
 		}
-		setBindingRefused(false);
+		setBinding(BINDING_ACCEPTED, ACCEPTED_TEXT);
 		return true;
+	}
+
+	/**
+	 * {@link #isInBoundNetwork(InetAddress)}, und haelt fest, warum ein Ziel
+	 * ungebunden bleibt. Ohne die Zeile saehe ein Log fuer ein Ziel ausserhalb
+	 * des WLANs genauso aus wie fuer eine erfolgreiche Bindung.
+	 *
+	 * "Ausserhalb" nur, wenn es wirklich beurteilt wurde: ein nicht
+	 * aufloesbares oder IPv6-Ziel und ein WLAN, dessen Adresse noch nicht da
+	 * ist - das Fenster zwischen onAvailable und DHCP -, sagen nichts darueber,
+	 * wo der Receiver steht. Als "outside" gemeldet, schickten sie einen Leser
+	 * auf die Suche nach einem falschen Subnetz.
+	 */
+	private static boolean belongsToWiFi(InetAddress target) {
+		if (isInBoundNetwork(target)) {
+			return true;
+		}
+		if (!(target instanceof Inet4Address)) {
+			setBinding(BINDING_BAD_TARGET, "skipped: target " + target
+					+ " is unresolvable or not IPv4 -> socket stays unbound");
+		} else if (wifiIPv4() == null) {
+			setBinding(BINDING_NO_ADDRESS,
+					"skipped: the WiFi has no IPv4 address yet -> socket stays unbound");
+		} else {
+			setBinding(BINDING_OUTSIDE, "skipped: " + target.getHostAddress()
+					+ " is outside the WiFi subnet -> socket stays unbound");
+		}
+		return false;
 	}
 
 	/**
@@ -244,22 +272,39 @@ public final class LocalNetwork {
 				|| ((ErrnoException) cause).errno != OsConstants.EPERM) {
 			throw x;
 		}
-		setBindingRefused(true);
+		setBinding(BINDING_REFUSED,
+				"refused with EPERM (VPN?) -> sockets stay unbound");
 	}
 
 	/**
-	 * Loggt nur den Wechsel: ein Suchlauf kommt hier rund tausendmal vorbei, aus
-	 * 16 Threads, und jede Zeile verdraengt eine der 25, die der
-	 * Feedback-Bericht aus dem Ringpuffer mitschickt. compareAndSet, damit
-	 * zwei Threads mit verschiedenen Antworten nicht den falschen Stand als
-	 * letzte Zeile hinterlassen.
+	 * Loggt nur den Wechsel, und zwar auch den ersten: ein Suchlauf kommt hier
+	 * rund tausendmal vorbei, aus 16 Threads, und das Log wuerde von einer
+	 * Zeile pro Socket zugeschuettet. Ohne die erste Meldung dagegen stuende
+	 * nirgends, ob ueberhaupt gebunden wurde - "gebunden", "Ziel ausserhalb
+	 * des WLANs" und "kein WLAN" saehen gleich aus.
+	 *
+	 * Der Text geht zusaetzlich nach {@link #describeBinding()}, weil die eine
+	 * Zeile im Ringpuffer nach ein paar Minuten Verbindung verdraengt ist.
+	 * Laufen zwei Threads mit verschiedenen Befunden gleichzeitig durch - im
+	 * Suchlauf moeglich -, kann die zuletzt geloggte Zeile vom Endstand
+	 * abweichen; der Bericht liest deshalb den Stand, nicht das Log.
 	 */
-	private static void setBindingRefused(boolean refused) {
-		if (bindingRefused.compareAndSet(!refused, refused)) {
-			Logger.info(refused
-					? "binding refused with EPERM (VPN?) -> sockets stay unbound"
-					: "binding accepted -> sockets bind to the WiFi");
+	private static void setBinding(int state, String text) {
+		bindingText = text;
+		if (binding.getAndSet(state) != state) {
+			Logger.info("binding " + text);
 		}
+	}
+
+	/**
+	 * Zuletzt festgestellter Umgang mit der Bindung, fuer den Kopf des
+	 * Feedback-Berichts: im Standard-Logmodus ist die Log-Zeile dazu meist
+	 * laengst aus dem Ringpuffer verdraengt, wenn jemand Feedback schickt.
+	 */
+	public static String describeBinding() {
+		final String text = bindingText;
+		return text == null ? "none yet (no socket to the WiFi was set up)"
+				: text;
 	}
 
 	/** Liegt das Ziel im Subnetz des gebundenen WLANs ? */
@@ -443,6 +488,10 @@ public final class LocalNetwork {
 
 	/** Eigene IPv4-Adresse samt Prefix-Länge, oder null. */
 	public LinkAddress getIPv4() {
+		return wifiIPv4();
+	}
+
+	private static LinkAddress wifiIPv4() {
 		final LinkProperties properties = linkProperties;
 		if (properties == null) {
 			return null;
@@ -490,7 +539,7 @@ public final class LocalNetwork {
 		public void onAvailable(Network n) {
 			boundNetwork = n;
 			linkProperties = connectivity.getLinkProperties(n);
-			notifyListener(true);
+			notifyListener(true, "available");
 		}
 
 		/**
@@ -504,10 +553,19 @@ public final class LocalNetwork {
 		@Override
 		public void onLinkPropertiesChanged(Network n, LinkProperties lp) {
 			if (n.equals(boundNetwork)) {
-				final boolean hadAddress = getIPv4() != null;
+				final LinkAddress before = getIPv4();
 				linkProperties = lp;
-				if (!hadAddress && getIPv4() != null) {
-					notifyListener(true);
+				final LinkAddress after = getIPv4();
+				if (before == null && after != null) {
+					notifyListener(true, "address arrived");
+				} else if (before != null && !sameAddress(before, after)) {
+					// Kein Wechsel fuer den Listener - das WLAN ist ja noch da -,
+					// aber fuer bind(): welches Ziel im WLAN liegt, haengt am
+					// Praefix, und ein Roaming in ein anderes Subnetz waere im
+					// Log sonst unsichtbar. Nur bei geaenderter IPv4-Adresse,
+					// der Callback kommt auch fuer DNS und Routen.
+					Logger.info("LocalNetwork: WiFi address changed from "
+							+ before + " " + LocalNetwork.this);
 				}
 			}
 		}
@@ -517,10 +575,21 @@ public final class LocalNetwork {
 			if (n.equals(boundNetwork)) {
 				boundNetwork = null;
 				linkProperties = null;
-				notifyListener(false);
+				notifyListener(false, "lost");
 			}
 		}
 	};
+
+	/**
+	 * Adresse und Praefix, sonst nichts: LinkAddress.equals() vergleicht auch
+	 * Flags und Scope, die sich bei einer DHCP-Verlaengerung aendern koennen,
+	 * und das Log meldete dann einen Wechsel, der keiner war. bind() haengt nur
+	 * an diesen beiden.
+	 */
+	private static boolean sameAddress(LinkAddress a, LinkAddress b) {
+		return b != null && a.getAddress().equals(b.getAddress())
+				&& a.getPrefixLength() == b.getPrefixLength();
+	}
 
 	/**
 	 * Der Seed aus {@link #register}: meldet nur, wenn sonst noch niemand etwas
@@ -528,7 +597,9 @@ public final class LocalNetwork {
 	 */
 	private synchronized void notifyListenerIfNothingReported() {
 		if (!reported) {
-			notifyListener(false);
+			// nicht "lost": es war nie eines da, und ein Log soll keinen
+			// Abbruch zeigen, den es nicht gab
+			notifyListener(false, "not present at startup");
 		}
 	}
 
@@ -543,10 +614,10 @@ public final class LocalNetwork {
 	 * Callback kein zweites Mal. Unter dem Schloss postet, wer zuerst meldet,
 	 * auch zuerst.
 	 */
-	private synchronized void notifyListener(final boolean connected) {
+	private synchronized void notifyListener(final boolean connected,
+			String event) {
 		reported = true;
-		Logger.info("LocalNetwork: WiFi " + (connected ? "available" : "lost")
-				+ " " + this);
+		Logger.info("LocalNetwork: WiFi " + event + " " + this);
 		final Handler h = handler;
 		final IWiFiListener l = listener;
 		if (h == null || l == null) {
@@ -596,6 +667,14 @@ public final class LocalNetwork {
 	 * Reconnect-Thread und von den HTTP-Threads.
 	 */
 	private static volatile Context appContext;
-	/** Zuletzt geloggter Stand, siehe {@link #setBindingRefused(boolean)}. */
-	private static final AtomicBoolean bindingRefused = new AtomicBoolean();
+	/** Zuletzt geloggter Stand, siehe {@link #setBinding(int, String)}. */
+	private static final AtomicInteger binding = new AtomicInteger();
+	/** Text zum letzten Befund, siehe {@link #describeBinding()}. */
+	private static volatile String bindingText;
+	private static final int BINDING_ACCEPTED = 1;
+	private static final int BINDING_REFUSED = 2;
+	private static final int BINDING_OUTSIDE = 3;
+	private static final int BINDING_BAD_TARGET = 4;
+	private static final int BINDING_NO_ADDRESS = 5;
+	private static final String ACCEPTED_TEXT = "accepted -> sockets bind to the WiFi";
 }

@@ -193,6 +193,13 @@ public final class ResilentConnector implements ISender {
 							// Andersherum stuende dort eine Sekunde lang der Wert
 							// des vorigen Durchlaufs.
 							final boolean busy = checkControlPortBusy(reachable);
+							// Der Befund entscheidet, welchen Dialog der
+							// ConfigurationAssistant zeigt - ohne diese Zeile
+							// waere das aus dem Log nicht nachzuvollziehen.
+							Logger.info("Reconnector:connect failed, reachable:"
+									+ reachable + " controlPortBusy:" + busy
+									+ (connectionConfig.isProbing() ? ""
+											: " (extended config, not probed)"));
 							// Nochmal pruefen: checkControlPortBusy blockiert
 							// rund eine Sekunde, in der ein neuer Thread laengst
 							// verbunden haben und das Flag geloescht haben kann.

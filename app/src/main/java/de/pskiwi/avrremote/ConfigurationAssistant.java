@@ -161,6 +161,7 @@ public final class ConfigurationAssistant {
 			return;
 		}
 		visible.set(true);
+		Logger.info("assistant: local network blocked dialog");
 		final AlertDialog.Builder builder = new AlertDialog.Builder(ctx);
 		builder.setTitle(R.string.ConnectivityProblem);
 		builder.setMessage(R.string.LocalNetworkPermission);
@@ -169,6 +170,19 @@ public final class ConfigurationAssistant {
 				new DialogInterface.OnClickListener() {
 					public void onClick(DialogInterface dialog, int which) {
 						visible.set(false);
+					}
+				});
+		// Direkt auf die App-Info, weil es nach der zweiten Ablehnung keinen
+		// anderen Weg zurueck gibt: Android zeigt dann keinen Dialog mehr, und
+		// die App fragt selbst auch nicht mehr. Dort steht die Permission unter
+		// "Geraete in der Naehe" - auf einem Pixel 8 mit Android 17 so
+		// nachgeklickt. Wie alertNoWLan() mit den WLAN-Einstellungen.
+		builder.setPositiveButton(R.string.AndroidAppSettings,
+				new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog, int which) {
+						visible.set(false);
+						Logger.info("assistant: opening app settings");
+						AVRSettings.openAppSettings(ctx);
 					}
 				});
 		// Ohne den Listener bleibt visible stehen, sobald der Dialog mit der
@@ -236,8 +250,11 @@ public final class ConfigurationAssistant {
 		// getText, nicht getString: beide Texte setzen ihre erste Zeile - die
 		// mit dem Unterschied - in <b>, und getString macht daraus toString()
 		// und wirft die Spans weg. Die Auszeichnung kam also nie an.
-		builder.setMessage(ctx.getText(app.getConnector().isControlPortBusy()
-				? R.string.AVRControlPortBusy
+		// einmal lesen: das Flag schreibt der Reconnect-Thread, und Log und
+		// Dialog sollen denselben Wert zeigen
+		final boolean busy = app.getConnector().isControlPortBusy();
+		Logger.info("assistant: reset dialog, control port busy:" + busy);
+		builder.setMessage(ctx.getText(busy ? R.string.AVRControlPortBusy
 				: R.string.AVRReset));
 		builder.setInverseBackgroundForced(true);
 		builder.setCancelable(false);

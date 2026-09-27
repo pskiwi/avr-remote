@@ -78,7 +78,7 @@ What is left is the part no build can answer.
       the other.
 
       `<presentationURL>` is worth taking at the same time, because it settles a guess made
-      elsewhere: `menu/OptionsMenu.java:240` opens the receiver's web UI by probing the configured
+      elsewhere: `menu/OptionsMenu.java:252` opens the receiver's web UI by probing the configured
       page and treating **only** a 404 as proof that it is missing, then falling back to the bare
       base URL — a heuristic whose confirmation is still outstanding with the reporter of the
       AVR-1912. On the AVR-3310 `presentationURL` is exactly that bare base URL, which corroborates
@@ -238,7 +238,7 @@ What is left is the part no build can answer.
       Activity — so in multi-window the numbers describe the activity's window, which is exactly why
       the API was deprecated in API 30 in favour of `WindowMetrics.getBounds()`. Nothing depends on
       the value any more: `isTablet()` and its 4.5-inch threshold are gone, and what is left only
-      reaches the OSD log line and `FeedbackReporter.java:169-176`. So this is a diagnostics-quality
+      reaches the OSD log line and `FeedbackReporter.java:209-217`. So this is a diagnostics-quality
       item, not a behaviour one — but a feedback report from a split-screen session understates the
       device, which is worth knowing before trusting one.
       For the record on that threshold: it was **not** unreachable, as the commit removing the
@@ -274,7 +274,7 @@ What is left is the part no build can answer.
       | 15 | `PreferenceActivity.findPreference()` / `getPreferenceScreen()` / `addPreferencesFromResource()` | 7 | `AVRSettings`, `PreferenceSummaryUpdater` |
       | 15 | `Display.getWidth()` / `getHeight()` | 4 | `AVRRemote` |
       | 15 | `LayoutParams.FILL_PARENT` | 3 | `LevelActivity`, `ScreenMenu` |
-      | 16 | `Configuration.ORIENTATION_SQUARE` | 1 | `AVRRemote.java:357` |
+      | 16 | `Configuration.ORIENTATION_SQUARE` | 1 | `AVRRemote.java:406` |
       | 22 | `Resources.getDrawable()` | 8 | `AVRTheme`, `IconManager`, `OnScreenDisplayActivity` |
       | 23 | `AlertDialog.Builder.setInverseBackgroundForced()` | 6 | 4 files |
       | 29/30 | `android.preference.*` (31× `PreferenceManager`), `AsyncTask`, `TabHost`, `ListActivity`, `ExpandableListActivity`, 12× `new Handler()` | 61 | this item |
@@ -283,7 +283,7 @@ What is left is the part no build can answer.
       **15 years**. It cannot be picked off on its own: it and the API 29/30 block are the same
       AppCompat migration, which is why the age does not translate into urgency.
 - [ ] The one entry in that table that is a genuine decision rather than a rename:
-      `Configuration.ORIENTATION_SQUARE` (`AVRRemote.java:357`) is **not** dead code. The app
+      `Configuration.ORIENTATION_SQUARE` (`AVRRemote.java:406`) is **not** dead code. The app
       computes the orientation itself from display width and height and returns that constant, so
       the branch can still fire on a square window. It is the *constant* that is obsolete — the
       platform has not reported it since Android 4.1 — so replacing it means deciding what a square
