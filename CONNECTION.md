@@ -383,10 +383,20 @@ So: **a teardown line that is not followed by a new generation starting is the s
 
 ### What the network and permission lines tell you
 
-First, what arrives at all. The log mode defaults to `adb`, and then a feedback mail carries **only
-the report header** — no log lines. The ring buffer of the last 25 entries goes out with crash
-reports only, and without the exceptions. So the header has to answer the network questions on its
-own, and these lines are there for that:
+First, what arrives at all. The log mode defaults to `adb`, so there is no log file. What a feedback
+mail carries instead is the report header and — unless the user unticks *Include recent log lines*
+— the in-memory ring buffer at the end of the text (`Logger.RING_SIZE` lines, oldest first; crash
+reports carry it too). Its lines look like the file's, minus the `#seq`:
+
+```
+2026-09-27  09:06:07.449 - ERROR : [ResilentThreadHandler-4] Reconnector:IOException [192.168.10.30] -> java.net.ConnectException: … ECONNREFUSED (Connection refused)
+```
+
+An error keeps its exception's type and message but no stack trace. The order is the order the
+entries reached the buffer, under one lock, which is good enough without a `#seq`. It covers
+minutes at most while a connection is up — every state query is dozens of `SEND`/`RECEIVED` lines
+— so for anything older, and for the header's snapshot of the network, the header still has to
+answer on its own. These lines are there for that:
 
 | header line | what it settles |
 | --- | --- |

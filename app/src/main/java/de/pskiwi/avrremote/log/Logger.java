@@ -16,44 +16,70 @@
  */
 package de.pskiwi.avrremote.log;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
 import de.pskiwi.avrremote.core.InData;
 
 public final class Logger {
 
+	/**
+	 * Die letzten Logzeilen, unabhaengig vom Logmodus. Ab Werk schreibt die App
+	 * nur nach logcat, und das schickt kein Anwender mit - dieser Puffer ist
+	 * dann das Einzige, was ein Feedback- oder Crash-Bericht vom Verlauf
+	 * zeigen kann.
+	 *
+	 * Groesse siehe {@link Logger#RING_SIZE}.
+	 *
+	 * Zeit und Thread stehen mit drin, wie im Datei-Log: ohne sie laesst sich
+	 * weder eine Pause erkennen noch sagen, welche Generation des
+	 * Reconnect-Loops eine Zeile geschrieben hat (siehe CONNECTION.md).
+	 */
 	private final static class RoundRobinLogger {
 
-		public synchronized void append(String txt) {
-			location[locPos] = txt;
-			locPos = (locPos + 1) % MAX_LOC;
+		public synchronized void append(String level, String txt) {
+			location[locPos] = dateFormat.format(new Date()) + " - " + level
+					+ " : [" + Thread.currentThread().getName() + "] " + txt;
+			locPos = (locPos + 1) % RING_SIZE;
 		}
 
+		/** Aelteste zuerst, eine Zeile pro Eintrag. */
 		public synchronized String getLog() {
 			final StringBuilder ret = new StringBuilder();
-			for (int p = 0; p < MAX_LOC; p++) {
-				ret.append("[" + p + ":" + location[(locPos + p) % MAX_LOC]
-						+ "]\n");
+			for (int p = 0; p < RING_SIZE; p++) {
+				final String entry = location[(locPos + p) % RING_SIZE];
+				if (entry != null) {
+					ret.append(entry).append('\n');
+				}
 			}
 			return ret.toString();
 		}
 
-		private final static int MAX_LOC = 25;
-		private static int locPos = 0;
-		private static String[] location = new String[MAX_LOC];
+		private int locPos = 0;
+		private final String[] location = new String[RING_SIZE];
+		// nur unter dem Monitor benutzt - SimpleDateFormat ist nicht threadsicher
+		private final DateFormat dateFormat = new SimpleDateFormat(
+				"yyyy-MM-dd  HH:mm:ss.SSS", Locale.US);
 	}
 
 	public static void debug(String s) {
 		DELEGATE.debug(s);
-		ROUND_ROBIN_LOGGER.append("DEBUG:" + s);
+		ROUND_ROBIN_LOGGER.append("DEBUG", s);
 	}
 
 	public static void info(String s) {
 		DELEGATE.info(s);
-		ROUND_ROBIN_LOGGER.append("INFO:" + s);
+		ROUND_ROBIN_LOGGER.append("INFO", s);
 	}
 
 	public static void error(String s, Throwable x) {
 		DELEGATE.error(s, x);
-		ROUND_ROBIN_LOGGER.append("ERROR:" + s);
+		// Nur Typ und Meldung, kein Stacktrace: der Puffer soll Verlauf
+		// zeigen. Aber ohne sie bliebe offen, ob hinter
+		// "Reconnector:IOException" ein ECONNREFUSED oder ein Timeout steckt.
+		ROUND_ROBIN_LOGGER.append("ERROR", x == null ? s : s + " -> " + x);
 	}
 	
 	public static void received(InData val) {
@@ -84,6 +110,16 @@ public final class Logger {
 	public static String getLastLogEntries() {
 		return ROUND_ROBIN_LOGGER.getLog();
 	}
+
+	/**
+	 * Zeilen im Ringpuffer. Frueher 25, und bei stehender Verbindung reichte
+	 * das fuer wenige Sekunden: eine einzige Zustandsabfrage des Receivers sind
+	 * schon mehr SEND- und RECEIVED-Zeilen, und was vorher geschah - ein
+	 * Abbruch, die Frage nach der Permission - war dann verdraengt. Eine Zeile
+	 * hat typisch um 150 Byte, der Puffer also rund 75 KB. Paketprivat fuer
+	 * LoggerTest.
+	 */
+	static final int RING_SIZE = 500;
 
 	private final static RoundRobinLogger ROUND_ROBIN_LOGGER = new RoundRobinLogger();
 	private static ILogger DELEGATE = ILogger.NULL_LOGGER;

@@ -287,6 +287,7 @@
 	<string name="JumpTo">Jump to</string>
 	<string name="FeedbackQuestion">Do you like to send a feedback-email ?"</string>
 	<string name="FeedbackAttachLogs">Attach log-file</string>
+	<string name="FeedbackIncludeLogLines">Include recent log lines</string>
 	<string name="FeedbackText">Please send questions, problems and suggestions.
 		Thank you.</string>
 

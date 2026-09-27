@@ -155,20 +155,24 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 	}
 
 	private void sendFeedback() {
+		// Immer zu sehen, nicht nur im Logmodus "file": ohne Log-Datei gehen
+		// stattdessen die letzten Zeilen aus dem Ringpuffer in die Mail - und
+		// ohne die ist ein Bericht im Standardmodus nicht auszuwerten. Abwaehlbar,
+		// weil die Zeilen auch enthalten, was der Receiver anzeigt, bei
+		// NET-Quellen also Titel und Kuenstler.
 		final CheckBox cb = new CheckBox(activity);
-		cb.setText(R.string.FeedbackAttachLogs);
+		cb.setText(Logger.getSDLogger() != null ? R.string.FeedbackAttachLogs
+				: R.string.FeedbackIncludeLogLines);
 		cb.setChecked(true);
 		AlertDialog.Builder builder = new AlertDialog.Builder(activity);
 		builder.setTitle(R.string.Confirm);
 		builder.setCancelable(true);
 		builder.setMessage(R.string.FeedbackQuestion);
-		if (Logger.getSDLogger() != null) {
-			builder.setView(cb);
-		}
+		builder.setView(cb);
 		builder.setPositiveButton(R.string.OK, new OnClickListener() {
 			public void onClick(DialogInterface dialog, int which) {
 				FeedbackReporter.sendFeedback(activity, getApp(),
-						cb.isChecked() && Logger.getSDLogger() != null);
+						cb.isChecked());
 			}
 		});
 		builder.setNegativeButton(R.string.Cancel, new OnClickListener() {

@@ -278,6 +278,7 @@
 
 	<string name="FeedbackQuestion">Möchten Sie eine Feedback-Email senden ?"</string>
 	<string name="FeedbackAttachLogs">Log-Datei anhängen</string>
+	<string name="FeedbackIncludeLogLines">Letzte Logzeilen mitsenden</string>
 
 	<string name="LinkChannels">Linken und rechten Kanal verbinden</string>
 	<string name="LongPressToPreset">Lange drücken, um den Preset vorzubesetzen.

@@ -65,12 +65,22 @@ public final class FeedbackReporter {
 		}
 	}
 
+	/**
+	 * @param includeLog Log mitschicken: im Logmodus "file" die Datei als
+	 *            Anhang, sonst die letzten Zeilen aus dem Ringpuffer im Text.
+	 *            Beides zusammen nicht - die Datei enthaelt den Puffer ohnehin.
+	 */
 	public static void sendFeedback(Context ctx, AVRApplication avr,
-			boolean attachLogs) {
+			boolean includeLog) {
 		final String xmlInfo = avr.getModelConfigurator().getXMLInfo();
-		sendMail(ctx, FEEDBACK_SUBJECT,
-				createInfoString(ctx, ctx.getString(R.string.FeedbackText))
-						+ "\n" + xmlInfo, attachLogs);
+		final boolean attachFile = includeLog && Logger.getSDLogger() != null;
+		String message = createInfoString(ctx,
+				ctx.getString(R.string.FeedbackText)) + "\n" + xmlInfo;
+		if (includeLog && !attachFile) {
+			message += "\n-----------------------\nLast log entries:\n"
+					+ Logger.getLastLogEntries();
+		}
+		sendMail(ctx, FEEDBACK_SUBJECT, message, attachFile);
 	}
 
 	public static void sendMail(Context ctx, String subject, String message,
