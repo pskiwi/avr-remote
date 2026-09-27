@@ -24,6 +24,7 @@ import java.util.Map;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -175,8 +176,11 @@ public final class AVRSettings extends PreferenceActivity implements
 			Logger.info("local network permission: granted");
 			return false;
 		}
-		// Endgueltig abgelehnt - ab Android 11 reicht dafuer ein einziges
-		// "Nicht zulassen". requestPermissions() zeigt dann nichts mehr an und
+		// Endgueltig abgelehnt - ab Android 11 nach der zweiten Ablehnung, und
+		// die Zurueck-Taste auf dem System-Dialog zaehlt als eine (auf einem
+		// Pixel 8 mit Android 17 nachgestellt, von frischem Zustand aus: erste
+		// Ablehnung "will ask again", zweite USER_FIXED). requestPermissions()
+		// zeigt dann nichts mehr an und
 		// liefert sofort "denied". Wer hier true bekaeme, wartete auf eine
 		// Antwort, die schon da ist: der Suchlauf braeche ab, ohne dass der
 		// Anwender irgendetwas zu sehen bekommt, und der Hinweis, der genau
@@ -212,10 +216,12 @@ public final class AVRSettings extends PreferenceActivity implements
 	 * melden, von jeder Activity, die fragen kann.
 	 *
 	 * Das Merkmal wird hier gesetzt und nicht schon beim Fragen. Die Abfrage
-	 * kann naemlich unterbrochen werden - Zurueck-Taste auf dem System-Dialog,
-	 * oder der Prozess stirbt, waehrend er steht -, und dann kommen leere
-	 * Ergebnisse zurueck und Android hat sich nichts gemerkt: keine Ablehnung,
-	 * also auch keine Begruendung noetig. Stuende das Merkmal da schon, waere
+	 * kann naemlich abgebrochen werden, ohne dass Android sich etwas merkt -
+	 * etwa wenn der Prozess stirbt, waehrend der Dialog steht -, und dann
+	 * kommen leere Ergebnisse zurueck: keine Ablehnung, also auch keine
+	 * Begruendung noetig. Die Zurueck-Taste ist dagegen kein solcher Abbruch:
+	 * auf Android 17 kommt sie als Ablehnung an und zaehlt auch als eine
+	 * (Pixel 8 nachgestellt). Stuende das Merkmal da schon, waere
 	 * die Frage fuer immer erledigt, ohne dass sie je beantwortet wurde. Unter
 	 * Local Network Protection heisst das: die App kommt nicht mehr ins lokale
 	 * Netz, und aus der App heraus fuehrt kein Weg zurueck.
@@ -273,8 +279,10 @@ public final class AVRSettings extends PreferenceActivity implements
 	 * Ob eine Ablehnung endgueltig ist, weiss nur
 	 * shouldShowRequestPermissionRationale(), und das braucht eine Activity -
 	 * der Feedback-Bericht hat keine sicher, der Crash-Bericht nie. Deshalb
-	 * gemerkt, wo eine da ist: bei jedem Kaltstart in
-	 * requestLocalNetworkPermission() und bei jeder Antwort in
+	 * gemerkt, wo eine da ist: in requestLocalNetworkPermission() bei jedem
+	 * Start ohne gespeicherten Zustand, in noteLocalNetworkDenial() bei einer
+	 * wiederhergestellten Activity - nach einem Prozess-Tod im Hintergrund der
+	 * haeufigste Weg zurueck in die App - und bei jeder Antwort in
 	 * localNetworkPermissionResult(). Aendert der Anwender die Permission in
 	 * den Einstellungen, waehrend die App laeuft, bleibt der Wert bis zum
 	 * naechsten Aufruf alt; BLOCKED/granted daneben wird immer frisch gelesen.
@@ -282,6 +290,27 @@ public final class AVRSettings extends PreferenceActivity implements
 	 * Bericht sagt dann "unknown".
 	 */
 	private static volatile String localNetworkDenial;
+
+	/**
+	 * Nur den Stand fuer den Bericht erheben, ohne zu fragen - fuer eine
+	 * Activity, die mit gespeichertem Zustand neu entsteht und deshalb nicht
+	 * fragen darf (sie wird bei jeder Drehung neu gebaut).
+	 * shouldShowRequestPermissionRationale() hat keine Nebenwirkung.
+	 */
+	public static void noteLocalNetworkDenial(Activity activity) {
+		if (!isLocalNetworkBlocked(activity)) {
+			localNetworkDenial = null;
+			return;
+		}
+		if (!isLocalNetworkPermissionAsked(activity)) {
+			// noch nie abgelehnt - dann gibt es auch nichts zu melden
+			return;
+		}
+		// isLocalNetworkBlocked() hat SDK und targetSdk schon geprueft
+		localNetworkDenial = activity.shouldShowRequestPermissionRationale(
+				android.Manifest.permission.ACCESS_LOCAL_NETWORK)
+						? DENIED_ASK_AGAIN : DENIED_FOR_GOOD;
+	}
 	private static final String DENIED_FOR_GOOD = "for good";
 	private static final String DENIED_ASK_AGAIN = "will ask again";
 
@@ -321,9 +350,15 @@ public final class AVRSettings extends PreferenceActivity implements
 	 * (Pixel 8, Android 17).
 	 */
 	public static void openAppSettings(Activity activity) {
-		activity.startActivity(new Intent(
-				android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-				Uri.fromParts("package", activity.getPackageName(), null)));
+		try {
+			activity.startActivity(new Intent(
+					android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+					Uri.fromParts("package", activity.getPackageName(), null)));
+		} catch (ActivityNotFoundException x) {
+			// Ein ROM ohne App-Info-Seite: dann passiert eben nichts, statt dass
+			// der Tipp die App beendet. Wie beim Mail-Intent im FeedbackReporter.
+			Logger.error("no app settings activity", x);
+		}
 	}
 
 	/**

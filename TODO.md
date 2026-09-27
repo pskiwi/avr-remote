@@ -78,7 +78,7 @@ What is left is the part no build can answer.
       the other.
 
       `<presentationURL>` is worth taking at the same time, because it settles a guess made
-      elsewhere: `menu/OptionsMenu.java:243` opens the receiver's web UI by probing the configured
+      elsewhere: `menu/OptionsMenu.java:252` opens the receiver's web UI by probing the configured
       page and treating **only** a 404 as proof that it is missing, then falling back to the bare
       base URL — a heuristic whose confirmation is still outstanding with the reporter of the
       AVR-1912. On the AVR-3310 `presentationURL` is exactly that bare base URL, which corroborates

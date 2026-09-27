@@ -125,6 +125,10 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 			// gefragt - genau das, was die Kette verhindern soll.
 			notificationRequestPending = savedInstanceState
 					.getBoolean(NOTIFICATION_PENDING);
+			// Nicht fragen, aber fuer den Feedback-Bericht festhalten, ob eine
+			// Ablehnung endgueltig ist - sonst stuende dort nach einem
+			// Prozess-Tod im Hintergrund "denied:unknown"
+			AVRSettings.noteLocalNetworkDenial(this);
 		}
 
 		Logger.setLocation("AVRRemote-onCreate-2");

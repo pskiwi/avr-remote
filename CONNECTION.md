@@ -421,9 +421,9 @@ In a full log, these lines carry the same questions over time:
 | `binding skipped: … outside the WiFi subnet` | the target was judged and is not in the Wi-Fi's prefix |
 | `binding skipped: the WiFi has no IPv4 address yet` / `… unresolvable or not IPv4` | not judged at all — says nothing about where the receiver is |
 | `local network permission: granted` / `requesting` / `denied for good -> not asking` | what the app did about the permission, once per start and per scan |
-| `local network permission result: granted` / `denied, Android will ask again` / `denied for good - …` | the answer to the request — "for good" may come from Android itself, without a dialog |
+| `local network permission result: granted` / `denied, Android will ask again` / `denied for good - …` | the answer to the request. From a fresh state the first denial asks again and the second is for good; the back key on the dialog counts as a denial. "For good" may come from Android itself, without a dialog |
 | `local network permission request was interrupted` | the dialog went away unanswered; the app asks again next time |
-| `assistant: opening app settings` | the user took the blocked-network hint's button to the app info page |
+| `assistant: opening app settings` / `menu: opening app settings` | the user went to the app info page — from the blocked-network hint's button, or from the main menu |
 | `Reconnector:connect failed, reachable:… controlPortBusy:…` | the verdict after a failed attempt |
 | `assistant: reset dialog, control port busy:…` / `assistant: local network blocked dialog` | which hint the user actually saw |
 | `testAddress failed <address>` | a probe — scan candidate or the reconnect loop's `checkAddress` — could not even try a port: usually a binding refused with an errno other than `EPERM`, or the ping itself threw |
