@@ -48,6 +48,21 @@ What is left is the part no build can answer.
       someone runs the real case, the binding is verified in the sense that sockets demonstrably
       leave from the Wi-Fi address, and no further.
 
+- [ ] **The `EPERM` fallback in `LocalNetwork.refusedByVpn()` is derived, not measured.** A
+      binding refused by a VPN leaves the socket unbound — see [CONNECTION.md](CONNECTION.md). Two
+      things to see on a device: that WireGuard with the LAN excluded connects (it failed on every
+      attempt before the fallback), and that the log shows
+      `binding refused with EPERM (VPN?) -> sockets stay unbound` once. If the refusal arrives with
+      another errno, the fallback does not catch it and the old failure is back — the exception in
+      the log then names the errno to test for.
+
+      **1.7.0 ships with this as an accepted risk** (decided 2026-09-27): no VPN setup was available
+      to test with. The worst case is a VPN user who reached the receiver with 1.6.1 and no longer
+      does, on every attempt, because each bind throws. What that looks like in a report: a
+      `SocketException` naming `Binding socket to network` in the log, and a `tun` interface on the
+      `IPv4` line. It needs no device to fix once such a log exists — widen `refusedByVpn()` to the
+      errno it shows.
+
 - [ ] **Select the model from `description.xml` instead of asking the user.** The description is
       now fetched and lands in the feedback report (`http/DeviceDescription`, see
       [CONNECTION.md](CONNECTION.md)); what is not done is acting on it. `<modelName>` is on an
