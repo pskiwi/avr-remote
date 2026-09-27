@@ -31,17 +31,26 @@ public final class Logger {
 	 * dann das Einzige, was ein Feedback- oder Crash-Bericht vom Verlauf
 	 * zeigen kann.
 	 *
-	 * Groesse siehe {@link Logger#RING_SIZE}.
+	 * Groesse siehe {@link Logger#RING_SIZE}. Paketprivat, damit LoggerTest eine
+	 * eigene Instanz pruefen kann - der statische Puffer unten bekommt auch
+	 * Zeilen von Threads, die andere Tests zuruecklassen.
 	 *
-	 * Zeit und Thread stehen mit drin, wie im Datei-Log: ohne sie laesst sich
+	 * Zeit und Thread stehen mit drin, wie im Datei-Log - nur die Level heissen
+	 * hier DEBUG/INFO/ERROR, dort FINE/WARNING. Ohne Zeit und Thread laesst sich
 	 * weder eine Pause erkennen noch sagen, welche Generation des
 	 * Reconnect-Loops eine Zeile geschrieben hat (siehe CONNECTION.md).
 	 */
-	private final static class RoundRobinLogger {
+	static final class RoundRobinLogger {
 
-		public synchronized void append(String level, String txt) {
+		/**
+		 * Bei einer Exception nur Typ und Meldung, kein Stacktrace: der Puffer
+		 * soll Verlauf zeigen. Aber ohne sie bliebe offen, ob hinter
+		 * "Reconnector:IOException" ein ECONNREFUSED oder ein Timeout steckt.
+		 */
+		public synchronized void append(String level, String txt, Throwable x) {
 			location[locPos] = dateFormat.format(new Date()) + " - " + level
-					+ " : [" + Thread.currentThread().getName() + "] " + txt;
+					+ " : [" + Thread.currentThread().getName() + "] " + txt
+					+ (x == null ? "" : " -> " + x);
 			locPos = (locPos + 1) % RING_SIZE;
 		}
 
@@ -66,20 +75,17 @@ public final class Logger {
 
 	public static void debug(String s) {
 		DELEGATE.debug(s);
-		ROUND_ROBIN_LOGGER.append("DEBUG", s);
+		ROUND_ROBIN_LOGGER.append("DEBUG", s, null);
 	}
 
 	public static void info(String s) {
 		DELEGATE.info(s);
-		ROUND_ROBIN_LOGGER.append("INFO", s);
+		ROUND_ROBIN_LOGGER.append("INFO", s, null);
 	}
 
 	public static void error(String s, Throwable x) {
 		DELEGATE.error(s, x);
-		// Nur Typ und Meldung, kein Stacktrace: der Puffer soll Verlauf
-		// zeigen. Aber ohne sie bliebe offen, ob hinter
-		// "Reconnector:IOException" ein ECONNREFUSED oder ein Timeout steckt.
-		ROUND_ROBIN_LOGGER.append("ERROR", x == null ? s : s + " -> " + x);
+		ROUND_ROBIN_LOGGER.append("ERROR", s, x);
 	}
 	
 	public static void received(InData val) {

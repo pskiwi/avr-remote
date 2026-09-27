@@ -30,20 +30,23 @@ import org.junit.Test;
  * Zeile und die Exception bei Fehlern.
  *
  * <p>
- * Der Puffer ist statisch und damit fuer alle Tests dieser JVM derselbe. Jeder
- * Test fuellt ihn deshalb zuerst ganz, dann spielt keine Rolle, was vorher
- * drinstand.
+ * Jeder Test baut sich einen eigenen Puffer. Der statische hinter
+ * {@link Logger} bekommt auch Zeilen von Threads, die andere Tests dieser JVM
+ * zuruecklassen - der Receiver aus ConnectorTest meldet sich nach dessen
+ * Ende noch -, und ein Test darauf wuerde gelegentlich eine fremde Zeile
+ * lesen.
  */
 public class LoggerTest {
 
 	@Test
 	public void keepsTheLastEntriesOldestFirst() {
+		final Logger.RoundRobinLogger ring = new Logger.RoundRobinLogger();
 		final int overflow = 10;
 		final int total = Logger.RING_SIZE + overflow;
 		for (int i = 0; i < total; i++) {
-			Logger.info("line " + i);
+			ring.append("INFO", "line " + i, null);
 		}
-		final String[] lines = Logger.getLastLogEntries().split("\n");
+		final String[] lines = ring.getLog().split("\n");
 		assertEquals(Logger.RING_SIZE, lines.length);
 		assertTrue(lines[0], lines[0].endsWith("line " + overflow));
 		final String last = lines[lines.length - 1];
@@ -51,26 +54,37 @@ public class LoggerTest {
 	}
 
 	@Test
+	public void emptySlotsAreLeftOut() {
+		final Logger.RoundRobinLogger ring = new Logger.RoundRobinLogger();
+		ring.append("INFO", "only", null);
+		final String[] lines = ring.getLog().split("\n");
+		assertEquals(1, lines.length);
+		assertTrue(lines[0], lines[0].endsWith("] only"));
+	}
+
+	@Test
 	public void lineCarriesLevelAndThread() throws Exception {
-		fill();
+		final Logger.RoundRobinLogger ring = new Logger.RoundRobinLogger();
 		final Thread t = new Thread(new Runnable() {
 			public void run() {
-				Logger.debug("from elsewhere");
+				ring.append("DEBUG", "from elsewhere", null);
 			}
 		}, "receiver");
 		t.start();
 		t.join();
-		final String last = lastLine();
-		assertTrue(last, last.matches(
+		final String line = ring.getLog().trim();
+		assertTrue(line, line.matches(
 				"\\d{4}-\\d\\d-\\d\\d  \\d\\d:\\d\\d:\\d\\d\\.\\d{3} - DEBUG : \\[receiver\\] from elsewhere"));
 	}
 
 	@Test
 	public void errorKeepsTheExceptionButNoTrace() {
-		fill();
-		Logger.error("Reconnector:IOException [192.168.10.30]",
+		final Logger.RoundRobinLogger ring = new Logger.RoundRobinLogger();
+		ring.append("ERROR", "Reconnector:IOException [192.168.10.30]",
 				new ConnectException("ECONNREFUSED (Connection refused)"));
-		assertTrue(lastLine(), lastLine().endsWith(
+		final String log = ring.getLog();
+		assertEquals(log, 1, log.split("\n").length);
+		assertTrue(log, log.trim().endsWith(
 				"ERROR : [" + Thread.currentThread().getName()
 						+ "] Reconnector:IOException [192.168.10.30]"
 						+ " -> java.net.ConnectException: ECONNREFUSED (Connection refused)"));
@@ -78,19 +92,9 @@ public class LoggerTest {
 
 	@Test
 	public void errorWithoutException() {
-		fill();
-		Logger.error("Queue overflow. clear", null);
-		assertTrue(lastLine(), lastLine().endsWith("] Queue overflow. clear"));
-	}
-
-	private static void fill() {
-		for (int i = 0; i < Logger.RING_SIZE; i++) {
-			Logger.info("fill " + i);
-		}
-	}
-
-	private static String lastLine() {
-		final String[] lines = Logger.getLastLogEntries().split("\n");
-		return lines[lines.length - 1];
+		final Logger.RoundRobinLogger ring = new Logger.RoundRobinLogger();
+		ring.append("ERROR", "Queue overflow. clear", null);
+		assertTrue(ring.getLog(), ring.getLog().trim()
+				.endsWith("] Queue overflow. clear"));
 	}
 }

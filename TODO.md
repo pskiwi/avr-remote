@@ -78,7 +78,7 @@ What is left is the part no build can answer.
       the other.
 
       `<presentationURL>` is worth taking at the same time, because it settles a guess made
-      elsewhere: `menu/OptionsMenu.java:240` opens the receiver's web UI by probing the configured
+      elsewhere: `menu/OptionsMenu.java:243` opens the receiver's web UI by probing the configured
       page and treating **only** a 404 as proof that it is missing, then falling back to the bare
       base URL — a heuristic whose confirmation is still outstanding with the reporter of the
       AVR-1912. On the AVR-3310 `presentationURL` is exactly that bare base URL, which corroborates
@@ -238,7 +238,7 @@ What is left is the part no build can answer.
       Activity — so in multi-window the numbers describe the activity's window, which is exactly why
       the API was deprecated in API 30 in favour of `WindowMetrics.getBounds()`. Nothing depends on
       the value any more: `isTablet()` and its 4.5-inch threshold are gone, and what is left only
-      reaches the OSD log line and `FeedbackReporter.java:169-176`. So this is a diagnostics-quality
+      reaches the OSD log line and `FeedbackReporter.java:209-217`. So this is a diagnostics-quality
       item, not a behaviour one — but a feedback report from a split-screen session understates the
       device, which is worth knowing before trusting one.
       For the record on that threshold: it was **not** unreachable, as the commit removing the

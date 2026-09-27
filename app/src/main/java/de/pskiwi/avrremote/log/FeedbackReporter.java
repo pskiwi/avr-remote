@@ -40,6 +40,7 @@ import de.pskiwi.avrremote.R;
 import de.pskiwi.avrremote.ScreenInfo;
 import de.pskiwi.avrremote.core.MacroManager;
 import de.pskiwi.avrremote.core.RenameService;
+import de.pskiwi.avrremote.core.ResilentConnector;
 import de.pskiwi.avrremote.http.DeviceDescription;
 import de.pskiwi.avrremote.scan.LocalNetwork;
 
@@ -177,15 +178,20 @@ public final class FeedbackReporter {
 		try {
 			out.println("LocalNet: "
 					+ AVRSettings.describeLocalNetworkPermission(ctx));
-			// Der Befund aus dem letzten gescheiterten Verbindungsversuch - er
-			// entscheidet, welchen Text der ConfigurationAssistant zeigt
-			out.println("CtrlPort: "
-					+ (((AVRApplication) ctx.getApplicationContext())
-							.getConnector().isControlPortBusy() ? "busy"
-							: "not busy"));
 		} catch (Exception x) {
 			out.println("LocalNet: not available [" + x.getMessage() + "]");
 		}
+		// Aus dem Stand, nicht aus dem Log: die eine Zeile dazu ist im
+		// Ringpuffer nach ein paar Minuten Verbindung verdraengt
+		out.println("Binding : " + LocalNetwork.describeBinding());
+		// Der Befund aus dem letzten gescheiterten Verbindungsversuch - er
+		// entscheidet, welchen Text der ConfigurationAssistant zeigt. Der
+		// Connector kann fehlen: der Crash-Handler steht in
+		// AVRApplication.onCreate vor ihm.
+		final ResilentConnector connector = ((AVRApplication) ctx
+				.getApplicationContext()).getConnector();
+		out.println("CtrlPort: " + (connector == null ? "no connector"
+				: connector.isControlPortBusy() ? "busy" : "not busy"));
 
 		out.println("Log     : " + AVRSettings.getDebugMode(ctx));
 		out.println("Theme   : " + AVRSettings.getBackgroundTheme(ctx));

@@ -158,8 +158,13 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 		// Immer zu sehen, nicht nur im Logmodus "file": ohne Log-Datei gehen
 		// stattdessen die letzten Zeilen aus dem Ringpuffer in die Mail - und
 		// ohne die ist ein Bericht im Standardmodus nicht auszuwerten. Abwaehlbar,
-		// weil die Zeilen auch enthalten, was der Receiver anzeigt, bei
-		// NET-Quellen also Titel und Kuenstler.
+		// weil die Zeilen mehr enthalten als Technik: was der Receiver anzeigt,
+		// bei NET-Quellen also Titel, Kuenstler und Sender, die Suchbegriffe der
+		// NET-Suche (AVRHTTPClient.doSearch) und aus einem Suchlauf die
+		// SSDP-Antworten mit Adresse und USN - deren UUID traegt die MAC des
+		// Geraets, die DeviceDescription gerade deshalb auslaesst. Der Anwender sieht
+		// den Entwurf vor dem Senden. Der Crash-Bericht schickt denselben
+		// Puffer ohne diese Abwahl.
 		final CheckBox cb = new CheckBox(activity);
 		cb.setText(Logger.getSDLogger() != null ? R.string.FeedbackAttachLogs
 				: R.string.FeedbackIncludeLogLines);
