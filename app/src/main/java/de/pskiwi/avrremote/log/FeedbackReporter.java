@@ -164,12 +164,25 @@ public final class FeedbackReporter {
 			out.println("UPnP    : not available [" + x.getMessage() + "]");
 		}
 
+		try {
+			out.println("LocalNet: "
+					+ AVRSettings.describeLocalNetworkPermission(ctx));
+			// Der Befund aus dem letzten gescheiterten Verbindungsversuch - er
+			// entscheidet, welchen Text der ConfigurationAssistant zeigt
+			out.println("CtrlPort: "
+					+ (((AVRApplication) ctx.getApplicationContext())
+							.getConnector().isControlPortBusy() ? "busy"
+							: "not busy"));
+		} catch (Exception x) {
+			out.println("LocalNet: not available [" + x.getMessage() + "]");
+		}
+
 		out.println("Log     : " + AVRSettings.getDebugMode(ctx));
 		out.println("Theme   : " + AVRSettings.getBackgroundTheme(ctx));
 		out.println("Rec.Set.: " + AVRSettings.isUseReceiverSettings(ctx));
 		out.println("Volume  : " + AVRSettings.getVolumeDisplay(ctx));
 		out.println("Napster : " + AVRSettings.isNapsterEnabled(ctx));
-		out.println("Notification   : " + AVRSettings.isNapsterEnabled(ctx));
+		out.println("Notification   : " + AVRSettings.isShowNotification(ctx));
 
 		out.println("-----------------------");
 		out.println("Model   : " + android.os.Build.MODEL);

@@ -28,7 +28,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.net.UnknownHostException;
 import java.util.Enumeration;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import android.content.Context;
 import android.net.ConnectivityManager;
@@ -160,14 +160,14 @@ public final class LocalNetwork {
 	public static void bind(Socket socket, InetAddress target)
 			throws IOException {
 		final Network n = boundNetwork;
-		if (n != null && isInBoundNetwork(target)) {
+		if (n != null && belongsToWiFi(target)) {
 			try {
 				n.bindSocket(socket);
 			} catch (SocketException x) {
 				refusedByVpn(x);
 				return;
 			}
-			setBindingRefused(false);
+			setBinding(BINDING_ACCEPTED, target);
 		}
 	}
 
@@ -191,7 +191,7 @@ public final class LocalNetwork {
 				refusedByVpn(x);
 				return;
 			}
-			setBindingRefused(false);
+			setBinding(BINDING_ACCEPTED, null);
 		}
 	}
 
@@ -205,7 +205,7 @@ public final class LocalNetwork {
 	 */
 	public static URLConnection openConnection(URL url) throws IOException {
 		final Network n = boundNetwork;
-		if (n != null && isInBoundNetwork(resolve(url.getHost()))
+		if (n != null && belongsToWiFi(resolve(url.getHost()))
 				&& mayBind(n)) {
 			return n.openConnection(url);
 		}
@@ -219,8 +219,21 @@ public final class LocalNetwork {
 			refusedByVpn(x);
 			return false;
 		}
-		setBindingRefused(false);
+		setBinding(BINDING_ACCEPTED, null);
 		return true;
+	}
+
+	/**
+	 * {@link #isInBoundNetwork(InetAddress)}, und haelt fest, wenn ein Ziel
+	 * deshalb ungebunden bleibt. Ohne die Zeile saehe ein Log fuer ein Ziel
+	 * ausserhalb des WLANs genauso aus wie fuer eine erfolgreiche Bindung.
+	 */
+	private static boolean belongsToWiFi(InetAddress target) {
+		if (isInBoundNetwork(target)) {
+			return true;
+		}
+		setBinding(BINDING_OUTSIDE, target);
+		return false;
 	}
 
 	/**
@@ -244,21 +257,34 @@ public final class LocalNetwork {
 				|| ((ErrnoException) cause).errno != OsConstants.EPERM) {
 			throw x;
 		}
-		setBindingRefused(true);
+		setBinding(BINDING_REFUSED, null);
 	}
 
 	/**
-	 * Loggt nur den Wechsel: ein Suchlauf kommt hier rund tausendmal vorbei, aus
-	 * 16 Threads, und jede Zeile verdraengt eine der 25, die der
-	 * Feedback-Bericht aus dem Ringpuffer mitschickt. compareAndSet, damit
-	 * zwei Threads mit verschiedenen Antworten nicht den falschen Stand als
-	 * letzte Zeile hinterlassen.
+	 * Loggt nur den Wechsel, und zwar auch den ersten: ein Suchlauf kommt hier
+	 * rund tausendmal vorbei, aus 16 Threads, und das Log wuerde von einer
+	 * Zeile pro Socket zugeschuettet. Ohne die erste Meldung dagegen stuende
+	 * nirgends, ob ueberhaupt gebunden wurde - "gebunden", "Ziel ausserhalb
+	 * des WLANs" und "kein WLAN" saehen gleich aus.
+	 *
+	 * Das Ziel steht nur beim Fall ausserhalb in der Zeile: nur dort haengt
+	 * der Befund an der Adresse.
 	 */
-	private static void setBindingRefused(boolean refused) {
-		if (bindingRefused.compareAndSet(!refused, refused)) {
-			Logger.info(refused
-					? "binding refused with EPERM (VPN?) -> sockets stay unbound"
-					: "binding accepted -> sockets bind to the WiFi");
+	private static void setBinding(int state, InetAddress target) {
+		if (binding.getAndSet(state) == state) {
+			return;
+		}
+		switch (state) {
+		case BINDING_ACCEPTED:
+			Logger.info("binding accepted -> sockets bind to the WiFi");
+			break;
+		case BINDING_REFUSED:
+			Logger.info("binding refused with EPERM (VPN?) -> sockets stay unbound");
+			break;
+		default:
+			Logger.info("binding skipped: " + target
+					+ " is outside the WiFi subnet -> socket stays unbound");
+			break;
 		}
 	}
 
@@ -490,7 +516,7 @@ public final class LocalNetwork {
 		public void onAvailable(Network n) {
 			boundNetwork = n;
 			linkProperties = connectivity.getLinkProperties(n);
-			notifyListener(true);
+			notifyListener(true, "available");
 		}
 
 		/**
@@ -504,10 +530,19 @@ public final class LocalNetwork {
 		@Override
 		public void onLinkPropertiesChanged(Network n, LinkProperties lp) {
 			if (n.equals(boundNetwork)) {
-				final boolean hadAddress = getIPv4() != null;
+				final LinkAddress before = getIPv4();
 				linkProperties = lp;
-				if (!hadAddress && getIPv4() != null) {
-					notifyListener(true);
+				final LinkAddress after = getIPv4();
+				if (before == null && after != null) {
+					notifyListener(true, "address arrived");
+				} else if (before != null && !before.equals(after)) {
+					// Kein Wechsel fuer den Listener - das WLAN ist ja noch da -,
+					// aber fuer bind(): welches Ziel im WLAN liegt, haengt am
+					// Praefix, und ein Roaming in ein anderes Subnetz waere im
+					// Log sonst unsichtbar. Nur bei geaenderter IPv4-Adresse,
+					// der Callback kommt auch fuer DNS und Routen.
+					Logger.info("LocalNetwork: WiFi address changed from "
+							+ before + " " + LocalNetwork.this);
 				}
 			}
 		}
@@ -517,7 +552,7 @@ public final class LocalNetwork {
 			if (n.equals(boundNetwork)) {
 				boundNetwork = null;
 				linkProperties = null;
-				notifyListener(false);
+				notifyListener(false, "lost");
 			}
 		}
 	};
@@ -528,7 +563,9 @@ public final class LocalNetwork {
 	 */
 	private synchronized void notifyListenerIfNothingReported() {
 		if (!reported) {
-			notifyListener(false);
+			// nicht "lost": es war nie eines da, und ein Log soll keinen
+			// Abbruch zeigen, den es nicht gab
+			notifyListener(false, "not present at startup");
 		}
 	}
 
@@ -543,10 +580,10 @@ public final class LocalNetwork {
 	 * Callback kein zweites Mal. Unter dem Schloss postet, wer zuerst meldet,
 	 * auch zuerst.
 	 */
-	private synchronized void notifyListener(final boolean connected) {
+	private synchronized void notifyListener(final boolean connected,
+			String event) {
 		reported = true;
-		Logger.info("LocalNetwork: WiFi " + (connected ? "available" : "lost")
-				+ " " + this);
+		Logger.info("LocalNetwork: WiFi " + event + " " + this);
 		final Handler h = handler;
 		final IWiFiListener l = listener;
 		if (h == null || l == null) {
@@ -596,6 +633,9 @@ public final class LocalNetwork {
 	 * Reconnect-Thread und von den HTTP-Threads.
 	 */
 	private static volatile Context appContext;
-	/** Zuletzt geloggter Stand, siehe {@link #setBindingRefused(boolean)}. */
-	private static final AtomicBoolean bindingRefused = new AtomicBoolean();
+	/** Zuletzt geloggter Stand, siehe {@link #setBinding(int, InetAddress)}. */
+	private static final AtomicInteger binding = new AtomicInteger();
+	private static final int BINDING_ACCEPTED = 1;
+	private static final int BINDING_REFUSED = 2;
+	private static final int BINDING_OUTSIDE = 3;
 }

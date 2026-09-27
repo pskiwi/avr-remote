@@ -73,23 +73,28 @@ public final class AVRTargetTester {
 			return true;
 
 		} catch (IOException e) {
-			Logger.error("testAddress failed", e);
+			Logger.error("testAddress failed " + address, e);
 		}
 		return false;
 	}
 
-	private static boolean testPort(InetAddress ia, int port) {
-		try {
-			try (Socket socket = new Socket()) {
-				LocalNetwork.bind(socket, ia);
-				socket
-						.connect(new InetSocketAddress(ia, port),
-								CONNECT_TIMEOUT);
+	/**
+	 * Nur ein gescheitertes connect() heisst "Port zu". Eine abgelehnte Bindung
+	 * geht an testAddress() weiter und steht dort samt errno im Log - sonst
+	 * saehe sie aus wie "port 80 failed", und ein Suchlauf, den sie komplett
+	 * leerlaufen laesst, waere aus dem Log nicht zu erklaeren.
+	 */
+	private static boolean testPort(InetAddress ia, int port)
+			throws IOException {
+		try (Socket socket = new Socket()) {
+			LocalNetwork.bind(socket, ia);
+			try {
+				socket.connect(new InetSocketAddress(ia, port),
+						CONNECT_TIMEOUT);
+				return true;
+			} catch (IOException e) {
+				return false;
 			}
-			return true;
-
-		} catch (IOException e) {
-			return false;
 		}
 	}
 

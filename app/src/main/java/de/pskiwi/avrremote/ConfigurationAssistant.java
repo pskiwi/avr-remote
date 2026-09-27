@@ -161,6 +161,7 @@ public final class ConfigurationAssistant {
 			return;
 		}
 		visible.set(true);
+		Logger.info("assistant: local network blocked dialog");
 		final AlertDialog.Builder builder = new AlertDialog.Builder(ctx);
 		builder.setTitle(R.string.ConnectivityProblem);
 		builder.setMessage(R.string.LocalNetworkPermission);
@@ -236,8 +237,11 @@ public final class ConfigurationAssistant {
 		// getText, nicht getString: beide Texte setzen ihre erste Zeile - die
 		// mit dem Unterschied - in <b>, und getString macht daraus toString()
 		// und wirft die Spans weg. Die Auszeichnung kam also nie an.
-		builder.setMessage(ctx.getText(app.getConnector().isControlPortBusy()
-				? R.string.AVRControlPortBusy
+		// einmal lesen: das Flag schreibt der Reconnect-Thread, und Log und
+		// Dialog sollen denselben Wert zeigen
+		final boolean busy = app.getConnector().isControlPortBusy();
+		Logger.info("assistant: reset dialog, control port busy:" + busy);
+		builder.setMessage(ctx.getText(busy ? R.string.AVRControlPortBusy
 				: R.string.AVRReset));
 		builder.setInverseBackgroundForced(true);
 		builder.setCancelable(false);

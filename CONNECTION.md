@@ -381,6 +381,40 @@ Reconnector:connector stopped
 
 So: **a teardown line that is not followed by a new generation starting is the smell.**
 
+### What the network and permission lines tell you
+
+First, what arrives at all. The log mode defaults to `adb`, and then a feedback mail carries **only
+the report header** — no log lines. The ring buffer of the last 25 entries goes out with crash
+reports only, and without the exceptions. So the header has to answer the network questions on its
+own, and these lines are there for that:
+
+| header line | what it settles |
+| --- | --- |
+| `IPv4` | every interface with its prefix — Ethernet or tethering show up here and nowhere else |
+| `WiFi` | whether a Wi-Fi is tracked, and its address and prefix |
+| `LocalNet` | `BLOCKED` / `granted` plus the asked marker, or `not enforced (SDK …, target …)` |
+| `CtrlPort` | `busy` if the last failed attempt found port 23 taken — decides the assistant's text |
+
+`LocalNet: BLOCKED` explains a log in which every connect times out and `reachable` stays false:
+under Local Network Protection that looks exactly like a receiver that is switched off.
+
+In a full log, these lines carry the same questions over time:
+
+| line | meaning |
+| --- | --- |
+| `LocalNetwork: WiFi available` / `lost` / `address arrived` | the callback; `lost` only for a Wi-Fi that was there |
+| `LocalNetwork: WiFi not present at startup` | the seed — no Wi-Fi was ever reported, nothing dropped |
+| `LocalNetwork: WiFi address changed from …` | new IPv4 address or prefix on the same Wi-Fi, e.g. roaming |
+| `binding accepted` / `binding refused with EPERM (VPN?)` / `binding skipped: … outside the WiFi subnet` | how sockets leave; logged on every change, the first one included |
+| `local network permission: granted` / `requesting` / `denied for good -> not asking` | what the app did about the permission, once per start and per scan |
+| `local network permission: granted by the user` / `denied by the user` / `request was interrupted` | the answer to the system dialog |
+| `Reconnector:connect failed, reachable:… controlPortBusy:…` | the verdict after a failed attempt |
+| `assistant: reset dialog, control port busy:…` / `assistant: local network blocked dialog` | which hint the user actually saw |
+| `testAddress failed <address>` | the scan could not even try a port — usually a binding refused with an errno other than `EPERM` |
+
+No `binding …` line at all means no socket was ever bound: either no Wi-Fi was tracked, or nothing
+has connected yet.
+
 ## One network callback, and every socket bound to it
 
 `scan/LocalNetwork` is the only place that knows anything about the local network. It registers one

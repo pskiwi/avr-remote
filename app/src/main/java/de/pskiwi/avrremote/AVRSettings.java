@@ -171,6 +171,7 @@ public final class AVRSettings extends PreferenceActivity implements
 			// gefragt" und "keine Begruendung noetig" - und die App fragte nie
 			// wieder, obwohl der Dialog laengst wieder aufginge.
 			setLocalNetworkPermissionAsked(activity, false);
+			Logger.info("local network permission: granted");
 			return false;
 		}
 		// Endgueltig abgelehnt - ab Android 11 reicht dafuer ein einziges
@@ -186,6 +187,7 @@ public final class AVRSettings extends PreferenceActivity implements
 		// erlaubt heisst endgueltig abgelehnt.
 		if (isLocalNetworkPermissionAsked(activity)
 				&& !activity.shouldShowRequestPermissionRationale(permission)) {
+			Logger.info("local network permission: denied for good -> not asking");
 			return false;
 		}
 		// Kein eigener Begruendungs-Dialog vorweg, obwohl
@@ -197,6 +199,7 @@ public final class AVRSettings extends PreferenceActivity implements
 		// (AVRRemote.onRequestPermissionsResult), beim Scan und im
 		// ConfigurationAssistant. Dasselbe Muster wie bei POST_NOTIFICATIONS
 		// oben, das auch direkt fragt.
+		Logger.info("local network permission: requesting");
 		activity.requestPermissions(new String[] { permission },
 				REQUEST_ACCESS_LOCAL_NETWORK);
 		return true;
@@ -222,8 +225,27 @@ public final class AVRSettings extends PreferenceActivity implements
 			Logger.info("local network permission request was interrupted");
 			return;
 		}
-		setLocalNetworkPermissionAsked(ctx,
-				grantResults[0] != PackageManager.PERMISSION_GRANTED);
+		final boolean granted = grantResults[0] == PackageManager.PERMISSION_GRANTED;
+		Logger.info("local network permission: "
+				+ (granted ? "granted by the user" : "denied by the user"));
+		setLocalNetworkPermissionAsked(ctx, !granted);
+	}
+
+	/**
+	 * Stand von Local Network Protection fuer den Feedback-Bericht. Im
+	 * Standard-Logmodus ist der Bericht das Einzige, was ankommt, und ein
+	 * blockiertes lokales Netz sieht sonst aus wie ein ausgeschalteter
+	 * Receiver: jeder Socket laeuft still in den Timeout.
+	 */
+	public static String describeLocalNetworkPermission(Context ctx) {
+		final int target = ctx.getApplicationInfo().targetSdkVersion;
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.CINNAMON_BUN
+				|| target < Build.VERSION_CODES.CINNAMON_BUN) {
+			return "not enforced (SDK " + Build.VERSION.SDK_INT + ", target "
+					+ target + ")";
+		}
+		return (isLocalNetworkBlocked(ctx) ? "BLOCKED" : "granted")
+				+ " asked:" + isLocalNetworkPermissionAsked(ctx);
 	}
 
 	/**
