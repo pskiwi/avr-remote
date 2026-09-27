@@ -117,7 +117,7 @@
 	<string name="PleaseWait">Bitte warten &#8230;</string>
 	<string name="ResettingReceiver">Setze Receiver zurück &#8230;</string>
 	<string name="WiFiSettings">WLAN-Einstellungen</string>
-	<string name="AppPermissions">App-Berechtigungen</string>
+	<string name="AndroidAppSettings">Android-App-Einstellungen</string>
 	<string name="ScanningNetwork">Receiver wird gesucht &#8230;</string>
 	<string name="OpeningReceiverWebsite">Receiver Website wird geöffnet &#8230;</string>
 	<string name="LocalNetworkPermission">AVR-Remote findet und steuert den Receiver in Ihrem lokalen Netz. Ohne Zugriff darauf funktioniert weder die Suche noch die Verbindung.</string>

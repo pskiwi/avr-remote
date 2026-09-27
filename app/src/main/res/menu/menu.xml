@@ -1,7 +1,7 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 	<item android:title="@string/Settings" android:id="@+id/itemSettings"
 		android:icon="@android:drawable/ic_menu_preferences"></item>
-	<item android:title="@string/AppPermissions" android:id="@+id/itemAppPermissions"></item>
+	<item android:title="@string/AndroidAppSettings" android:id="@+id/itemAndroidAppSettings"></item>
 	<item android:title="AVR-Remote on GitHub" android:id="@+id/itemProjectPage"></item>
 	<item android:id="@+id/itemInfo" android:title="@string/Info"
 		android:icon="@android:drawable/ic_menu_info_details"></item>

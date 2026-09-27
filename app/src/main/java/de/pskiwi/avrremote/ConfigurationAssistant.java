@@ -177,7 +177,7 @@ public final class ConfigurationAssistant {
 		// die App fragt selbst auch nicht mehr. Dort steht die Permission unter
 		// "Geraete in der Naehe" - auf einem Pixel 8 mit Android 17 so
 		// nachgeklickt. Wie alertNoWLan() mit den WLAN-Einstellungen.
-		builder.setPositiveButton(R.string.AppPermissions,
+		builder.setPositiveButton(R.string.AndroidAppSettings,
 				new DialogInterface.OnClickListener() {
 					public void onClick(DialogInterface dialog, int which) {
 						visible.set(false);
