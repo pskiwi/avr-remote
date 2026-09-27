@@ -426,7 +426,7 @@ The SSDP socket is the exception and binds unconditionally, because its target i
 is not bypassable, which is the default for WireGuard, OpenVPN and most commercial VPNs, makes
 Android refuse a binding to any other network with `EPERM`. Telnet, HTTP and the scan would then
 fail on every attempt, where 1.6.1, which never bound, got through whenever the VPN excluded the LAN.
-`bindableNetwork()` therefore returns null when the *active* network has `TRANSPORT_VPN`; that is
+`isVpnActive()` therefore vetoes every binding when the *active* network has `TRANSPORT_VPN`; that is
 the case exactly when the VPN covers this app, so an app excluded per app keeps its binding. Derived
 from how netd checks network selection, **not verified on a device** — WireGuard with the LAN
 excluded is the test.

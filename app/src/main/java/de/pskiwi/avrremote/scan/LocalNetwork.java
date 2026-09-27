@@ -154,8 +154,8 @@ public final class LocalNetwork {
 	 */
 	public static void bind(Socket socket, InetAddress target)
 			throws IOException {
-		final Network n = bindableNetwork();
-		if (n != null && isInBoundNetwork(target)) {
+		final Network n = boundNetwork;
+		if (n != null && isInBoundNetwork(target) && !isVpnActive()) {
 			n.bindSocket(socket);
 		}
 	}
@@ -172,41 +172,38 @@ public final class LocalNetwork {
 	 * genau diese Bindung - ohne sie sucht der Suchlauf im Default-Netz.
 	 */
 	public static void bind(DatagramSocket socket) throws IOException {
-		final Network n = bindableNetwork();
-		if (n != null) {
+		final Network n = boundNetwork;
+		if (n != null && !isVpnActive()) {
 			n.bindSocket(socket);
 		}
 	}
 
 	/** Wie {@link #bind(Socket, InetAddress)}, fuer das HTTP-Scraping. */
 	public static URLConnection openConnection(URL url) throws IOException {
-		final Network n = bindableNetwork();
-		if (n != null && isInBoundNetwork(resolve(url.getHost()))) {
+		final Network n = boundNetwork;
+		if (n != null && isInBoundNetwork(resolve(url.getHost()))
+				&& !isVpnActive()) {
 			return n.openConnection(url);
 		}
 		return url.openConnection();
 	}
 
 	/**
-	 * Das WLAN, falls gebunden werden darf, sonst null.
+	 * Verbietet ein VPN gerade das Binden ?
 	 *
-	 * Nicht bei aktivem VPN: gilt ein VPN fuer diese App und ist es nicht
-	 * umgehbar - der Normalfall bei WireGuard, OpenVPN und den meisten
+	 * Gebunden wird nicht bei aktivem VPN: gilt ein VPN fuer diese App und ist
+	 * es nicht umgehbar - der Normalfall bei WireGuard, OpenVPN und den meisten
 	 * kommerziellen VPNs -, lehnt Android die Bindung an jedes andere Netz mit
 	 * EPERM ab. Dann scheiterten Telnet, HTTP und Suchlauf in jeder Runde.
 	 * Ungebunden laeuft der Socket wie bis 1.6.1 ins VPN, und nimmt das VPN das
 	 * lokale Netz aus ("LAN zulassen"), kommt er so direkt beim Receiver an.
 	 * Gefragt wird das aktive Netz, weil es genau dann das VPN ist, wenn das
 	 * VPN diese App erfasst - eine per App ausgenommene App darf binden.
+	 *
+	 * Erst gefragt, wenn sonst gebunden wuerde, und geloggt nur beim Wechsel:
+	 * ein Suchlauf kommt hier rund tausendmal vorbei, und jede Zeile verdraengt
+	 * eine der 25, die der Feedback-Bericht aus dem Ringpuffer mitschickt.
 	 */
-	private static Network bindableNetwork() {
-		final Network n = boundNetwork;
-		if (n == null || isVpnActive()) {
-			return null;
-		}
-		return n;
-	}
-
 	private static boolean isVpnActive() {
 		final Context ctx = appContext;
 		if (ctx == null) {
@@ -223,8 +220,10 @@ public final class LocalNetwork {
 				.getNetworkCapabilities(active);
 		final boolean vpn = capabilities != null
 				&& capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN);
-		if (vpn) {
-			Logger.debug("VPN active -> socket stays unbound");
+		if (vpn != vpnLogged) {
+			vpnLogged = vpn;
+			Logger.info(vpn ? "VPN active -> sockets stay unbound"
+					: "VPN gone -> sockets bind to the WiFi again");
 		}
 		return vpn;
 	}
@@ -563,4 +562,10 @@ public final class LocalNetwork {
 	 * Reconnect-Thread und von den HTTP-Threads.
 	 */
 	private static volatile Context appContext;
+	/**
+	 * Zuletzt geloggter VPN-Zustand, siehe {@link #isVpnActive()}. Zwei
+	 * Threads koennen denselben Wechsel beide loggen - eine Zeile zu viel,
+	 * dafuer kein Schloss auf jedem Socket.
+	 */
+	private static volatile boolean vpnLogged;
 }
