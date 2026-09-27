@@ -259,6 +259,13 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 				// Der Verbindungsversuch beim Start lief ohne die Permission
 				// und ist unter Local Network Protection ins Leere gegangen
 				getApp().getConnector().triggerReconnect();
+				// Nachgelagert: das Ergebnis kommt vor onResume, und bis dahin
+				// zeigt der Assistent nichts an (isShowing() ist false)
+				getWindow().getDecorView().post(new Runnable() {
+					public void run() {
+						configurationAssistant.permissionGranted();
+					}
+				});
 			} else if (AVRSettings.isLocalNetworkBlocked(this)) {
 				// Kein Dialog von hier: der Verbindungs-Fortschritt geht
 				// Sekundenbruchteile spaeter auf und legt sich darueber, auf

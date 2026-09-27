@@ -19,6 +19,7 @@ package de.pskiwi.avrremote.menu;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
@@ -202,10 +203,7 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 	}
 
 	public void openProjectPage() {
-			final Intent i = new Intent(Intent.ACTION_VIEW);
-			final Uri uri = Uri.parse("https://pskiwi.github.io/avr-remote/");
-			i.setData(uri);
-			activity.startActivity(i);
+		openURL("https://pskiwi.github.io/avr-remote/");
 	}
 
 	public void openPDAMenu() {
@@ -305,15 +303,22 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 	private void openURL(String url) {
 		final Intent i = new Intent(Intent.ACTION_VIEW);
 		i.setData(Uri.parse(url));
-		if (activity.isFinishing() || activity.isDestroyed()) {
-			// Nach einer Drehung gehört die Anfrage einer Activity, die es
-			// nicht mehr gibt. Über den Application-Context geht sie trotzdem
-			// auf - sonst hätte der Anwender getippt und bekäme nichts.
-			i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-			activity.getApplicationContext().startActivity(i);
-			return;
+		try {
+			if (activity.isFinishing() || activity.isDestroyed()) {
+				// Nach einer Drehung gehört die Anfrage einer Activity, die es
+				// nicht mehr gibt. Über den Application-Context geht sie
+				// trotzdem auf - sonst hätte der Anwender getippt und bekäme
+				// nichts.
+				i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+				activity.getApplicationContext().startActivity(i);
+				return;
+			}
+			activity.startActivity(i);
+		} catch (ActivityNotFoundException x) {
+			// Kein Browser auf dem Geraet (Kiosk-Geraete, abgespeckte ROMs):
+			// dann eben nichts, statt dass der Tipp die App beendet
+			Logger.error("no browser for [" + url + "]", x);
 		}
-		activity.startActivity(i);
 	}
 
 	private void showAbout() {

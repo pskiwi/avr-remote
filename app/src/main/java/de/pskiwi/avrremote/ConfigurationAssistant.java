@@ -106,6 +106,21 @@ public final class ConfigurationAssistant {
 
 	}
 
+	/**
+	 * Nach einer Permission-Erteilung: steht noch keine Adresse fest, war das
+	 * die Frage aus dem Suchlauf der Einrichtung - AVRScanner.scanIP hoert dann
+	 * mit einem Toast auf. Ohne das hier gaebe es danach keinen Loop, keinen
+	 * Fortschritt und keinen Hinweis mehr, und der Anwender muesste den
+	 * Suchlauf im Menue finden. Laeuft noch ein anderer Dialog - beim ersten
+	 * Start die Modellauswahl -, tut showIPDialog() nichts.
+	 */
+	public void permissionGranted() {
+		if (!app.getModelConfigurator().getConnectionConfig().isDefined()) {
+			Logger.info("assistant: permission granted during setup -> IP dialog");
+			showIPDialog(true);
+		}
+	}
+
 	private void showIPDialog(final boolean setupMode) {
 		if (visible.get() || !ctx.isShowing()) {
 			return;

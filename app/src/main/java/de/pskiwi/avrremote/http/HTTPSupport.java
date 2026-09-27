@@ -76,6 +76,14 @@ public final class HTTPSupport {
 			// bläht nur die Logs auf, die Anwender einschicken
 			Logger.debug("STATUS [" + url + "] failed: " + e);
 			return NO_ANSWER;
+		} catch (RuntimeException e) {
+			// Der Pfad kommt aus den Einstellungen und ist frei eingebbar. Wirft
+			// der HTTP-Stack fuer eine URL, die er nicht versteht, eine
+			// ungepruefte Exception, liefe sie auf dem Hintergrund-Thread des
+			// Aufrufers auf und beendete den Prozess. Kein Befund ueber die
+			// Seite - der Aufrufer bleibt dann beim eingestellten Pfad.
+			Logger.error("STATUS [" + url + "] failed", e);
+			return NO_ANSWER;
 		}
 	}
 

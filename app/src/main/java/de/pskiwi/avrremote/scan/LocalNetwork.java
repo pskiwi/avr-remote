@@ -545,10 +545,10 @@ public final class LocalNetwork {
 		/**
 		 * onAvailable kommt, bevor DHCP fertig ist - die LinkProperties tragen
 		 * dann noch keine IPv4-Adresse, und genau die braucht der Suchlauf
-		 * ({@link #getIPv4()}). Kommt sie erst hier nach, muss das gemeldet
-		 * werden: sonst steht StatusFlag.WLAN auf true, während
-		 * {@link #isConnected()} noch false ist, und ein Scan in diesem Fenster
-		 * bricht mit "no IPv4 address" ab, ohne dass sich danach etwas rührt.
+		 * ({@link #getIPv4()}). Dass sie nachkommt, steht im Log; fuer den
+		 * Listener aendert die Meldung nichts - StatusFlag.WLAN steht seit
+		 * onAvailable schon auf true, und AVRApplication loest nur bei einem
+		 * Wechsel etwas aus. Der Suchlauf liest getIPv4() ohnehin frisch.
 		 */
 		@Override
 		public void onLinkPropertiesChanged(Network n, LinkProperties lp) {
