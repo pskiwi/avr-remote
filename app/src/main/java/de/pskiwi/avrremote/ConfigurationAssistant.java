@@ -23,6 +23,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.DialogInterface.OnCancelListener;
 import android.content.DialogInterface.OnClickListener;
+import android.net.Uri;
 import de.pskiwi.avrremote.EnableManager.StatusFlag;
 import de.pskiwi.avrremote.log.Logger;
 import de.pskiwi.avrremote.scan.AVRScanner;
@@ -170,6 +171,23 @@ public final class ConfigurationAssistant {
 				new DialogInterface.OnClickListener() {
 					public void onClick(DialogInterface dialog, int which) {
 						visible.set(false);
+					}
+				});
+		// Direkt auf die App-Info, weil es nach der zweiten Ablehnung keinen
+		// anderen Weg zurueck gibt: Android zeigt dann keinen Dialog mehr, und
+		// die App fragt selbst auch nicht mehr. Dort steht die Permission unter
+		// "Geraete in der Naehe" - auf einem Pixel 8 mit Android 17 so
+		// nachgeklickt. Wie alertNoWLan() mit den WLAN-Einstellungen.
+		builder.setPositiveButton(R.string.AppPermissions,
+				new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog, int which) {
+						visible.set(false);
+						Logger.info("assistant: opening app settings");
+						final Intent intent = new Intent(
+								android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+								Uri.fromParts("package", ctx.getPackageName(),
+										null));
+						ctx.startActivity(intent);
 					}
 				});
 		// Ohne den Listener bleibt visible stehen, sobald der Dialog mit der

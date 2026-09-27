@@ -218,7 +218,7 @@ public final class AVRSettings extends PreferenceActivity implements
 	 * Local Network Protection heisst das: die App kommt nicht mehr ins lokale
 	 * Netz, und aus der App heraus fuehrt kein Weg zurueck.
 	 */
-	public static void localNetworkPermissionResult(Context ctx,
+	public static void localNetworkPermissionResult(Activity activity,
 			int[] grantResults) {
 		if (grantResults.length == 0) {
 			// abgebrochen - beim naechsten Mal wieder fragen
@@ -226,9 +226,21 @@ public final class AVRSettings extends PreferenceActivity implements
 			return;
 		}
 		final boolean granted = grantResults[0] == PackageManager.PERMISSION_GRANTED;
-		Logger.info("local network permission: "
-				+ (granted ? "granted by the user" : "denied by the user"));
-		setLocalNetworkPermissionAsked(ctx, !granted);
+		// Nicht "vom Anwender abgelehnt": ist die Ablehnung schon endgueltig,
+		// antwortet Android selbst, ohne Dialog und binnen Millisekunden. Ob
+		// Android noch einmal fragt, ist das, was ein Leser wissen muss - danach
+		// fuehrt nur noch die App-Info zurueck.
+		final String result;
+		if (granted) {
+			result = "granted";
+		} else if (activity.shouldShowRequestPermissionRationale(
+				android.Manifest.permission.ACCESS_LOCAL_NETWORK)) {
+			result = "denied, Android will ask again";
+		} else {
+			result = "denied for good - only the app settings can grant it now";
+		}
+		Logger.info("local network permission result: " + result);
+		setLocalNetworkPermissionAsked(activity, !granted);
 	}
 
 	/**

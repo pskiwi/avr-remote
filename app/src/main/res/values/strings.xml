@@ -111,6 +111,7 @@
 	<string name="PleaseWait">Please wait &#8230;</string>
 	<string name="ResettingReceiver">Resetting receiver &#8230;</string>
 	<string name="WiFiSettings">WiFi-Settings</string>
+	<string name="AppPermissions">App permissions</string>
 	<string name="ScanningNetwork">Scanning network &#8230;</string>
 	<string name="OpeningReceiverWebsite">Opening receiver website &#8230;</string>
 	<string name="AutoScanNotSupported">"Scanning only supports class C networks (255.255.255.0).\nPlease manually enter your receiver IP address."</string>
