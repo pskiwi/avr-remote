@@ -48,12 +48,13 @@ What is left is the part no build can answer.
       someone runs the real case, the binding is verified in the sense that sockets demonstrably
       leave from the Wi-Fi address, and no further.
 
-- [ ] **The VPN exception in `LocalNetwork.isVpnActive()` is derived, not measured.** With a
-      VPN covering the app nothing is bound, because Android answers the binding with `EPERM` — see
-      [CONNECTION.md](CONNECTION.md). Two things to see on a device: that WireGuard with the LAN
-      excluded connects (it failed on every attempt before the exception), and that the log shows
-      `VPN active -> sockets stay unbound`, once per change. If binding turns out to work under a VPN after all,
-      the exception costs only the mobile-data-beside-Wi-Fi case while the VPN is on.
+- [ ] **The `EPERM` fallback in `LocalNetwork.refusedByVpn()` is derived, not measured.** A
+      binding refused by a VPN leaves the socket unbound — see [CONNECTION.md](CONNECTION.md). Two
+      things to see on a device: that WireGuard with the LAN excluded connects (it failed on every
+      attempt before the fallback), and that the log shows
+      `binding refused with EPERM (VPN?) -> sockets stay unbound` once. If the refusal arrives with
+      another errno, the fallback does not catch it and the old failure is back — the exception in
+      the log then names the errno to test for.
 
 - [ ] **Select the model from `description.xml` instead of asking the user.** The description is
       now fetched and lands in the feedback report (`http/DeviceDescription`, see

@@ -23,10 +23,12 @@ import java.net.InetAddress;
 import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.UnknownHostException;
 import java.util.Enumeration;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import android.content.Context;
 import android.net.ConnectivityManager;
@@ -36,6 +38,8 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.Handler;
+import android.system.ErrnoException;
+import android.system.OsConstants;
 import de.pskiwi.avrremote.AVRSettings;
 import de.pskiwi.avrremote.EmulationDetector;
 import de.pskiwi.avrremote.log.Logger;
@@ -54,7 +58,8 @@ import de.pskiwi.avrremote.log.Logger;
  * Android 17) muss jeder Socket ins lokale Netz an genau dieses Network gebunden
  * werden, nicht nur der Suchlauf. {@link #bind(Socket, InetAddress)},
  * {@link #bind(DatagramSocket)} und {@link #openConnection(URL)} sind die Quelle
- * dafür.
+ * dafür - und sie lassen einen Socket ungebunden, wo Android die Bindung
+ * verweigert, siehe {@link #refusedByVpn(SocketException)}.
  */
 public final class LocalNetwork {
 
@@ -147,16 +152,22 @@ public final class LocalNetwork {
 	 * ihn ein ungebundener Socket nach Ziel erreicht. Das Binden nuetzt nur
 	 * dort, wo das Ziel im WLAN liegt, und genau dort wird es getan.
 	 *
-	 * Ist kein WLAN bekannt oder das Ziel nicht darin, bleibt der Socket
-	 * ungebunden: der Aufrufer kommt sonst gar nicht mehr zum Zug, und
+	 * Ist kein WLAN bekannt, das Ziel nicht darin oder die Bindung von einem VPN
+	 * verweigert, bleibt der Socket ungebunden: der Aufrufer kommt sonst gar nicht mehr zum Zug, und
 	 * ungebunden ist nicht hoffnungslos - siehe {@link #mayConnect(String)}. Wer
 	 * wiederholt aufbaut, fragt vorher dort; hier wird nichts verweigert.
 	 */
 	public static void bind(Socket socket, InetAddress target)
 			throws IOException {
 		final Network n = boundNetwork;
-		if (n != null && isInBoundNetwork(target) && !isVpnActive()) {
-			n.bindSocket(socket);
+		if (n != null && isInBoundNetwork(target)) {
+			try {
+				n.bindSocket(socket);
+			} catch (SocketException x) {
+				refusedByVpn(x);
+				return;
+			}
+			setBindingRefused(false);
 		}
 	}
 
@@ -166,66 +177,89 @@ public final class LocalNetwork {
 	}
 
 	/**
-	 * Fuer den SSDP-Suchlauf, und als einziger Aufruf ohne Ziel bedingungslos:
-	 * das Ziel ist die Multicast-Gruppe 239.255.255.250, die in keinem Subnetz
-	 * liegt. Ueber welche Schnittstelle die M-SEARCH hinausgeht, entscheidet
+	 * Fuer den SSDP-Suchlauf, und als einziger Aufruf ohne Ziel ohne
+	 * Subnetz-Pruefung: das Ziel ist die Multicast-Gruppe 239.255.255.250, die in
+	 * keinem Subnetz liegt. Ueber welche Schnittstelle die M-SEARCH hinausgeht, entscheidet
 	 * genau diese Bindung - ohne sie sucht der Suchlauf im Default-Netz.
 	 */
 	public static void bind(DatagramSocket socket) throws IOException {
 		final Network n = boundNetwork;
-		if (n != null && !isVpnActive()) {
-			n.bindSocket(socket);
+		if (n != null) {
+			try {
+				n.bindSocket(socket);
+			} catch (SocketException x) {
+				refusedByVpn(x);
+				return;
+			}
+			setBindingRefused(false);
 		}
 	}
 
-	/** Wie {@link #bind(Socket, InetAddress)}, fuer das HTTP-Scraping. */
+	/**
+	 * Wie {@link #bind(Socket, InetAddress)}, fuer das HTTP-Scraping.
+	 *
+	 * Network.openConnection() bindet erst beim Verbindungsaufbau, in seiner
+	 * eigenen Socket-Factory - eine Ablehnung liesse sich dort nicht mehr
+	 * abfangen. Deshalb vorher ein Wegwerf-Socket: er bekommt dieselbe Antwort,
+	 * und die HTTP-Abrufe sind selten genug, dass er nichts kostet.
+	 */
 	public static URLConnection openConnection(URL url) throws IOException {
 		final Network n = boundNetwork;
 		if (n != null && isInBoundNetwork(resolve(url.getHost()))
-				&& !isVpnActive()) {
+				&& mayBind(n)) {
 			return n.openConnection(url);
 		}
 		return url.openConnection();
 	}
 
+	private static boolean mayBind(Network n) throws IOException {
+		try (Socket probe = new Socket()) {
+			n.bindSocket(probe);
+		} catch (SocketException x) {
+			refusedByVpn(x);
+			return false;
+		}
+		setBindingRefused(false);
+		return true;
+	}
+
 	/**
-	 * Verbietet ein VPN gerade das Binden ?
+	 * Hat ein VPN die Bindung verweigert ? Dann kehrt der Aufruf zurueck und der
+	 * Socket bleibt ungebunden, jeder andere Fehler wird weitergeworfen.
 	 *
-	 * Gebunden wird nicht bei aktivem VPN: gilt ein VPN fuer diese App und ist
-	 * es nicht umgehbar - der Normalfall bei WireGuard, OpenVPN und den meisten
-	 * kommerziellen VPNs -, lehnt Android die Bindung an jedes andere Netz mit
-	 * EPERM ab. Dann scheiterten Telnet, HTTP und Suchlauf in jeder Runde.
-	 * Ungebunden laeuft der Socket wie bis 1.6.1 ins VPN, und nimmt das VPN das
-	 * lokale Netz aus ("LAN zulassen"), kommt er so direkt beim Receiver an.
-	 * Gefragt wird das aktive Netz, weil es genau dann das VPN ist, wenn das
-	 * VPN diese App erfasst - eine per App ausgenommene App darf binden.
+	 * Gilt ein VPN fuer diese App und ist es nicht umgehbar - der Normalfall bei
+	 * WireGuard, OpenVPN und den meisten kommerziellen VPNs -, lehnt Android die
+	 * Bindung an jedes andere Netz mit EPERM ab. Ohne diesen Ausweg scheiterten
+	 * Telnet, HTTP und Suchlauf in jeder Runde. Ungebunden laeuft der Socket wie
+	 * bis 1.6.1 ins VPN, und nimmt das VPN das lokale Netz aus ("LAN
+	 * zulassen"), kommt er so direkt beim Receiver an.
 	 *
-	 * Erst gefragt, wenn sonst gebunden wuerde, und geloggt nur beim Wechsel:
-	 * ein Suchlauf kommt hier rund tausendmal vorbei, und jede Zeile verdraengt
-	 * eine der 25, die der Feedback-Bericht aus dem Ringpuffer mitschickt.
+	 * Gefragt wird die Bindung selbst und nicht, ob ein VPN aktiv ist: ein
+	 * umgehbares VPN laesst sie zu, und dort bleibt es beim WLAN - auch wenn
+	 * das VPN das lokale Netz in den Tunnel schickt.
 	 */
-	private static boolean isVpnActive() {
-		final Context ctx = appContext;
-		if (ctx == null) {
-			// JVM-Test, wie in mayConnect()
-			return false;
+	private static void refusedByVpn(SocketException x) throws SocketException {
+		final Throwable cause = x.getCause();
+		if (!(cause instanceof ErrnoException)
+				|| ((ErrnoException) cause).errno != OsConstants.EPERM) {
+			throw x;
 		}
-		final ConnectivityManager cm = (ConnectivityManager) ctx
-				.getSystemService(Context.CONNECTIVITY_SERVICE);
-		final Network active = cm.getActiveNetwork();
-		if (active == null) {
-			return false;
+		setBindingRefused(true);
+	}
+
+	/**
+	 * Loggt nur den Wechsel: ein Suchlauf kommt hier rund tausendmal vorbei, aus
+	 * 16 Threads, und jede Zeile verdraengt eine der 25, die der
+	 * Feedback-Bericht aus dem Ringpuffer mitschickt. compareAndSet, damit
+	 * zwei Threads mit verschiedenen Antworten nicht den falschen Stand als
+	 * letzte Zeile hinterlassen.
+	 */
+	private static void setBindingRefused(boolean refused) {
+		if (bindingRefused.compareAndSet(!refused, refused)) {
+			Logger.info(refused
+					? "binding refused with EPERM (VPN?) -> sockets stay unbound"
+					: "binding accepted -> sockets bind to the WiFi");
 		}
-		final NetworkCapabilities capabilities = cm
-				.getNetworkCapabilities(active);
-		final boolean vpn = capabilities != null
-				&& capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN);
-		if (vpn != vpnLogged) {
-			vpnLogged = vpn;
-			Logger.info(vpn ? "VPN active -> sockets stay unbound"
-					: "VPN gone -> sockets bind to the WiFi again");
-		}
-		return vpn;
 	}
 
 	/** Liegt das Ziel im Subnetz des gebundenen WLANs ? */
@@ -562,10 +596,6 @@ public final class LocalNetwork {
 	 * Reconnect-Thread und von den HTTP-Threads.
 	 */
 	private static volatile Context appContext;
-	/**
-	 * Zuletzt geloggter VPN-Zustand, siehe {@link #isVpnActive()}. Zwei
-	 * Threads koennen denselben Wechsel beide loggen - eine Zeile zu viel,
-	 * dafuer kein Schloss auf jedem Socket.
-	 */
-	private static volatile boolean vpnLogged;
+	/** Zuletzt geloggter Stand, siehe {@link #setBindingRefused(boolean)}. */
+	private static final AtomicBoolean bindingRefused = new AtomicBoolean();
 }
