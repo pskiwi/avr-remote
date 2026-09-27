@@ -274,7 +274,7 @@ What is left is the part no build can answer.
       | 15 | `PreferenceActivity.findPreference()` / `getPreferenceScreen()` / `addPreferencesFromResource()` | 7 | `AVRSettings`, `PreferenceSummaryUpdater` |
       | 15 | `Display.getWidth()` / `getHeight()` | 4 | `AVRRemote` |
       | 15 | `LayoutParams.FILL_PARENT` | 3 | `LevelActivity`, `ScreenMenu` |
-      | 16 | `Configuration.ORIENTATION_SQUARE` | 1 | `AVRRemote.java:357` |
+      | 16 | `Configuration.ORIENTATION_SQUARE` | 1 | `AVRRemote.java:406` |
       | 22 | `Resources.getDrawable()` | 8 | `AVRTheme`, `IconManager`, `OnScreenDisplayActivity` |
       | 23 | `AlertDialog.Builder.setInverseBackgroundForced()` | 6 | 4 files |
       | 29/30 | `android.preference.*` (31× `PreferenceManager`), `AsyncTask`, `TabHost`, `ListActivity`, `ExpandableListActivity`, 12× `new Handler()` | 61 | this item |
@@ -283,7 +283,7 @@ What is left is the part no build can answer.
       **15 years**. It cannot be picked off on its own: it and the API 29/30 block are the same
       AppCompat migration, which is why the age does not translate into urgency.
 - [ ] The one entry in that table that is a genuine decision rather than a rename:
-      `Configuration.ORIENTATION_SQUARE` (`AVRRemote.java:357`) is **not** dead code. The app
+      `Configuration.ORIENTATION_SQUARE` (`AVRRemote.java:406`) is **not** dead code. The app
       computes the orientation itself from display width and height and returns that constant, so
       the branch can still fire on a square window. It is the *constant* that is obsolete — the
       platform has not reported it since Android 4.1 — so replacing it means deciding what a square
