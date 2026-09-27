@@ -23,7 +23,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.DialogInterface.OnCancelListener;
 import android.content.DialogInterface.OnClickListener;
-import android.net.Uri;
 import de.pskiwi.avrremote.EnableManager.StatusFlag;
 import de.pskiwi.avrremote.log.Logger;
 import de.pskiwi.avrremote.scan.AVRScanner;
@@ -183,11 +182,7 @@ public final class ConfigurationAssistant {
 					public void onClick(DialogInterface dialog, int which) {
 						visible.set(false);
 						Logger.info("assistant: opening app settings");
-						final Intent intent = new Intent(
-								android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-								Uri.fromParts("package", ctx.getPackageName(),
-										null));
-						ctx.startActivity(intent);
+						AVRSettings.openAppSettings(ctx);
 					}
 				});
 		// Ohne den Listener bleibt visible stehen, sobald der Dialog mit der

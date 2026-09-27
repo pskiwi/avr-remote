@@ -314,6 +314,19 @@ public final class AVRSettings extends PreferenceActivity implements
 	}
 
 	/**
+	 * Die App-Info dieser App in den System-Einstellungen. Dort stehen die
+	 * Berechtigungen, und nach einer endgueltigen Ablehnung ist das der
+	 * einzige Weg zurueck: Android zeigt dann keinen Dialog mehr. Die
+	 * Permission fuer das lokale Netz heisst dort "Geraete in der Naehe"
+	 * (Pixel 8, Android 17).
+	 */
+	public static void openAppSettings(Activity activity) {
+		activity.startActivity(new Intent(
+				android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+				Uri.fromParts("package", activity.getPackageName(), null)));
+	}
+
+	/**
 	 * Haelt Local Network Protection uns gerade vom lokalen Netz ab ?
 	 *
 	 * Die Frage ist nicht "fehlt die Permission" - solange targetSdk 36 ist,

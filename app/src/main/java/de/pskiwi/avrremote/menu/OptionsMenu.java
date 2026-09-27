@@ -86,6 +86,10 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 		case R.id.itemInfo:
 			showAbout();
 			break;
+		case R.id.itemAppPermissions:
+			Logger.info("menu: opening app settings");
+			AVRSettings.openAppSettings(activity);
+			break;
 		case R.id.itemProjectPage:
 			openProjectPage();
 			break;
