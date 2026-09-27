@@ -146,8 +146,9 @@ public final class AVRScanner {
 
 	public void scan(final IScanResultHandler handler) throws Exception {
 		Logger.info("Scan: start");
-		// emulator
-		Logger.info(Build.PRODUCT + "/" + Build.DEVICE);
+		// emulator - HARDWARE ist das, woran EmulationDetector ihn erkennt
+		Logger.info(Build.PRODUCT + "/" + Build.DEVICE + "/" + Build.HARDWARE
+				+ " emulator:" + EmulationDetector.isEmulator());
 
 		// Ohne die Permission kommt unter Local Network Protection weder ein
 		// SSDP-Paket raus noch ein TCP-Connect durch - und zwar lautlos, per
