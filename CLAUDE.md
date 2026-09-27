@@ -262,7 +262,8 @@ Consequences:
   through them. A unicast target is bound **only when it lies in the Wi-Fi's own subnet**: the
   binding names a `Network`, and only Wi-Fi ones are tracked, so binding a target on another
   interface — Ethernet, tethering, a VPN — would pin it to the wrong routing table. SSDP binds
-  unconditionally; its target is a multicast group and the binding is what picks the interface. Without the binding the connection takes the default network, which beside active
+  unconditionally; its target is a multicast group and the binding is what picks the interface.
+  While a VPN covers the app nothing is bound at all — Android refuses the binding with `EPERM`. Without the binding the connection takes the default network, which beside active
   mobile data is not the Wi-Fi, and under Local Network Protection it is refused outright. Never
   `ConnectivityManager.bindProcessToNetwork()`: it applies process-wide. Without a Wi-Fi the socket
   stays unbound, as it always has — what is new is that the reconnect loop asks

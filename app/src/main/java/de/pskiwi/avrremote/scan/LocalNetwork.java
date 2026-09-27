@@ -154,7 +154,7 @@ public final class LocalNetwork {
 	 */
 	public static void bind(Socket socket, InetAddress target)
 			throws IOException {
-		final Network n = boundNetwork;
+		final Network n = bindableNetwork();
 		if (n != null && isInBoundNetwork(target)) {
 			n.bindSocket(socket);
 		}
@@ -172,7 +172,7 @@ public final class LocalNetwork {
 	 * genau diese Bindung - ohne sie sucht der Suchlauf im Default-Netz.
 	 */
 	public static void bind(DatagramSocket socket) throws IOException {
-		final Network n = boundNetwork;
+		final Network n = bindableNetwork();
 		if (n != null) {
 			n.bindSocket(socket);
 		}
@@ -180,11 +180,53 @@ public final class LocalNetwork {
 
 	/** Wie {@link #bind(Socket, InetAddress)}, fuer das HTTP-Scraping. */
 	public static URLConnection openConnection(URL url) throws IOException {
-		final Network n = boundNetwork;
+		final Network n = bindableNetwork();
 		if (n != null && isInBoundNetwork(resolve(url.getHost()))) {
 			return n.openConnection(url);
 		}
 		return url.openConnection();
+	}
+
+	/**
+	 * Das WLAN, falls gebunden werden darf, sonst null.
+	 *
+	 * Nicht bei aktivem VPN: gilt ein VPN fuer diese App und ist es nicht
+	 * umgehbar - der Normalfall bei WireGuard, OpenVPN und den meisten
+	 * kommerziellen VPNs -, lehnt Android die Bindung an jedes andere Netz mit
+	 * EPERM ab. Dann scheiterten Telnet, HTTP und Suchlauf in jeder Runde.
+	 * Ungebunden laeuft der Socket wie bis 1.6.1 ins VPN, und nimmt das VPN das
+	 * lokale Netz aus ("LAN zulassen"), kommt er so direkt beim Receiver an.
+	 * Gefragt wird das aktive Netz, weil es genau dann das VPN ist, wenn das
+	 * VPN diese App erfasst - eine per App ausgenommene App darf binden.
+	 */
+	private static Network bindableNetwork() {
+		final Network n = boundNetwork;
+		if (n == null || isVpnActive()) {
+			return null;
+		}
+		return n;
+	}
+
+	private static boolean isVpnActive() {
+		final Context ctx = appContext;
+		if (ctx == null) {
+			// JVM-Test, wie in mayConnect()
+			return false;
+		}
+		final ConnectivityManager cm = (ConnectivityManager) ctx
+				.getSystemService(Context.CONNECTIVITY_SERVICE);
+		final Network active = cm.getActiveNetwork();
+		if (active == null) {
+			return false;
+		}
+		final NetworkCapabilities capabilities = cm
+				.getNetworkCapabilities(active);
+		final boolean vpn = capabilities != null
+				&& capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN);
+		if (vpn) {
+			Logger.debug("VPN active -> socket stays unbound");
+		}
+		return vpn;
 	}
 
 	/** Liegt das Ziel im Subnetz des gebundenen WLANs ? */

@@ -48,6 +48,13 @@ What is left is the part no build can answer.
       someone runs the real case, the binding is verified in the sense that sockets demonstrably
       leave from the Wi-Fi address, and no further.
 
+- [ ] **The VPN exception in `LocalNetwork.bindableNetwork()` is derived, not measured.** With a
+      VPN covering the app nothing is bound, because Android answers the binding with `EPERM` — see
+      [CONNECTION.md](CONNECTION.md). Two things to see on a device: that WireGuard with the LAN
+      excluded connects (it failed on every attempt before the exception), and that the log shows
+      `VPN active -> socket stays unbound`. If binding turns out to work under a VPN after all,
+      the exception costs only the mobile-data-beside-Wi-Fi case while the VPN is on.
+
 - [ ] **Select the model from `description.xml` instead of asking the user.** The description is
       now fetched and lands in the feedback report (`http/DeviceDescription`, see
       [CONNECTION.md](CONNECTION.md)); what is not done is acting on it. `<modelName>` is on an

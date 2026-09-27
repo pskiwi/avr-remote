@@ -422,6 +422,15 @@ address or a missing prefix all mean "do not bind": what cannot be shown to be i
 The SSDP socket is the exception and binds unconditionally, because its target is the multicast group
 `239.255.255.250`, which lies in no subnet — there the binding *is* the interface choice.
 
+**Nothing is bound while a VPN covers the app — not even SSDP.** A VPN that applies to this app and
+is not bypassable, which is the default for WireGuard, OpenVPN and most commercial VPNs, makes
+Android refuse a binding to any other network with `EPERM`. Telnet, HTTP and the scan would then
+fail on every attempt, where 1.6.1, which never bound, got through whenever the VPN excluded the LAN.
+`bindableNetwork()` therefore returns null when the *active* network has `TRANSPORT_VPN`; that is
+the case exactly when the VPN covers this app, so an app excluded per app keeps its binding. Derived
+from how netd checks network selection, **not verified on a device** — WireGuard with the LAN
+excluded is the test.
+
 **What the binding cannot do is make an unreachable address reachable.** With no Wi-Fi the socket
 stays unbound and follows the default route; beside active mobile data that is the mobile network,
 where a LAN address cannot arrive. `bind()` tolerates that as it always has — refusing there would
