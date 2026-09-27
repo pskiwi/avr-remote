@@ -520,6 +520,11 @@ Three things about that question are deliberate:
   preference — no Application context, which is what keeps `HTTPSupportTest` and `ConnectorTest` able
   to reach their own sockets, and an emulator, where the network detection has nothing to go on
   (`ConfigurationAssistant.checkStatus` and `AVRScanner.scan` make the same exception).
+  The flip side: on an emulator neither the skipped round nor the *Use mobile network* switch, the
+  "Wi-Fi is not active" hint or the scan's "no Wi-Fi address" error can be reached — the scan sweeps
+  a hard-coded `192.168.10.1/24` instead. All four need a device. `EmulationDetector` goes by
+  `Build.HARDWARE` (`ranchu`, or `goldfish` on the old images) and is therefore true on every
+  Android Studio emulator, whatever its ABI.
 - **It reads `boundNetwork`, not `StatusFlag.WLAN`.** The flag travels through a `Handler.post()` and
   can lag the field; a connect that would have worked must not die on a stale value. The field is the
   one the binding itself would use, read at the moment of the connect. A Wi-Fi the callback has not
