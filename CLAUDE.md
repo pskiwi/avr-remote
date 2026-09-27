@@ -95,7 +95,7 @@ knowing before writing more tests:
   is not set here, and turning it on would only paper over the third case.
   So a class dies at load time either when a static initialiser calls an Android method, or when it
   uses a null that a field read handed back. `core/InData` had the second kind: an `EXTENDED_DEBUG`
-  field calling `EmulationDetector.isEmulator()`, which does `Build.PRODUCT.toUpperCase()` — an NPE
+  field calling `EmulationDetector.isEmulator()`, which then did `Build.PRODUCT.toUpperCase()` — an NPE
   inside `<clinit>`. Every test touching `InData` then died with `ExceptionInInitializerError`,
   including tests of classes that merely *use* it, which makes the cause hard to see (restoring the
   field kills 20 of the 50 tests). It is now read inside `toDebugString()`, where it is used, and
@@ -108,9 +108,9 @@ knowing before writing more tests:
   **Deferring the field only moved the NPE from load time to call time**, and `toDebugString()` is
   called on every line the receiver sends (`Connector.Receiver.run()`). On a JVM that killed the
   `receiver` thread at the first byte — silently, because the default uncaught handler writes to
-  stderr and nothing in the test asserts on the thread. `EmulationDetector` therefore guards both
-  `Build` reads now; on a device neither can be null, so nothing changes there. Without that guard
-  no test can exercise a receive path at all.
+  stderr and nothing in the test asserts on the thread. `EmulationDetector` therefore compares
+  `Build.HARDWARE` null-safely (`"ranchu".equals(…)`); on a device it cannot be null, so nothing
+  changes there. Without that guard no test can exercise a receive path at all.
 - `core/ThreadHandlerTest` asserts on wall-clock time, as does `Series08ParserTest`'s
   `largeLineStaysFast`. Its threshold sits between "no wait" and the `join(1000)` it replaced
   (measured 1003 ms), so keep that margin if you touch it. It reaches

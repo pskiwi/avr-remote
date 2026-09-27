@@ -24,14 +24,16 @@ public final class EmulationDetector {
 		return EMULATOR;
 	}
 
+	// Am Hardware-Namen, nicht an PRODUCT/DEVICE: die arm64-Images melden
+	// DEVICE generic_arm64 (API 24-26) bzw. emu64a (ab 33), die alte Abfrage
+	// auf "generic" griff dort nie. ranchu ist der aktuelle Emulator, goldfish
+	// der alte - beide gibt es auf keinem echten Geraet.
 	// Null-sicher, weil im Stub-android.jar eines JVM-Tests jeder Feldzugriff
-	// null liefert. Ohne die Wachen stirbt hier der <clinit> mit einer NPE,
+	// null liefert. Ohne das stirbt hier der <clinit> mit einer NPE,
 	// und mit ihm jeder Aufrufer - InData.toDebugString() fragt das ab, und
 	// das wiederum steht in Connector.Receiver.run() auf dem Empfangspfad:
 	// der Receiver-Thread ging so beim ersten empfangenen Byte still verloren.
-	// Auf einem Gerät sind beide Felder gesetzt, dort ändert sich nichts.
-	private final static boolean EMULATOR = Build.PRODUCT != null
-			&& Build.PRODUCT.toUpperCase().contains("SDK")
-			&& "generic".equals(Build.DEVICE);
+	private final static boolean EMULATOR = "ranchu".equals(Build.HARDWARE)
+			|| "goldfish".equals(Build.HARDWARE);
 
 }
