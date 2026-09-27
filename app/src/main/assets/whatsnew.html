@@ -8,6 +8,30 @@
 		</p>
 		</p>
 		</ul>
+		<b>1.7.0</b>
+		<ul>
+			<li><b>Updated for Android 17.</b> The app now asks for access to
+				devices on your local network. Without it neither the receiver
+				search nor the connection works (pskiwi)</li>
+			<li><b>Mobile network:</b> without Wi-Fi the app no longer tries to
+				reach a receiver outside your local network. If you control your
+				receiver from elsewhere, over a VPN or a forwarded port, switch on
+				Settings &gt; Network Settings &gt; Use mobile network (pskiwi)</li>
+			<li>Connections to the receiver go through the Wi-Fi even when mobile
+				data is on (pskiwi)</li>
+			<li>The receiver search is much faster, works in networks larger
+				than 255 addresses and no longer skips every 16th address
+				(pskiwi)</li>
+			<li>When the receiver answers but its control connection is taken by
+				another app or device, the app now says so instead of blaming the
+				receiver (pskiwi)</li>
+			<li>A connection that silently dies is now noticed and re-established
+				(pskiwi)</li>
+			<li>The receiver website opens the start page when the configured page
+				does not exist on your model (pskiwi)</li>
+			<li>The network detection was rewritten. If the app no longer finds or
+				reaches your receiver, please send a log (pskiwi)</li>
+		</ul>
 		<b>1.6.1</b>
 		<ul>
 			<li>Fixed a crash that could close the whole app when Wi-Fi was

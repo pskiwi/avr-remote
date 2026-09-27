@@ -240,7 +240,8 @@ sources rather than this list — Play policy moves and this file will not.
   removal, starting regionally in late 2026.
   ([details](https://support.google.com/googleplay/android-developer/answer/16984799))
 - **Data safety form.** Mandatory, must stay accurate. The app collects nothing and requests only
-  `INTERNET`, `ACCESS_NETWORK_STATE`, `ACCESS_WIFI_STATE` and `POST_NOTIFICATIONS`.
+  `INTERNET`, `ACCESS_NETWORK_STATE`, `ACCESS_LOCAL_NETWORK` and `POST_NOTIFICATIONS`
+  (`ACCESS_WIFI_STATE` went in 1.7.0).
   ([details](https://support.google.com/googleplay/android-developer/answer/10787469))
 - **Content rating (IARC).** Since the policy update of 15 July 2026 unrated apps are not allowed on
   Play. Fill in the questionnaire if it has lapsed.
