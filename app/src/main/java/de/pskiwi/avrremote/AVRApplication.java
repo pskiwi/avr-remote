@@ -68,16 +68,17 @@ public final class AVRApplication extends Application {
 			// der Reconnect wartete dann den Backoff ab, bis zu 16 s. Im
 			// Hintergrund reicht onResume - aber nur, wenn ActiveHandler dem
 			// alten Socket dort nicht glaubt, und das taete er bei schneller
-			// Rueckkehr. Also vormerken, wie in wifiSwitched().
+			// Rueckkehr. Also vormerken, wie in wifiSwitched() - in beide
+			// Richtungen: auch nach einem Verlust haengt der Socket an einem
+			// Netz, das es nicht mehr gibt, und zeigte bis zum Watchdog
+			// "verbunden".
 			if (newConnected != connected) {
 				connected = newConnected;
 				Logger.info("Wifi-Connection State changed:" + newConnected);
-				if (connected) {
-					if (activeHandler.isActive()) {
-						connector.triggerReconnect();
-					} else {
-						activeHandler.distrustConnection();
-					}
+				if (!activeHandler.isActive()) {
+					activeHandler.distrustConnection();
+				} else if (connected) {
+					connector.triggerReconnect();
 				}
 			}
 		}
@@ -298,12 +299,22 @@ public final class AVRApplication extends Application {
 					Logger.setLocation("resetAVR-3");
 					// Wie in AVRScanner: nicht "angezeigt", sondern "Fenster
 					// noch da". Im Hintergrund fertig geworden blieb sonst der
-					// Fortschritt stehen, und reconfigure() fiel ganz aus.
+					// Fortschritt stehen.
 					if (!activity.isDestroyed()) {
 						Logger.setLocation("resetAVR-4");
 						progress.dismiss();
 					}
-					reconfigure();
+					// Im Hintergrund nicht neu verbinden: der Reset dauert mit
+					// HTTP-Timeouts bis gut 20 s, laenger als die Default-
+					// Trennzeit, und hat StopConnectorTask den Loop schon
+					// beendet, startete reconfigure() ihn neu, ohne dass ihn
+					// noch jemand stoppt - die einzige Telnet-Sitzung des
+					// Receivers bliebe belegt. Den Neuaufbau macht dann onResume.
+					if (activeHandler.isActive()) {
+						reconfigure();
+					} else {
+						activeHandler.distrustConnection();
+					}
 					runnable.run();
 				}
 			}

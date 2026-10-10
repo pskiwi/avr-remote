@@ -185,6 +185,11 @@ only one, and a user who waits half an hour may report the problem as having "fi
     unchanged and a loop is already running,
   - otherwise → `forceReconnect()`, unconditionally.
 
+  `distrustConnection()` voids the quick return for the next resume. `AVRApplication` calls it
+  when the Wi-Fi changed while no activity was active — lost, back, or switched — and when a
+  receiver reset finished in the background, because in each case the socket `isRunning()` would
+  vouch for may hang on a network that is gone.
+
 The 60 s are a cap, not the window, and the reason for the cap is that the disconnect time may be
 set as high as two hours while `isRunning()` is only worth seconds: it rests on
 `Socket.isConnected()`, which stays `true` forever once a connect succeeded, including for a socket

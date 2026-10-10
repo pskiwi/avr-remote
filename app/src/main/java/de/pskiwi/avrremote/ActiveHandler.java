@@ -109,9 +109,10 @@ public final class ActiveHandler {
 
 	/**
 	 * Der Verbindung beim naechsten contextResumed() nicht mehr glauben, auch
-	 * bei schneller Rueckkehr - fuer einen WLAN-Wechsel oder ein
-	 * zurueckgekehrtes WLAN im Hintergrund: ihr Socket haengt dann an einem
-	 * verlorenen Netz, und isRunning() sieht das nicht.
+	 * bei schneller Rueckkehr - fuer einen WLAN-Wechsel, -Verlust oder ein
+	 * zurueckgekehrtes WLAN im Hintergrund und einen dort beendeten Reset: ihr
+	 * Socket haengt dann evtl. an einem verlorenen Netz, und isRunning() sieht
+	 * das nicht.
 	 * Main-Thread, wie contextResumed() und contextPaused().
 	 */
 	public void distrustConnection() {
