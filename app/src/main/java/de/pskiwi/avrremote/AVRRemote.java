@@ -73,7 +73,7 @@ import de.pskiwi.avrremote.menu.ExtrasMenu;
 import de.pskiwi.avrremote.menu.OptionsMenu;
 import de.pskiwi.avrremote.menu.QuickMenu;
 
-public final class AVRRemote extends TabActivity implements IActivityShowing,
+public final class AVRRemote extends TabActivity implements
 		ExtrasMenu.IBaseMenuActivity {
 
 	public AVRApplication getApp() {
@@ -92,8 +92,7 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 
 		Logger.setLocation("AVRRemote-onCreate-1");
 
-		optionsMenu = new OptionsMenu(this, getApp().getModelConfigurator(),
-				this);
+		optionsMenu = new OptionsMenu(this, getApp().getModelConfigurator());
 		configurationAssistant = new ConfigurationAssistant(this, getApp());
 
 		getApp().getAvrState().setStateFilter(IStateFilter.DEFAULT_FILTER);
@@ -105,8 +104,24 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 		Logger.info("start AVR-Remote " + FeedbackReporter.getVersionInfo(this));
 		setContentView(R.layout.tabhost);
 		EdgeToEdge.apply(this);
-		if (savedInstanceState == null) {
-			// nicht bei jeder Drehung erneut anfragen.
+		// Nicht bei jeder Drehung erneut anfragen - aber nach einem
+		// Prozess-Tod schon. Ein Entzug in den Einstellungen beendet den
+		// Prozess, und der Weg zurueck ueber die zuletzt benutzten Apps stellt
+		// die Activity mit gespeichertem Zustand wieder her: an
+		// savedInstanceState allein haette dann nie wieder etwas gefragt.
+		// Das statische Merkmal trennt die beiden Faelle, denn eine Drehung
+		// bleibt im selben Prozess. Sie kann also auch keine zweite Anfrage
+		// neben einem noch offenen System-Dialog abschicken, die Android mit
+		// leeren Ergebnissen beantworten wuerde.
+		// Bewusst hingenommen: stirbt der Prozess, waehrend ein Dialog dieser
+		// Kette offen ist, fragt der wiederhergestellte erneut. Android
+		// beantwortet eine der beiden Anfragen dann leer, was
+		// localNetworkPermissionResult() als "abgebrochen" verbucht - schlimmstenfalls
+		// eine Frage zu viel. Die Kette stattdessen als noch offen fortzusetzen
+		// hiesse, sich auf ein Ergebnis zu verlassen, das nach dem Prozess-Tod
+		// ebenso leer kommen kann - und dann fragte in diesem Prozess nichts
+		// mehr, unter Local Network Protection das Ende jeder Verbindung.
+		if (savedInstanceState == null || !permissionsRequestedInProcess) {
 			// Nacheinander, nicht nebeneinander: requestPermissions() weist
 			// eine zweite Anfrage ab, solange die erste laeuft, und liefert
 			// ihr sofort ein leeres Ergebnis - die zweite Permission wird dann
@@ -125,11 +140,12 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 			// gefragt - genau das, was die Kette verhindern soll.
 			notificationRequestPending = savedInstanceState
 					.getBoolean(NOTIFICATION_PENDING);
-			// Nicht fragen, aber fuer den Feedback-Bericht festhalten, ob eine
-			// Ablehnung endgueltig ist - sonst stuende dort nach einem
-			// Prozess-Tod im Hintergrund "denied:unknown"
+			// Nicht fragen, aber fuer den Feedback-Bericht auffrischen, ob eine
+			// Ablehnung endgueltig ist - sie kann sich in den Einstellungen
+			// geaendert haben, ohne dass der Prozess dabei starb
 			AVRSettings.noteLocalNetworkDenial(this);
 		}
+		permissionsRequestedInProcess = true;
 
 		Logger.setLocation("AVRRemote-onCreate-2");
 
@@ -651,6 +667,8 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 	private boolean showing;
 	/** Die Berechtigungskette aus onCreate laeuft noch, siehe dort. */
 	private boolean notificationRequestPending;
+	/** Hat in diesem Prozess schon ein onCreate gefragt ? Siehe dort. */
+	private static boolean permissionsRequestedInProcess;
 	private ViewList viewList;
 	private TextDisplayHandler textDisplayHandler;
 	private OptionsMenu optionsMenu;

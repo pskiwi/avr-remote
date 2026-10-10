@@ -34,7 +34,6 @@ import android.os.AsyncTask;
 import android.widget.EditText;
 import de.pskiwi.avrremote.AVRApplication;
 import de.pskiwi.avrremote.AVRSettings;
-import de.pskiwi.avrremote.IActivityShowing;
 import de.pskiwi.avrremote.MenuBuilder;
 import de.pskiwi.avrremote.R;
 import de.pskiwi.avrremote.core.IAVRState;
@@ -48,7 +47,7 @@ import de.pskiwi.avrremote.models.ModelConfigurator;
 
 public final class ExtrasMenu {
 
-	public interface IBaseMenuActivity extends IActivityShowing {
+	public interface IBaseMenuActivity {
 		AVRApplication getApp();
 
 		Activity getActivity();
@@ -260,13 +259,20 @@ public final class ExtrasMenu {
 			@Override
 			protected void onPostExecute(String result) {
 				super.onPostExecute(result);
-				if (activity.isShowing()) {
+				// Wie in AVRScanner: nicht "angezeigt", sondern "Fenster noch
+				// da". Wer waehrend der drei Sekunden auf Home drueckte, kam
+				// sonst zu einem Fortschritt zurueck, der sich weder abbrechen
+				// laesst noch je schliesst.
+				final Activity a = activity.getActivity();
+				if (!a.isDestroyed()) {
 					Logger.setLocation("ExtrasMenu-query-1");
 					progress.dismiss();
+					if (a.isFinishing()) {
+						return;
+					}
 
 					if (result == null) {
-						AlertDialog.Builder builder = new AlertDialog.Builder(
-								activity.getActivity());
+						AlertDialog.Builder builder = new AlertDialog.Builder(a);
 						builder.setTitle(R.string.QueryResult);
 						builder.setMessage(R.string.QueryFailed);
 						builder.setInverseBackgroundForced(true);

@@ -75,7 +75,7 @@ the alias CI actually signs with comes from the `KEY_ALIAS` secret and cannot be
    a new `<b>version</b>` block at the top of the list, with the version written exactly as in the
    tag but without the `v`. `AboutActivity` renders the file, and `AVRRemote` opens it automatically
    on the first start after an update, but only once a receiver is configured: the check at
-   `AVRRemote.java:139` is `getConnectionConfig().isDefined() && AVRSettings.isShowChangeLog(this)`.
+   `AVRRemote.java:155` is `getConnectionConfig().isDefined() && AVRSettings.isShowChangeLog(this)`.
    `isShowChangeLog()` compares `packageInfo.versionCode` against the stored `AVRLastVersionCode`
    preference, so **an unchanged `versionCode` means nobody ever sees the notes**.
 
@@ -230,8 +230,8 @@ sources rather than this list — Play policy moves and this file will not.
   taken the step that matters: API 37 brings mandatory Local Network Protection, which gates the
   subnet scan and every receiver socket — see [TODO.md](TODO.md) → *Android 17: Local Network
   Protection* and [CONNECTION.md](CONNECTION.md). The Play deadline for API 37 is expected around
-  August 2027; Google has not announced it yet. **No release has shipped with `targetSdk 37` yet**,
-  so the first one deserves a staged rollout.
+  August 2027; Google has not announced it yet. 1.7.0 (tagged 2026-09-27) is the first release
+  with `targetSdk 37` and is out.
   ([requirements](https://support.google.com/googleplay/android-developer/answer/11926878),
   [local network permission](https://developer.android.com/privacy-and-security/local-network-permission))
 - **Package name registration — 30 September 2026.** Part of the Android developer verification

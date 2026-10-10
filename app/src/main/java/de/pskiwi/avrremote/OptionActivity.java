@@ -122,25 +122,18 @@ public final class OptionActivity extends ExpandableListActivity implements
 	protected void onResume() {
 		super.onResume();
 		getApp().activityResumed(this);
-		showing = true;
 	}
 
 	@Override
 	protected void onPause() {
 		super.onPause();
 		getApp().activityPaused(this);
-		showing = false;
-	}
-
-	public boolean isShowing() {
-		return showing;
 	}
 
 	public Activity getActivity() {
 		return this;
 	}
 
-	private boolean showing;
 	private static final String NAME = "NAME";
 	private static final String DESC = "DESC";
 

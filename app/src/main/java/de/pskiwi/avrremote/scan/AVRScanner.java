@@ -26,7 +26,6 @@ import java.util.List;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnCancelListener;
 import android.net.LinkAddress;
@@ -37,7 +36,6 @@ import android.widget.Toast;
 import de.pskiwi.avrremote.AVRApplication;
 import de.pskiwi.avrremote.AVRSettings;
 import de.pskiwi.avrremote.EmulationDetector;
-import de.pskiwi.avrremote.IActivityShowing;
 import de.pskiwi.avrremote.R;
 import de.pskiwi.avrremote.log.Logger;
 
@@ -138,9 +136,8 @@ public final class AVRScanner {
 
 	}
 
-	public AVRScanner(Context ctx, IActivityShowing showing, AVRApplication app) {
+	public AVRScanner(Activity ctx, AVRApplication app) {
 		this.ctx = ctx;
-		this.showing = showing;
 		this.app = app;
 	}
 
@@ -222,20 +219,38 @@ public final class AVRScanner {
 			@Override
 			protected void onPostExecute(List<ScanResult> result) {
 				Logger.setLocation("scan-2");
-				if (showing.isShowing()) {
-					Logger.setLocation("scan-3");
-					progress.dismiss();
-					if (result.size() > 0) {
-						handler.finished(result);
-					} else if (prefixLength < 24) {
-						// SSDP hat nichts gefunden, und der Sweep ist hier
-						// nicht gelaufen - das ist der Unterschied zu
-						// "nichts gefunden"
-						handler.error(ctx
-								.getString(R.string.AutoScanNotSupported));
-					} else {
-						handler.error(ctx.getString(R.string.NoIpFound));
-					}
+				// Nicht "wird die Activity angezeigt", sondern "gibt es ihr
+				// Fenster noch": der Sweep laeuft Minuten, und wer
+				// zwischendurch auf Home drueckt, kam sonst zu einem
+				// Fortschrittsdialog zurueck, der sich nicht abbrechen laesst,
+				// ohne Ergebnis - und der Assistent wartete fuer den Rest
+				// seines Lebens auf runFinished. Ein Dialog darf auch im
+				// Hintergrund aufgehen, er ist dann beim Zurueckkommen da.
+				// Nur ein zerstoertes Fenster nimmt weder dismiss() noch
+				// show() an.
+				if (ctx.isDestroyed()) {
+					Logger.info("Scan: finished after activity is gone");
+					return;
+				}
+				Logger.setLocation("scan-3");
+				progress.dismiss();
+				// Ein Fenster, das noch steht, aber geht: den Dialog schliessen,
+				// sonst bleibt er als geleaktes Fenster liegen - nur nichts
+				// Neues mehr aufmachen
+				if (ctx.isFinishing()) {
+					Logger.info("Scan: finished while activity is finishing");
+					return;
+				}
+				if (result.size() > 0) {
+					handler.finished(result);
+				} else if (prefixLength < 24) {
+					// SSDP hat nichts gefunden, und der Sweep ist hier
+					// nicht gelaufen - das ist der Unterschied zu
+					// "nichts gefunden"
+					handler.error(ctx
+							.getString(R.string.AutoScanNotSupported));
+				} else {
+					handler.error(ctx.getString(R.string.NoIpFound));
 				}
 			}
 		};
@@ -337,8 +352,7 @@ public final class AVRScanner {
 		return result;
 	}
 
-	public static void scanIP(final Activity ctx,
-			final IActivityShowing showing, final AVRApplication app,
+	public static void scanIP(final Activity ctx, final AVRApplication app,
 			final Runnable runFinished, final int nr) {
 		try {
 			// Der Scan ist ueber das Menue und den Einrichtungs-Assistenten
@@ -428,7 +442,7 @@ public final class AVRScanner {
 				}
 			};
 
-			final AVRScanner scan = new AVRScanner(ctx, showing, app);
+			final AVRScanner scan = new AVRScanner(ctx, app);
 			scan.scan(resultHandler);
 
 		} catch (Exception e) {
@@ -439,9 +453,8 @@ public final class AVRScanner {
 		}
 	}
 
-	private final Context ctx;
+	private final Activity ctx;
 
-	private final IActivityShowing showing;
 	private final AVRApplication app;
 	private static final int JOIN_TIMEOUT = 10000;
 	private static final int SCAN_THREADS = 16;

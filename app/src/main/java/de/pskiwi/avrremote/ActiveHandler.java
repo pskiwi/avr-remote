@@ -107,6 +107,18 @@ public final class ActiveHandler {
 		}
 	}
 
+	/**
+	 * Der Verbindung beim naechsten contextResumed() nicht mehr glauben, auch
+	 * bei schneller Rueckkehr - fuer einen WLAN-Wechsel, -Verlust oder ein
+	 * zurueckgekehrtes WLAN im Hintergrund und einen dort beendeten Reset: ihr
+	 * Socket haengt dann evtl. an einem verlorenen Netz, und isRunning() sieht
+	 * das nicht.
+	 * Main-Thread, wie contextResumed() und contextPaused().
+	 */
+	public void distrustConnection() {
+		pausedAtElapsedRealtime = -1;
+	}
+
 	// läuft gerade eine Activity
 	public boolean isActive() {
 		return activeContext != null;
@@ -127,6 +139,7 @@ public final class ActiveHandler {
 	// Die Variable task darf nur im EDT verändert werden !
 	private TimerTask task;
 	// -1 = kein Pause-Zeitpunkt gemerkt (z.B. allererstes contextResumed())
+	// oder verworfen, siehe distrustConnection()
 	private long pausedAtElapsedRealtime = -1;
 	// volatile: wird vom Timer-Thread in StopConnectorTask gelesen
 	private volatile Context activeContext;

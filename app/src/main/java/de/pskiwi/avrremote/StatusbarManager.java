@@ -33,6 +33,18 @@ public final class StatusbarManager {
 		notificationManager = (NotificationManager) app
 				.getSystemService(NOTIFICATION_SERVICE);
 
+		// Einmal, nicht bei jeder Benachrichtigung: der Konstruktor laeuft
+		// genau einmal, in AVRApplication.onCreate
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+		{
+			NotificationChannel channel = new NotificationChannel(
+					CHANNEL_ID,
+					"AVR-Remote",
+					NotificationManager.IMPORTANCE_DEFAULT);
+			channel.setSound(null, null);
+			notificationManager.createNotificationChannel(channel);
+		}
+
 		update();
 	}
 
@@ -57,14 +69,7 @@ public final class StatusbarManager {
 
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
 		{
-			String channelId = "avr_remote_channel";
-			NotificationChannel channel = new NotificationChannel(
-					channelId,
-					"AVR-Remote",
-					NotificationManager.IMPORTANCE_DEFAULT);
-			channel.setSound(null, null);
-			notificationManager.createNotificationChannel(channel);
-			builder.setChannelId(channelId);
+			builder.setChannelId(CHANNEL_ID);
 		}
 
 		Notification notification=builder.build();
@@ -91,5 +96,6 @@ public final class StatusbarManager {
 
 	private final AVRApplication app;
 	private static final int NOTIFICATION_ID = 1;
+	private static final String CHANNEL_ID = "avr_remote_channel";
 
 }

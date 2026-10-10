@@ -66,13 +66,35 @@ public final class AVRApplication extends Application {
 			// im Hintergrund weg, blieb connected auf true, und kam es danach
 			// im Vordergrund zurueck, sah das hier wie "keine Aenderung" aus -
 			// der Reconnect wartete dann den Backoff ab, bis zu 16 s. Im
-			// Hintergrund braucht es keinen: onResume ruft forceReconnect.
+			// Hintergrund reicht onResume - aber nur, wenn ActiveHandler dem
+			// alten Socket dort nicht glaubt, und das taete er bei schneller
+			// Rueckkehr. Also vormerken, wie in wifiSwitched() - in beide
+			// Richtungen: auch nach einem Verlust haengt der Socket an einem
+			// Netz, das es nicht mehr gibt, und zeigte bis zum Watchdog
+			// "verbunden".
 			if (newConnected != connected) {
 				connected = newConnected;
 				Logger.info("Wifi-Connection State changed:" + newConnected);
-				if (connected && activeHandler.isActive()) {
+				if (!activeHandler.isActive()) {
+					activeHandler.distrustConnection();
+				} else if (connected) {
 					connector.triggerReconnect();
 				}
+			}
+		}
+
+		// Ohne das wartete die Verbindung ueber das verlorene WLAN, bis ihr
+		// eigener Socket scheitert, und danach den Backoff - wifiChanged()
+		// sieht keinen Wechsel und loest nichts aus.
+		// Im Hintergrund reicht onResume nicht: kehrt der Anwender innerhalb
+		// des Quick-Return-Fensters zurueck, glaubt ActiveHandler dem alten
+		// Socket - also dort vormerken, dass er neu aufbauen muss.
+		public void wifiSwitched() {
+			Logger.info("Wifi switched, active:" + activeHandler.isActive());
+			if (activeHandler.isActive()) {
+				connector.triggerReconnect();
+			} else {
+				activeHandler.distrustConnection();
 			}
 		}
 
@@ -248,8 +270,7 @@ public final class AVRApplication extends Application {
 		}
 	}
 
-	public void resetAVR(Activity activity, final IActivityShowing showing,
-			final Runnable runnable) {
+	public void resetAVR(final Activity activity, final Runnable runnable) {
 		final ProgressDialog progress = ProgressDialog.show(activity,
 				getString(R.string.PleaseWait),
 				getString(R.string.ResettingReceiver), true, true);
@@ -258,6 +279,10 @@ public final class AVRApplication extends Application {
 		progress.setOnCancelListener(new OnCancelListener() {
 			public void onCancel(DialogInterface dialog) {
 				canceled.set(true);
+				// Auch der Abbruch muss den Aufrufer erreichen: der Assistent
+				// haelt darin fest, dass wieder kein Dialog sichtbar ist - wie
+				// beim Fehlerdialog in AVRScanner.scanIP
+				runnable.run();
 			}
 		});
 		progress.setOnDismissListener(new OnDismissListener() {
@@ -272,12 +297,25 @@ public final class AVRApplication extends Application {
 				Logger.setLocation("resetAVR-2");
 				if (!canceled.get()) {
 					Logger.setLocation("resetAVR-3");
-					if (showing.isShowing()) {
+					// Wie in AVRScanner: nicht "angezeigt", sondern "Fenster
+					// noch da". Im Hintergrund fertig geworden blieb sonst der
+					// Fortschritt stehen.
+					if (!activity.isDestroyed()) {
 						Logger.setLocation("resetAVR-4");
 						progress.dismiss();
-						reconfigure();
-						runnable.run();
 					}
+					// Im Hintergrund nicht neu verbinden: der Reset dauert mit
+					// HTTP-Timeouts bis gut 20 s, laenger als die Default-
+					// Trennzeit, und hat StopConnectorTask den Loop schon
+					// beendet, startete reconfigure() ihn neu, ohne dass ihn
+					// noch jemand stoppt - die einzige Telnet-Sitzung des
+					// Receivers bliebe belegt. Den Neuaufbau macht dann onResume.
+					if (activeHandler.isActive()) {
+						reconfigure();
+					} else {
+						activeHandler.distrustConnection();
+					}
+					runnable.run();
 				}
 			}
 		};

@@ -11,3 +11,5 @@ version.xml
 captures/
 *.jks
 *.keystore
+*.apk
+*.aab

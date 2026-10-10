@@ -185,6 +185,11 @@ only one, and a user who waits half an hour may report the problem as having "fi
     unchanged and a loop is already running,
   - otherwise → `forceReconnect()`, unconditionally.
 
+  `distrustConnection()` voids the quick return for the next resume. `AVRApplication` calls it
+  when the Wi-Fi changed while no activity was active — lost, back, or switched — and when a
+  receiver reset finished in the background, because in each case the socket `isRunning()` would
+  vouch for may hang on a network that is gone.
+
 The 60 s are a cap, not the window, and the reason for the cap is that the disconnect time may be
 set as high as two hours while `isRunning()` is only worth seconds: it rests on
 `Socket.isConnected()`, which stays `true` forever once a connect succeeded, including for a socket
@@ -415,6 +420,9 @@ In a full log, these lines carry the same questions over time:
 | line | meaning |
 | --- | --- |
 | `LocalNetwork: WiFi available` / `lost` / `address arrived` | the callback; `lost` only for a Wi-Fi that was there |
+| `LocalNetwork: WiFi lost, falling back to another` | the bound Wi-Fi went away while a second one was still up; the binding moves to the most recently available of those |
+| `LocalNetwork: WiFi lost, another stays bound` | a Wi-Fi the binding had already moved away from went away — make-before-break; a connection opened before the move still ran over it |
+| `Wifi switched, active:…` | either of the two lines above reached `AVRApplication`; with `active:true` it reconnects at once instead of waiting for the old socket to fail, with `active:false` the next resume reconnects even inside the quick-return window |
 | `LocalNetwork: WiFi not present at startup` | the seed — no Wi-Fi was ever reported, nothing dropped |
 | `LocalNetwork: WiFi address changed from …` | new IPv4 address or prefix on the same Wi-Fi, e.g. roaming |
 | `binding accepted` / `binding refused with EPERM (VPN?)` | how sockets leave; logged on every change, the first one included |
@@ -449,10 +457,18 @@ Two details there are answers to real failures, not taste:
   active. The receiver is plainly there in that case; the app used to refuse the whole scan on it.
   `clearCapabilities()` would be the explicit way to say this and is API 30, above `minSdk 24`.
 - **The listener runs on the main thread**, by `Handler.post()` from inside the callback. The
-  `BroadcastReceiver` this replaced ran in `onReceive` on the main thread, and
-  `EnableManager.setStatus()` is an unsynchronised read-modify-write (see [TODO.md](TODO.md)) — the
-  thread change is not a free ride-along. The `Handler` overload of `registerNetworkCallback` would
-  be the direct way to say it, and is API 26.
+  `BroadcastReceiver` this replaced ran in `onReceive` on the main thread, so the Wi-Fi changes
+  reach `EnableManager` in the order they happened, as before. (`setStatus()` is `synchronized`
+  now, log line included so the `setEnabled` lines follow `#seq` in the order of the changes; it
+  used to be a bare read-modify-write, and the main thread was the only protection this path had.)
+  The `Handler` overload of `registerNetworkCallback` would be the direct way to say it, and is
+  API 26.
+- **The old receiver's one crash was closed by removal, not by understanding.** 1.5.1 crashed with
+  an NPE in `AVRApplication$1.onReceive` on a Pixel 8 Pro with the Android 17 **Beta**:
+  `getNetworkInfo(TYPE_WIFI)` returned null. The receiver and its `WifiManager` broadcast are gone,
+  and with them the crash site; the null was never reproduced on a Pixel 8 with the finished
+  Android 17 (three Wi-Fi off/on cycles, airplane mode, Data Saver on a metered Wi-Fi in the
+  background). Worth remembering if a null of the same kind turns up in `LocalNetwork`.
 
 Everything that opens a socket to the receiver goes through `LocalNetwork` — `core/Connector`
 (telnet 23), `http/HTTPSupport` (both entry points, via `Network.openConnection`),
@@ -549,8 +565,12 @@ The binding is also what Android 17 requires. Local Network Protection is mandat
 is not scan-less, it is dead.
 
 The permission is declared in the manifest and requested by
-`AVRSettings.requestLocalNetworkPermission()`, from `AVRRemote.onCreate` (gated on
-`savedInstanceState == null`) and again from `AVRScanner.scanIP()`, because the scan is reachable
+`AVRSettings.requestLocalNetworkPermission()`, from `AVRRemote.onCreate` (once per process: on a
+fresh start, and on a restore after the process died — a revoke in the settings kills it — but not on
+a rotation, which could otherwise fire a second request beside an open system dialog; a restore
+while a dialog of its own was open asks again, and Android answers one of the two empty — accepted,
+because treating the old request as still running could leave the process never asking) and again
+from `AVRScanner.scanIP()`, because the scan is reachable
 from the options menu and the setup assistant without `AVRRemote` having started. There is no
 rationale dialog of the app's own — the reasons are in the comment at the request. On a grant the
 connector is told to reconnect, from `AVRRemote` and `OnScreenDisplayActivity` alike, because the
