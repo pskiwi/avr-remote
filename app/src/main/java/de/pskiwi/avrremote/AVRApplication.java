@@ -166,6 +166,7 @@ public final class AVRApplication extends Application {
 		displayManager.setAvrState(avrState);
 
 		activeHandler = new ActiveHandler(connector);
+		connector.setForeground(activeHandler::isActive);
 
 		localNetwork.register(handler, wifiListener);
 

@@ -209,7 +209,7 @@
 		restart).</string>
 
 	<string name="DisconnectTimeout">Disconnect Time</string>
-	<string name="DisconnectTimeoutHelp">Time until disconnect in background</string>
+	<string name="DisconnectTimeoutHelp">Time until disconnect in background. Current Android versions cut an app\'s network in the background after a few seconds, though.</string>
 	
 	<string name="iPodInput">iPod Input</string>
 	<string name="iPodInputHelp">Enter name of iPod input mapping (AVR-4306)</string>

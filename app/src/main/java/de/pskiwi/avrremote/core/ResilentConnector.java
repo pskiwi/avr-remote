@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BooleanSupplier;
 
 import android.content.Context;
 import de.pskiwi.avrremote.EnableManager;
@@ -291,10 +292,22 @@ public final class ResilentConnector implements ISender {
 		}
 
 		/**
-		 * Backoff-Pause vor der naechsten Runde. false: unterbrochen, der Thread
-		 * ist fertig.
+		 * Backoff-Pause vor der naechsten Runde. false: unterbrochen oder im
+		 * Hintergrund, der Thread ist fertig.
+		 *
+		 * Im Hintergrund wird nicht weiter versucht: Android sperrt einer App
+		 * dort nach wenigen Sekunden das Netz (Pixel 8, Android 17: Firewall-
+		 * Regel APP_BACKGROUND 6 s nach onPause, der Socket bricht sofort ab),
+		 * und jede weitere Runde liefe bis zum Ablauf der Trennzeit gegen
+		 * diese Sperre. Den Neuaufbau macht das naechste contextResumed():
+		 * reconfigure() sieht ueber isAlive() keinen laufenden Loop mehr,
+		 * forceReconnect() fragt ohnehin nicht.
 		 */
 		private boolean waitBeforeRetry() {
+			if (!foreground.getAsBoolean()) {
+				Logger.info("Reconnector:in background -> no further attempt");
+				return false;
+			}
 			try {
 				if (reconnectDelayIndex < RECONNECT_DELAY.length - 1) {
 					reconnectDelayIndex++;
@@ -499,6 +512,11 @@ public final class ResilentConnector implements ISender {
 		return controlPortBusy;
 	}
 
+	/** Ob eine Activity im Vordergrund ist, siehe Reconnector.waitBeforeRetry(). */
+	public void setForeground(BooleanSupplier foreground) {
+		this.foreground = foreground;
+	}
+
 	public boolean isRunning() {
 		return connector != IConnector.NULL_CONNECTOR && isConnnected();
 	}
@@ -531,6 +549,9 @@ public final class ResilentConnector implements ISender {
 	// (ConfigurationAssistant.checkReset)
 	private volatile boolean controlPortBusy;
 	private final ThreadHandler threadHandler = new ThreadHandler();
+	// volatile: einmal auf dem UI-Thread gesetzt, gelesen vom Reconnect-Thread.
+	// Ohne Setzen gilt "immer im Vordergrund", wie bisher.
+	private volatile BooleanSupplier foreground = () -> true;
 	private final AtomicInteger generation = new AtomicInteger();
 	private static int[] RECONNECT_DELAY = { 1, 2, 4, 8, 16 };
 	// totale Wartezeit für einen Connect-Test
