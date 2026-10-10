@@ -148,6 +148,29 @@ What is left is the part no build can answer.
       routing table. Both answer themselves in the field: every feedback report carries the `IPv4`
       line, every log the startup line `LocalNetwork: interfaces …`. A report showing `eth0:…`
       settles whether such devices are out there at all.
+- [ ] **The changelog hides the permission dialog on the first start with a configuration.**
+      `AVRRemote.onCreate` requests `ACCESS_LOCAL_NETWORK` and a few lines later starts
+      `AboutActivity` for the changelog (`isShowChangeLog`), which lands on top of the system dialog.
+      The dialog only appears after "Schließen" — seen on a Pixel 8 on 2026-10-10. That is exactly
+      the start every user makes after updating from 1.6.1, whose permission is not granted yet. The
+      request is not lost, but the user reads release notes about a permission they have not been
+      asked for yet, and may not expect a dialog after closing them. Showing the changelog only when
+      `requestLocalNetworkPermission()` returned false, or from its result, would order the two.
+- [ ] **A grant starts the connector twice.** `onRequestPermissionsResult` calls
+      `triggerReconnect()`, and the `onResume` that follows the system dialog calls
+      `forceReconnect()` — two `start new connector` lines 5 ms apart in the log (Pixel 8,
+      2026-10-10). The generation counter detaches the first thread, so nothing is published twice,
+      but its connect attempt still goes out, and against a receiver that allows one telnet session
+      that is not free. Whether the first attempt can take the session from the second was not
+      visible in that log — the port was held by the killed process then anyway.
+- [ ] **The AVR-3310 holds its telnet session far longer than assumed.** Measured on 2026-10-10:
+      after the process was killed by a permission revoke (the phone's side closed, nothing on port
+      23 in `ss -tn`), port 23 answered `ECONNREFUSED` for more than 4.5 minutes; after a Wi-Fi
+      off/on, where the phone also came back with a new address, again for minutes. The app's
+      standby/on reset freed it once and failed the second time; only unplugging helps reliably, as
+      the assistant's dialog says. Nothing in the app can fix the receiver, but it bounds what a
+      test of any reconnect path can show on this model: every scenario that ends a session without
+      a clean `close()` from a live process is followed by minutes of a busy control port.
 
 ## Structural
 
