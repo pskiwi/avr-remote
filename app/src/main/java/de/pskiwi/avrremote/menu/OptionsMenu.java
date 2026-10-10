@@ -107,14 +107,14 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 			activity.startActivity(new Intent(activity, RenameActivity.class));
 			break;	
 		case R.id.itemScan:
-			AVRScanner.scanIP(activity, showing, getApp(), new Runnable() {
+			AVRScanner.scanIP(activity, getApp(), new Runnable() {
 				public void run() {
 				}
 			}, 0);
 			break;
 
 		case R.id.itemScan2:
-			AVRScanner.scanIP(activity, showing, getApp(), new Runnable() {
+			AVRScanner.scanIP(activity, getApp(), new Runnable() {
 				public void run() {
 				}
 			}, 1);

@@ -106,7 +106,16 @@ public final class EnableManager {
 		return new ViewList();
 	}
 
-	public void setStatus(StatusFlag s, boolean add) {
+	/**
+	 * Synchronisiert, weil es ein Lesen-Aendern-Vergleichen ist und die
+	 * Aufrufer der UI-Thread, der StopConnector-Timer und ein oder mehrere
+	 * Reconnect-Threads zugleich sind: ueberlappend ging sonst ein Flag
+	 * verloren, oder die Listener bekamen einen halb gebauten Status - Buttons,
+	 * die grau blieben bis zum naechsten Wechsel. Die Sperre deckt nur ein paar
+	 * Map-Zugriffe und ein post() ab, die Listener laufen danach auf dem
+	 * UI-Thread und ohne sie.
+	 */
+	public synchronized void setStatus(StatusFlag s, boolean add) {
 		final ReceiverStatus oldStatus = connectionStatus.copy();
 		if (add) {
 			// Automatisch mit setzen
@@ -157,7 +166,10 @@ public final class EnableManager {
 		listener.remove(class1);
 	}
 
-	private void fireListener() {
+	// synchronized wie setStatus(): eine Kopie mitten aus dessen Umbau, die
+	// nach dessen eigenem post() eingereiht wird, bliebe sonst als letzter
+	// Stand stehen
+	private synchronized void fireListener() {
 		final ReceiverStatus current = connectionStatus.copy();
 		handler.post(new Runnable() {
 			public void run() {
@@ -168,7 +180,7 @@ public final class EnableManager {
 		});
 	}
 
-	public ReceiverStatus getCurrentStatus() {
+	public synchronized ReceiverStatus getCurrentStatus() {
 		return connectionStatus.copy();
 	}
 
@@ -176,7 +188,7 @@ public final class EnableManager {
 		fireListener();
 	}
 
-	public void reset() {
+	public synchronized void reset() {
 		connectionStatus.clear();
 
 		fireListener();

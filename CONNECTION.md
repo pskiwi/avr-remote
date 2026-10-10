@@ -449,9 +449,10 @@ Two details there are answers to real failures, not taste:
   active. The receiver is plainly there in that case; the app used to refuse the whole scan on it.
   `clearCapabilities()` would be the explicit way to say this and is API 30, above `minSdk 24`.
 - **The listener runs on the main thread**, by `Handler.post()` from inside the callback. The
-  `BroadcastReceiver` this replaced ran in `onReceive` on the main thread, and
-  `EnableManager.setStatus()` is an unsynchronised read-modify-write (see [TODO.md](TODO.md)) — the
-  thread change is not a free ride-along. The `Handler` overload of `registerNetworkCallback` would
+  `BroadcastReceiver` this replaced ran in `onReceive` on the main thread, so the Wi-Fi changes
+  reach `EnableManager` in the order they happened, as before. (`setStatus()` itself is
+  `synchronized` now; it used to be a bare read-modify-write, and the main thread was the
+  only protection this path had.) The `Handler` overload of `registerNetworkCallback` would
   be the direct way to say it, and is API 26.
 
 Everything that opens a socket to the receiver goes through `LocalNetwork` — `core/Connector`
@@ -549,8 +550,10 @@ The binding is also what Android 17 requires. Local Network Protection is mandat
 is not scan-less, it is dead.
 
 The permission is declared in the manifest and requested by
-`AVRSettings.requestLocalNetworkPermission()`, from `AVRRemote.onCreate` (gated on
-`savedInstanceState == null`) and again from `AVRScanner.scanIP()`, because the scan is reachable
+`AVRSettings.requestLocalNetworkPermission()`, from `AVRRemote.onCreate` (once per process: on a
+fresh start, and on a restore after the process died — a revoke in the settings kills it — but not on
+a rotation, which could otherwise fire a second request beside an open system dialog) and again from
+`AVRScanner.scanIP()`, because the scan is reachable
 from the options menu and the setup assistant without `AVRRemote` having started. There is no
 rationale dialog of the app's own — the reasons are in the comment at the request. On a grant the
 connector is told to reconnect, from `AVRRemote` and `OnScreenDisplayActivity` alike, because the

@@ -13,8 +13,9 @@ one still depends on has been folded into the live one.
 `targetSdk` is **37**, so it is in force: without `ACCESS_LOCAL_NETWORK` no socket reaches the local
 network, silently and by timeout. The machinery is described in [CONNECTION.md](CONNECTION.md), and
 the commit that raised the target carries the survey of all seventeen behaviour changes for apps
-targeting Android 17 — only this one touches this app. No release has shipped with it yet; the Play
-Console side is in [RELEASE.md](RELEASE.md).
+targeting Android 17 — only this one touches this app. 1.7.0 is the first release with it and is
+out, so the field reports the items below wait for can now arrive; the Play Console side is in
+[RELEASE.md](RELEASE.md).
 
 Verified on a Pixel 8 against an AVR-3310 in September 2026, with the permission granted, revoked
 and granted again: `reachable` follows it, the assistant explains the block instead of blaming the
@@ -63,22 +64,11 @@ What is left is the part no build can answer.
       `IPv4` line. It needs no device to fix once such a log exists — widen `refusedByVpn()` to the
       errno it shows.
 
-- [ ] **A restored `AVRRemote` never asks for the permission again.** The request in `onCreate` is
-      gated on `savedInstanceState == null`, so after a revoke in the settings — which kills the
-      process — the way back through recents restores the activity and nothing asks, although the
-      system dialog would still appear. The user is not stuck: the assistant's hint and the menu
-      entry lead to the app info page. Asking in the restore branch is not the fix, because a
-      rotation during the system dialog would then fire a second request that Android answers with
-      empty results; it needs its own "request pending" bookkeeping, e.g. in `onResume`.
-- [ ] **Two Wi-Fi networks at once would leave `boundNetwork` null.** `LocalNetwork` keeps the last
-      `onAvailable` and clears on `onLost` of that one. With A and B both up (STA+STA,
-      make-before-break, another app's local-only network), losing B leaves A unused and
-      `StatusFlag.WLAN` false until the Wi-Fi changes again. Not seen in any log; a report with two
-      `LocalNetwork: WiFi available` lines without a `lost` between them would confirm it. The fix
-      is a set of available Wi-Fi networks with a fallback on `onLost`.
 - [ ] **Auto-revoke with a stale asked marker.** The marker is only cleared when
       `requestLocalNetworkPermission()` sees the permission granted. Refused once, granted later in
-      the settings, then only restored starts, then revoked for disuse: if that revoke also resets
+      the settings while the app keeps running, then left unused until the revoke — every new
+      process asks again in `AVRRemote.onCreate`, so the marker is only stale if no process start
+      fell between the grant and the revoke. If that revoke also resets
       the rationale flag, the app takes it for a final refusal and never asks. The hint's button
       still leads out. Which flags the disuse revoke sets is unmeasured.
 - [ ] **The idle probe `PW?` is only measured on an AVR-3310.** A model that leaves it unanswered
@@ -144,15 +134,6 @@ What is left is the part no build can answer.
       line, every log the startup line `LocalNetwork: interfaces …`. A report showing `eth0:…`
       settles whether such devices are out there at all.
 
-- [ ] **A scan that finishes while the app is in the background strands its dialog.**
-      `AVRScanner`'s `onPostExecute` does everything inside `if (showing.isShowing())`
-      (`scan/AVRScanner.java:224`), `progress.dismiss()` included, and the sweep runs for minutes.
-      Press Home during one and come back: a "Scanning network" dialog that cannot be cancelled
-      (`ProgressDialog.show(…, true, false)` at `:183`), no result, no error — and
-      `ConfigurationAssistant.visible` stays true, so the assistant says nothing for the rest of that
-      activity's life. The guard predates the LNP work; what makes it worth an entry now is that the
-      same method gained a cancel path (`scanIP`'s `setOnCancelListener`) which this defeats.
-
 ## Structural
 
 - [ ] **Test coverage is fifteen JVM classes and no instrumentation tests.** The cheapest places to add
@@ -205,14 +186,6 @@ What is left is the part no build can answer.
       report we have a log for was *not* this — the process had survived; it was a stale-teardown
       race between `ActiveHandler.contextResumed()` and the reconnect thread, fixed since. How the
       loop works today: [CONNECTION.md](CONNECTION.md).
-- [ ] **`EnableManager.setStatus()` is an unsynchronised read-modify-write.** It copies
-      `connectionStatus`, mutates it through the deliberate `switch` fallthrough, compares and fires
-      the listeners (`EnableManager.java:109`). Callers include the UI thread, the
-      `StopConnector-Timer` thread and one or more reconnect threads at the same time. Two
-      overlapping calls can lose a flag or fire listeners with a half-built status, which surfaces
-      as buttons that stay greyed out until the next status change repairs them. Cheaper to fix than
-      it looks: `fireListener()` only copies the status and `Handler.post()`s it, so a `synchronized`
-      on `setStatus()` would cover a few field writes and a post, never the UI fanout itself.
 - [ ] **`AVRTargetTester.PING_TIMEOUT` is 250 ms, which a phone waking from standby cannot meet.**
       Wi-Fi power save puts the receiver out of reach for the first moments after the user picks the
       phone up, so `checkAddress()` reports "not reachable" for a device that is plainly there — the
@@ -239,9 +212,6 @@ What is left is the part no build can answer.
       is inside the default full-backup scope, the old shared-external `AVRRemote/` was not, so with
       logging enabled the log files and `avrremote.zip` — which contain the same receiver IPs, via
       `AVRSettings.getAll()` — now travel with the backup too.
-- [ ] `StatusbarManager.createNotificationChannel` runs on every call rather than once. Harmless
-      (creating an existing channel id only updates the name; importance can only be lowered and the
-      sound is ignored after creation), but it belongs in `AVRApplication.onCreate`.
 - [ ] **The icon artwork exists in four copies that have to move together**:
       `res/drawable/ic_launcher_foreground.xml` (plus its API 24/25 twin in `mipmap-anydpi/`),
       `assets/icon.svg`, `docs/avr-icon.svg` (byte-identical to the latter, feeds the GitHub Pages
@@ -249,9 +219,6 @@ What is left is the part no build can answer.
       copy costs, but nothing in the build can generate one from another — `magick`, `rsvg-convert`
       and `inkscape` are all absent; the 512×512 Play Store export was rendered with macOS's
       `qlmanage`, command recorded in a comment at the top of the SVG.
-      `res/drawable/icon_small.png` (32×32) is the last leftover of the old 2010 icon and is
-      referenced nowhere.
-- [ ] `misc/file-copyright.txt` is referenced by nothing since `misc/add-copyright.sh` was deleted.
 - [ ] `LocalNetwork.getNetwork()` has no callers. It predates the binding helpers — everything that
       needs the `Network` now goes through `bind()` or `openConnection()`, which hold it themselves.
       Left in place rather than deleted, like the rest of the dead code in this section.

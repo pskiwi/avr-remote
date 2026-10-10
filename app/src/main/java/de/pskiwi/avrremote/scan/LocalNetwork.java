@@ -27,7 +27,9 @@ import java.net.SocketException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import android.content.Context;
@@ -87,8 +89,8 @@ public final class LocalNetwork {
 	 * Receiver ist dann da, auch wenn das WLAN nicht das Default-Netz ist.
 	 *
 	 * Der Listener läuft über den Main-Handler, weil der abgelöste
-	 * BroadcastReceiver in onReceive() auch auf dem Main-Thread lief und
-	 * EnableManager.setStatus() ein unsynchronisiertes read-modify-write ist. Die
+	 * BroadcastReceiver in onReceive() auch auf dem Main-Thread lief - so
+	 * kommen die WLAN-Wechsel in derselben Reihenfolge bei EnableManager an. Die
 	 * Handler-Überladung von registerNetworkCallback() wäre der direktere Weg,
 	 * ist aber erst API 26 und damit oberhalb von minSdk 24 - handler.post() im
 	 * Callback leistet dasselbe ohne Versionsweiche.
@@ -529,14 +531,19 @@ public final class LocalNetwork {
 	}
 
 	/**
-	 * Mehrere gleichzeitige WLAN-Netze sind praktisch ausgeschlossen, deshalb
-	 * gewinnt schlicht das zuletzt verfügbare, und onLost räumt nur auf, wenn es
-	 * das gehaltene Netz trifft.
+	 * Gebunden wird an das zuletzt verfuegbare WLAN. Mehrere zugleich gibt es
+	 * aber doch - STA+STA, make-before-break beim Wechsel, das lokale Netz
+	 * einer anderen App -, und deshalb fuehrt der Callback alle verfuegbaren
+	 * mit: geht das gebundene verloren, faellt er auf das zuletzt verfuegbare
+	 * der verbliebenen zurueck. Vorher blieb boundNetwork dann null und
+	 * StatusFlag.WLAN false, obwohl ein WLAN da war, bis zum naechsten Wechsel.
 	 */
 	private final ConnectivityManager.NetworkCallback callback = new ConnectivityManager.NetworkCallback() {
 
 		@Override
 		public void onAvailable(Network n) {
+			available.remove(n);
+			available.add(n);
 			boundNetwork = n;
 			linkProperties = connectivity.getLinkProperties(n);
 			notifyListener(true, "available");
@@ -572,10 +579,19 @@ public final class LocalNetwork {
 
 		@Override
 		public void onLost(Network n) {
-			if (n.equals(boundNetwork)) {
+			available.remove(n);
+			if (!n.equals(boundNetwork)) {
+				return;
+			}
+			if (available.isEmpty()) {
 				boundNetwork = null;
 				linkProperties = null;
 				notifyListener(false, "lost");
+			} else {
+				final Network fallback = available.get(available.size() - 1);
+				boundNetwork = fallback;
+				linkProperties = connectivity.getLinkProperties(fallback);
+				notifyListener(true, "lost, falling back to another");
 			}
 		}
 	};
@@ -631,6 +647,12 @@ public final class LocalNetwork {
 	}
 
 	private final ConnectivityManager connectivity;
+	/**
+	 * Alle gerade verfuegbaren WLANs, das zuletzt verfuegbare hinten. Ohne
+	 * Sperre: nur der Callback fasst die Liste an, und der wird nacheinander
+	 * auf einem Thread aufgerufen.
+	 */
+	private final List<Network> available = new ArrayList<Network>();
 	// Statisch, weil die Sockets an Stellen entstehen, die den Objektgraphen
 	// nicht erreichen: Connector sitzt tief in core/ und wird vom Reconnect-Loop
 	// gebaut, HTTPSupport und AVRTargetTester sind reine Utility-Klassen. Es gibt

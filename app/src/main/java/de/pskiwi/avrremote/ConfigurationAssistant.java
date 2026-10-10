@@ -141,7 +141,7 @@ public final class ConfigurationAssistant {
 				new DialogInterface.OnClickListener() {
 					public void onClick(DialogInterface dialog, int which) {
 						Logger.setLocation("showIPDialog-2");
-						AVRScanner.scanIP(ctx, ctx, app, new Runnable() {
+						AVRScanner.scanIP(ctx, app, new Runnable() {
 							public void run() {
 								Logger.setLocation("showIPDialog-3");
 								visible.set(false);
