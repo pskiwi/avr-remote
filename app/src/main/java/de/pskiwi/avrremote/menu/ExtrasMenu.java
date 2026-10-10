@@ -272,8 +272,7 @@ public final class ExtrasMenu {
 					}
 
 					if (result == null) {
-						AlertDialog.Builder builder = new AlertDialog.Builder(
-								activity.getActivity());
+						AlertDialog.Builder builder = new AlertDialog.Builder(a);
 						builder.setTitle(R.string.QueryResult);
 						builder.setMessage(R.string.QueryFailed);
 						builder.setInverseBackgroundForced(true);

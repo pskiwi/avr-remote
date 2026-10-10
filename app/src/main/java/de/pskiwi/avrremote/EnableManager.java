@@ -86,9 +86,10 @@ public final class EnableManager {
 		}
 
 		public void update(View view) {
+			final ReceiverStatus current = getCurrentStatus();
 			for (StatusView v : list) {
 				if (v.view == view) {
-					updateView(getCurrentStatus(), v);
+					updateView(current, v);
 				}
 			}
 		}

@@ -673,7 +673,7 @@ public final class LocalNetwork {
 	 * Sperre: nur der Callback fasst die Liste an, und der wird nacheinander
 	 * auf einem Thread aufgerufen.
 	 */
-	private final List<Network> available = new ArrayList<Network>();
+	private final List<Network> available = new ArrayList<>();
 	// Statisch, weil die Sockets an Stellen entstehen, die den Objektgraphen
 	// nicht erreichen: Connector sitzt tief in core/ und wird vom Reconnect-Loop
 	// gebaut, HTTPSupport und AVRTargetTester sind reine Utility-Klassen. Es gibt
