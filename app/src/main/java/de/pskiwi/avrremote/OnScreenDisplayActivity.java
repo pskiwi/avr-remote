@@ -86,8 +86,7 @@ public final class OnScreenDisplayActivity extends ListActivity implements
 		final ScreenInfo screenInfo = new ScreenInfo(this);
 		Logger.info("create OSD " + screenInfo.toString());
 
-		optionsMenu = new OptionsMenu(this, getApp().getModelConfigurator(),
-				this);
+		optionsMenu = new OptionsMenu(this, getApp().getModelConfigurator());
 		viewList = getApp().getEnableManager().createViewList();
 
 		Bundle extras = getIntent().getExtras();

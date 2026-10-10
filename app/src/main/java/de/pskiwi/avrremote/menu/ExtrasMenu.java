@@ -260,9 +260,17 @@ public final class ExtrasMenu {
 			@Override
 			protected void onPostExecute(String result) {
 				super.onPostExecute(result);
-				if (activity.isShowing()) {
+				// Wie in AVRScanner: nicht "angezeigt", sondern "Fenster noch
+				// da". Wer waehrend der drei Sekunden auf Home drueckte, kam
+				// sonst zu einem Fortschritt zurueck, der sich weder abbrechen
+				// laesst noch je schliesst.
+				final Activity a = activity.getActivity();
+				if (!a.isDestroyed()) {
 					Logger.setLocation("ExtrasMenu-query-1");
 					progress.dismiss();
+					if (a.isFinishing()) {
+						return;
+					}
 
 					if (result == null) {
 						AlertDialog.Builder builder = new AlertDialog.Builder(

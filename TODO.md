@@ -64,6 +64,15 @@ What is left is the part no build can answer.
       `IPv4` line. It needs no device to fix once such a log exists — widen `refusedByVpn()` to the
       errno it shows.
 
+- [ ] **A Wi-Fi fallback picks the most recent network, not the receiver's.** When the bound Wi-Fi
+      is lost and another stays up, `LocalNetwork.onLost` binds the most recently available one.
+      If that is not the receiver's network (STA+STA, another app's local-only Wi-Fi), `mayConnect()`
+      says yes because a Wi-Fi is bound, `bind()` leaves the socket unbound because the receiver is
+      outside its prefix, and every round spends the connect timeout on the default network — where
+      before the fallback `StatusFlag.WLAN` went false and the assistant pointed at the Wi-Fi.
+      Preferring the network whose prefix holds the configured receiver would settle it, but
+      `LocalNetwork` does not know the receiver today. Not seen in any log: a report with
+      `lost, falling back to another` followed by timeouts would be the case.
 - [ ] **Auto-revoke with a stale asked marker.** The marker is only cleared when
       `requestLocalNetworkPermission()` sees the permission granted. Refused once, granted later in
       the settings while the app keeps running, then left unused until the revoke — every new
@@ -263,7 +272,7 @@ What is left is the part no build can answer.
       | 15 | `PreferenceActivity.findPreference()` / `getPreferenceScreen()` / `addPreferencesFromResource()` | 7 | `AVRSettings`, `PreferenceSummaryUpdater` |
       | 15 | `Display.getWidth()` / `getHeight()` | 4 | `AVRRemote` |
       | 15 | `LayoutParams.FILL_PARENT` | 3 | `LevelActivity`, `ScreenMenu` |
-      | 16 | `Configuration.ORIENTATION_SQUARE` | 1 | `AVRRemote.java:430` |
+      | 16 | `Configuration.ORIENTATION_SQUARE` | 1 | `AVRRemote.java:429` |
       | 22 | `Resources.getDrawable()` | 8 | `AVRTheme`, `IconManager`, `OnScreenDisplayActivity` |
       | 23 | `AlertDialog.Builder.setInverseBackgroundForced()` | 6 | 4 files |
       | 29/30 | `android.preference.*` (31× `PreferenceManager`), `AsyncTask`, `TabHost`, `ListActivity`, `ExpandableListActivity`, 12× `new Handler()` | 61 | this item |
@@ -272,7 +281,7 @@ What is left is the part no build can answer.
       **15 years**. It cannot be picked off on its own: it and the API 29/30 block are the same
       AppCompat migration, which is why the age does not translate into urgency.
 - [ ] The one entry in that table that is a genuine decision rather than a rename:
-      `Configuration.ORIENTATION_SQUARE` (`AVRRemote.java:430`) is **not** dead code. The app
+      `Configuration.ORIENTATION_SQUARE` (`AVRRemote.java:429`) is **not** dead code. The app
       computes the orientation itself from display width and height and returns that constant, so
       the branch can still fire on a square window. It is the *constant* that is obsolete — the
       platform has not reported it since Android 4.1 — so replacing it means deciding what a square

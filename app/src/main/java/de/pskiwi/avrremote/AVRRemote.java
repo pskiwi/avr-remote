@@ -92,8 +92,7 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 
 		Logger.setLocation("AVRRemote-onCreate-1");
 
-		optionsMenu = new OptionsMenu(this, getApp().getModelConfigurator(),
-				this);
+		optionsMenu = new OptionsMenu(this, getApp().getModelConfigurator());
 		configurationAssistant = new ConfigurationAssistant(this, getApp());
 
 		getApp().getAvrState().setStateFilter(IStateFilter.DEFAULT_FILTER);

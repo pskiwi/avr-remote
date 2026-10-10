@@ -258,8 +258,7 @@ public final class AVRApplication extends Application {
 		}
 	}
 
-	public void resetAVR(Activity activity, final IActivityShowing showing,
-			final Runnable runnable) {
+	public void resetAVR(final Activity activity, final Runnable runnable) {
 		final ProgressDialog progress = ProgressDialog.show(activity,
 				getString(R.string.PleaseWait),
 				getString(R.string.ResettingReceiver), true, true);
@@ -268,6 +267,10 @@ public final class AVRApplication extends Application {
 		progress.setOnCancelListener(new OnCancelListener() {
 			public void onCancel(DialogInterface dialog) {
 				canceled.set(true);
+				// Auch der Abbruch muss den Aufrufer erreichen: der Assistent
+				// haelt darin fest, dass wieder kein Dialog sichtbar ist - wie
+				// beim Fehlerdialog in AVRScanner.scanIP
+				runnable.run();
 			}
 		});
 		progress.setOnDismissListener(new OnDismissListener() {
@@ -282,12 +285,15 @@ public final class AVRApplication extends Application {
 				Logger.setLocation("resetAVR-2");
 				if (!canceled.get()) {
 					Logger.setLocation("resetAVR-3");
-					if (showing.isShowing()) {
+					// Wie in AVRScanner: nicht "angezeigt", sondern "Fenster
+					// noch da". Im Hintergrund fertig geworden blieb sonst der
+					// Fortschritt stehen, und reconfigure() fiel ganz aus.
+					if (!activity.isDestroyed()) {
 						Logger.setLocation("resetAVR-4");
 						progress.dismiss();
-						reconfigure();
-						runnable.run();
 					}
+					reconfigure();
+					runnable.run();
 				}
 			}
 		};

@@ -36,7 +36,6 @@ import java.net.HttpURLConnection;
 import de.pskiwi.avrremote.AVRApplication;
 import de.pskiwi.avrremote.AVRSettings;
 import de.pskiwi.avrremote.AboutActivity;
-import de.pskiwi.avrremote.IActivityShowing;
 import de.pskiwi.avrremote.R;
 import de.pskiwi.avrremote.RenameActivity;
 import de.pskiwi.avrremote.core.ConnectionConfiguration;
@@ -50,11 +49,9 @@ import de.pskiwi.avrremote.scan.AVRScanner;
 
 public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 
-	public OptionsMenu(Activity activity, ModelConfigurator configurator,
-			IActivityShowing showing) {
+	public OptionsMenu(Activity activity, ModelConfigurator configurator) {
 		this.activity = activity;
 		this.configurator = configurator;
-		this.showing = showing;
 	}
 
 	private AVRApplication getApp() {
@@ -196,7 +193,7 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 	}
 
 	private void resetAVR() {
-		getApp().resetAVR(activity, showing, new Runnable() {
+		getApp().resetAVR(activity, new Runnable() {
 			public void run() {
 			}
 		});
@@ -343,5 +340,4 @@ public final class OptionsMenu implements  PopupMenu.OnMenuItemClickListener {
 
 	private final Activity activity;
 	private final ModelConfigurator configurator;
-	private final IActivityShowing showing;
 }

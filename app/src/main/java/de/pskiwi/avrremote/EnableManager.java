@@ -198,7 +198,7 @@ public final class EnableManager {
 	}
 
 	@Override
-	public String toString() {
+	public synchronized String toString() {
 		return "EnableManager " + connectionStatus;
 	}
 

@@ -633,6 +633,10 @@ public final class LocalNetwork {
 		}
 	}
 
+	private void notifyListener(boolean connected, String event) {
+		notifyListener(connected, event, false);
+	}
+
 	/**
 	 * Synchronisiert, und zwar einschließlich des post(): der Callback meldet
 	 * aus einem Binder-Thread, der Seed aus dem Main-Thread, und es reicht
@@ -644,10 +648,6 @@ public final class LocalNetwork {
 	 * Callback kein zweites Mal. Unter dem Schloss postet, wer zuerst meldet,
 	 * auch zuerst.
 	 */
-	private void notifyListener(boolean connected, String event) {
-		notifyListener(connected, event, false);
-	}
-
 	private synchronized void notifyListener(final boolean connected,
 			String event, final boolean switched) {
 		reported = true;
