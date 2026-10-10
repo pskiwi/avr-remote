@@ -70,7 +70,8 @@ public final class LocalNetwork {
 		void wifiChanged(boolean connected);
 
 		/**
-		 * Das gebundene WLAN ist weg, ein anderes noch da und jetzt gebunden.
+		 * Ein WLAN ist weg, ein anderes noch da und gebunden - ob das
+		 * verlorene gerade gebunden war oder schon vorher abgeloest wurde.
 		 * Fuer wifiChanged() ist das kein Wechsel, verbunden war und ist man -
 		 * aber eine Verbindung ueber das verlorene Netz ist tot.
 		 */
@@ -588,6 +589,12 @@ public final class LocalNetwork {
 		public void onLost(Network n) {
 			available.remove(n);
 			if (!n.equals(boundNetwork)) {
+				// Make-before-break: onAvailable hat schon auf das neue
+				// umgebunden, aber eine Verbindung von vorher laeuft noch ueber
+				// dieses hier. Welches ein Socket hat, weiss nur er - also im
+				// Zweifel einmal zu oft neu verbinden statt auf seinen Timeout
+				// zu warten.
+				notifyListener(true, "lost, another stays bound", true);
 				return;
 			}
 			if (available.isEmpty()) {

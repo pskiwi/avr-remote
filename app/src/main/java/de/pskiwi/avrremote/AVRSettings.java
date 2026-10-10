@@ -114,19 +114,24 @@ public final class AVRSettings extends PreferenceActivity implements
 	 * Fragt POST_NOTIFICATIONS an, wenn die Benachrichtigung aktiviert ist und
 	 * die Permission noch fehlt. Ohne sie verwirft Android ab targetSdk 33 die
 	 * Benachrichtigung kommentarlos.
+	 *
+	 * @return true, wenn angefragt wurde - die Antwort kommt dann asynchron in
+	 *         onRequestPermissionsResult
 	 */
-	public static void requestNotificationPermission(Activity activity) {
+	public static boolean requestNotificationPermission(Activity activity) {
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-			return;
+			return false;
 		}
 		if (!isShowNotification(activity)) {
-			return;
+			return false;
 		}
-		if (activity.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-			activity.requestPermissions(
-					new String[] { android.Manifest.permission.POST_NOTIFICATIONS },
-					REQUEST_POST_NOTIFICATIONS);
+		if (activity.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+			return false;
 		}
+		activity.requestPermissions(
+				new String[] { android.Manifest.permission.POST_NOTIFICATIONS },
+				REQUEST_POST_NOTIFICATIONS);
+		return true;
 	}
 
 	/**
@@ -282,8 +287,9 @@ public final class AVRSettings extends PreferenceActivity implements
 	 * gemerkt, wo eine da ist: in requestLocalNetworkPermission() beim ersten
 	 * AVRRemote.onCreate eines Prozesses - auch einem wiederhergestellten nach
 	 * einem Prozess-Tod -, in noteLocalNetworkDenial() bei jedem weiteren im
-	 * selben Prozess, etwa nach einer Drehung, und bei jeder Antwort in
-	 * localNetworkPermissionResult(). Aendert der Anwender die Permission in
+	 * selben Prozess, etwa nach einer Drehung, oder in einem
+	 * wiederhergestellten, dessen Anfrage noch offen war - und bei jeder
+	 * Antwort in localNetworkPermissionResult(). Aendert der Anwender die Permission in
 	 * den Einstellungen, waehrend die App laeuft, bleibt der Wert bis zum
 	 * naechsten Aufruf alt; BLOCKED/granted daneben wird immer frisch gelesen.
 	 * null nach einem Prozessstart, bevor eine Activity gefragt hat - der
