@@ -34,7 +34,6 @@ import android.os.AsyncTask;
 import android.widget.EditText;
 import de.pskiwi.avrremote.AVRApplication;
 import de.pskiwi.avrremote.AVRSettings;
-import de.pskiwi.avrremote.IActivityShowing;
 import de.pskiwi.avrremote.MenuBuilder;
 import de.pskiwi.avrremote.R;
 import de.pskiwi.avrremote.core.IAVRState;
@@ -48,7 +47,7 @@ import de.pskiwi.avrremote.models.ModelConfigurator;
 
 public final class ExtrasMenu {
 
-	public interface IBaseMenuActivity extends IActivityShowing {
+	public interface IBaseMenuActivity {
 		AVRApplication getApp();
 
 		Activity getActivity();

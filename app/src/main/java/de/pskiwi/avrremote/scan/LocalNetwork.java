@@ -684,7 +684,10 @@ public final class LocalNetwork {
 	private static volatile Network boundNetwork;
 	// Statisch aus demselben Grund wie boundNetwork daneben: bind() ist
 	// statisch und braucht das Praefix, um ein Ziel im WLAN von einem ausserhalb
-	// zu unterscheiden. Geschrieben wird beides im selben Callback.
+	// zu unterscheiden. Geschrieben wird beides im selben Callback, aber nicht
+	// atomar: ein bind() genau dazwischen paart das neue Netz mit dem alten
+	// Praefix. Hingenommen - das kostet hoechstens einen Verbindungsversuch,
+	// und ein gemeinsamer Halter muesste durch jeden Leser hier.
 	private static volatile LinkProperties linkProperties;
 	private volatile Handler handler;
 	private volatile IWiFiListener listener;

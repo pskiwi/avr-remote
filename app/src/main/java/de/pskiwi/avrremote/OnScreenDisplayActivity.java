@@ -42,8 +42,7 @@ import de.pskiwi.avrremote.core.display.IDisplay.Operations;
 import de.pskiwi.avrremote.log.Logger;
 import de.pskiwi.avrremote.menu.OptionsMenu;
 
-public final class OnScreenDisplayActivity extends ListActivity implements
-		IActivityShowing {
+public final class OnScreenDisplayActivity extends ListActivity {
 
 	private AVRApplication getApp() {
 		return (AVRApplication) getApplication();
@@ -244,7 +243,6 @@ public final class OnScreenDisplayActivity extends ListActivity implements
 	@Override
 	protected void onResume() {
 		super.onResume();
-		showing = true;
 		getApp().activityResumed(this);
 		getApp().getEnableManager().setClassListener(viewList);
 		final StatusFlag flag = getApp().getModelConfigurator().getModel()
@@ -260,7 +258,6 @@ public final class OnScreenDisplayActivity extends ListActivity implements
 	@Override
 	protected void onPause() {
 		super.onPause();
-		showing = false;
 		getApp().activityPaused(this);
 		optionsMenu.contextPaused();
 	}
@@ -310,10 +307,6 @@ public final class OnScreenDisplayActivity extends ListActivity implements
 		}
 	}
 
-	public boolean isShowing() {
-		return showing;
-	}
-
 	@Override
 	public String toString() {
 		return "ListScreenActivity " + zone;
@@ -321,7 +314,6 @@ public final class OnScreenDisplayActivity extends ListActivity implements
 
 	private Button viewUp;
 	private Button viewDown;
-	private boolean showing;
 	private ScreenListAdapter listAdapter;
 	private IScreenMenu screenMenu;
 	private ZoneState zoneState;

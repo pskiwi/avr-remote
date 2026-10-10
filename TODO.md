@@ -73,6 +73,12 @@ What is left is the part no build can answer.
       Preferring the network whose prefix holds the configured receiver would settle it, but
       `LocalNetwork` does not know the receiver today. Not seen in any log: a report with
       `lost, falling back to another` followed by timeouts would be the case.
+- [ ] **A restore into another activity does not ask for the permission.** `AVRRemote.onCreate`
+      asks once per process, so a revoke — which kills the process — is followed by a new request
+      when `AVRRemote` comes back. If `OnScreenDisplayActivity` was on top instead, the restore from
+      recents asks nothing until the user goes back to `AVRRemote`; until then every socket times
+      out without the assistant to explain it, since that lives in `AVRRemote`. Fixing it means
+      asking from the other activities as well, with the same per-process gate.
 - [ ] **Auto-revoke with a stale asked marker.** The marker is only cleared when
       `requestLocalNetworkPermission()` sees the permission granted. Refused once, granted later in
       the settings while the app keeps running, then left unused until the revoke — every new
@@ -99,7 +105,7 @@ What is left is the part no build can answer.
       the other.
 
       `<presentationURL>` is worth taking at the same time, because it settles a guess made
-      elsewhere: `menu/OptionsMenu.java:252` opens the receiver's web UI by probing the configured
+      elsewhere: `menu/OptionsMenu.java:249` opens the receiver's web UI by probing the configured
       page and treating **only** a 404 as proof that it is missing, then falling back to the bare
       base URL — a heuristic whose confirmation is still outstanding with the reporter of the
       AVR-1912. On the AVR-3310 `presentationURL` is exactly that bare base URL, which corroborates

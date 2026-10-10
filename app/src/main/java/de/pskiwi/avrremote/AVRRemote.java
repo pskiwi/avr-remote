@@ -73,7 +73,7 @@ import de.pskiwi.avrremote.menu.ExtrasMenu;
 import de.pskiwi.avrremote.menu.OptionsMenu;
 import de.pskiwi.avrremote.menu.QuickMenu;
 
-public final class AVRRemote extends TabActivity implements IActivityShowing,
+public final class AVRRemote extends TabActivity implements
 		ExtrasMenu.IBaseMenuActivity {
 
 	public AVRApplication getApp() {
