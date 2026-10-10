@@ -36,9 +36,9 @@ second of `checkAddress`; a cold start in that state still defines `Connected` t
 the load-bearing half of the guard and it was seen on the device; Wi-Fi returning drives
 `triggerReconnect()` within a second rather than waiting out the 16 s backoff; and with the switch on
 the old behaviour returns verbatim, `SocketTimeoutException … from /10.17.65.161 … after 2500ms` once
-per round. One thing to know when repeating this: the receiver holds its single telnet session for a
-while after the Wi-Fi drops, so the reconnect afterwards runs into `ECONNREFUSED` and the
-control-port dialog, which says nothing about any of the above.
+per round. One thing to know when repeating this: the receiver holds its single telnet session for
+minutes after the Wi-Fi drops (measured below, in the AVR-3310 item), so the reconnect afterwards
+runs into `ECONNREFUSED` and the control-port dialog, which says nothing about any of the above.
 
 What is left is the part no build can answer.
 
@@ -64,14 +64,19 @@ What is left is the part no build can answer.
       `IPv4` line. It needs no device to fix once such a log exists — widen `refusedByVpn()` to the
       errno it shows.
 
-- [ ] **A Wi-Fi fallback picks the most recent network, not the receiver's.** When the bound Wi-Fi
-      is lost and another stays up, `LocalNetwork.onLost` binds the most recently available one.
+- [ ] **The binding follows the most recent Wi-Fi, not the receiver's.** `onAvailable` binds every
+      newly available Wi-Fi, and when the bound one is lost while another stays up,
+      `LocalNetwork.onLost` binds the most recently available of the rest.
       If that is not the receiver's network (STA+STA, another app's local-only Wi-Fi), `mayConnect()`
       says yes because a Wi-Fi is bound, `bind()` leaves the socket unbound because the receiver is
       outside its prefix, and every round spends the connect timeout on the default network — where
       before the fallback `StatusFlag.WLAN` went false and the assistant pointed at the Wi-Fi.
       Preferring the network whose prefix holds the configured receiver would settle it, but
-      `LocalNetwork` does not know the receiver today. Not seen in any log: a report with
+      `LocalNetwork` does not know the receiver today. The `onAvailable` half was seen on a Pixel 8
+      on 2026-10-10: after a Wi-Fi off/on the phone joined another saved network (192.168.178.x)
+      first, the binding moved there, the connect attempts left from the mobile address, and the
+      assistant offered the IP dialog — the Wi-Fi the receiver is in had not come back at all, so
+      there was no better choice to make. The fallback half is not in any log yet:
       `lost, falling back to another` followed by timeouts would be the case.
 - [ ] **A restore into another activity does not ask for the permission.** `AVRRemote.onCreate`
       asks once per process, so a revoke — which kills the process — is followed by a new request
