@@ -113,20 +113,12 @@ public final class EnableManager {
 	 * verloren, oder die Listener bekamen einen halb gebauten Status - Buttons,
 	 * die grau blieben bis zum naechsten Wechsel. Die Sperre deckt nur ein paar
 	 * Map-Zugriffe und ein post() ab, die Listener laufen danach auf dem
-	 * UI-Thread und ohne sie. Auch das Log steht ausserhalb: mit Datei-Log
-	 * schreibt es synchron, und der UI-Thread wartete sonst in
-	 * getCurrentStatus() auf die Platte.
+	 * UI-Thread und ohne sie. Die Log-Zeile steht bewusst innerhalb: nur so
+	 * folgen die "setEnabled"-Zeilen nach #seq der Reihenfolge der
+	 * Aenderungen, und genau danach wird ein Log mit grauen Buttons gelesen.
+	 * Mit Datei-Log kostet das den Schreibvorgang einer Zeile unter der Sperre.
 	 */
-	public void setStatus(StatusFlag s, boolean add) {
-		final String changed = updateStatus(s, add);
-		if (changed != null) {
-			Logger.info("EnableManager setEnabled " + s + " =  " + add + " -> "
-					+ changed);
-		}
-	}
-
-	/** @return der neue Stand, wenn sich etwas geaendert hat, sonst null */
-	private synchronized String updateStatus(StatusFlag s, boolean add) {
+	public synchronized void setStatus(StatusFlag s, boolean add) {
 		final ReceiverStatus oldStatus = connectionStatus.copy();
 		if (add) {
 			// Automatisch mit setzen
@@ -160,11 +152,11 @@ public final class EnableManager {
 				break;
 			}
 		}
-		if (oldStatus.equals(connectionStatus)) {
-			return null;
+		if (!oldStatus.equals(connectionStatus)) {
+			Logger.info("EnableManager setEnabled " + s + " =  " + add + " -> "
+					+ connectionStatus);
+			fireListener();
 		}
-		fireListener();
-		return connectionStatus.toString();
 	}
 
 	// Immer nur ein Listener pro Klasse

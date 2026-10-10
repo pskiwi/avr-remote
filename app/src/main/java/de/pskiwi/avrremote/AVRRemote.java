@@ -114,18 +114,15 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 		// bleibt im selben Prozess. Sie kann also auch keine zweite Anfrage
 		// neben einem noch offenen System-Dialog abschicken, die Android mit
 		// leeren Ergebnissen beantworten wuerde.
-		// Ausnahme: stirbt der Prozess, waehrend der System-Dialog dieser
-		// Kette offen ist, steht der Dialog beim Zurueckkommen noch ueber der
-		// Activity und liefert sein Ergebnis an sie. Eine neue Anfrage laege
-		// dann daneben - also die Kette fortsetzen wie nach einer Drehung.
-		// Offen ist einer der beiden Dialoge genau dann, wenn NOTIFICATION_PENDING
-		// (lokales Netz) oder NOTIFICATION_OPEN (Benachrichtigung) gesetzt
-		// ist, siehe unten.
-		final boolean requestInFlight = savedInstanceState != null
-				&& (savedInstanceState.getBoolean(NOTIFICATION_PENDING)
-						|| savedInstanceState.getBoolean(NOTIFICATION_OPEN));
-		if (savedInstanceState == null
-				|| (!permissionsRequestedInProcess && !requestInFlight)) {
+		// Bewusst hingenommen: stirbt der Prozess, waehrend ein Dialog dieser
+		// Kette offen ist, fragt der wiederhergestellte erneut. Android
+		// beantwortet eine der beiden Anfragen dann leer, was
+		// localNetworkPermissionResult() als "abgebrochen" verbucht - schlimmstenfalls
+		// eine Frage zu viel. Die Kette stattdessen als noch offen fortzusetzen
+		// hiesse, sich auf ein Ergebnis zu verlassen, das nach dem Prozess-Tod
+		// ebenso leer kommen kann - und dann fragte in diesem Prozess nichts
+		// mehr, unter Local Network Protection das Ende jeder Verbindung.
+		if (savedInstanceState == null || !permissionsRequestedInProcess) {
 			// Nacheinander, nicht nebeneinander: requestPermissions() weist
 			// eine zweite Anfrage ab, solange die erste laeuft, und liefert
 			// ihr sofort ein leeres Ergebnis - die zweite Permission wird dann
@@ -135,8 +132,7 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 			if (AVRSettings.requestLocalNetworkPermission(this)) {
 				notificationRequestPending = true;
 			} else {
-				notificationRequestOpen = AVRSettings
-						.requestNotificationPermission(this);
+				AVRSettings.requestNotificationPermission(this);
 			}
 		} else {
 			// Die Kette laeuft weiter, auch wenn waehrend des System-Dialogs
@@ -145,8 +141,6 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 			// gefragt - genau das, was die Kette verhindern soll.
 			notificationRequestPending = savedInstanceState
 					.getBoolean(NOTIFICATION_PENDING);
-			notificationRequestOpen = savedInstanceState
-					.getBoolean(NOTIFICATION_OPEN);
 			// Nicht fragen, aber fuer den Feedback-Bericht auffrischen, ob eine
 			// Ablehnung endgueltig ist - sie kann sich in den Einstellungen
 			// geaendert haben, ohne dass der Prozess dabei starb
@@ -272,7 +266,6 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 		final boolean granted = grantResults.length > 0
 				&& grantResults[0] == PackageManager.PERMISSION_GRANTED;
 		if (requestCode == AVRSettings.REQUEST_POST_NOTIFICATIONS) {
-			notificationRequestOpen = false;
 			if (granted) {
 				// Benachrichtigung nachziehen, die beim Start verworfen wurde
 				getApp().getStatusbarManager().update();
@@ -306,8 +299,7 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 			// Benachrichtigung zu fragen haette damit nichts zu tun.
 			if (notificationRequestPending) {
 				notificationRequestPending = false;
-				notificationRequestOpen = AVRSettings
-						.requestNotificationPermission(this);
+				AVRSettings.requestNotificationPermission(this);
 			}
 		}
 	}
@@ -415,7 +407,6 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 
 		outState.putInt(CURRENT_TAB, getTabHost().getCurrentTab());
 		outState.putBoolean(NOTIFICATION_PENDING, notificationRequestPending);
-		outState.putBoolean(NOTIFICATION_OPEN, notificationRequestOpen);
 	}
 
 	@Override
@@ -677,8 +668,6 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 	private boolean showing;
 	/** Die Berechtigungskette aus onCreate laeuft noch, siehe dort. */
 	private boolean notificationRequestPending;
-	/** Der Benachrichtigungs-Dialog dieser Kette steht noch offen. */
-	private boolean notificationRequestOpen;
 	/** Hat in diesem Prozess schon ein onCreate gefragt ? Siehe dort. */
 	private static boolean permissionsRequestedInProcess;
 	private ViewList viewList;
@@ -689,6 +678,5 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 	private ZoneState currentZoneState;
 	private static final String CURRENT_TAB = "CURRENT_TAB";
 	private static final String NOTIFICATION_PENDING = "NOTIFICATION_PENDING";
-	private static final String NOTIFICATION_OPEN = "NOTIFICATION_OPEN";
 
 }

@@ -453,9 +453,9 @@ Two details there are answers to real failures, not taste:
   `clearCapabilities()` would be the explicit way to say this and is API 30, above `minSdk 24`.
 - **The listener runs on the main thread**, by `Handler.post()` from inside the callback. The
   `BroadcastReceiver` this replaced ran in `onReceive` on the main thread, so the Wi-Fi changes
-  reach `EnableManager` in the order they happened, as before. (The state change in
-  `setStatus()` is `synchronized` now; it used to be a bare read-modify-write, and the main thread was the
-  only protection this path had.) The `Handler` overload of `registerNetworkCallback` would
+  reach `EnableManager` in the order they happened, as before. (`setStatus()` is `synchronized`
+  now, log line included so the `setEnabled` lines follow `#seq` in the order of the changes; it
+  used to be a bare read-modify-write, and the main thread was the only protection this path had.) The `Handler` overload of `registerNetworkCallback` would
   be the direct way to say it, and is API 26.
 
 Everything that opens a socket to the receiver goes through `LocalNetwork` — `core/Connector`
@@ -555,9 +555,10 @@ is not scan-less, it is dead.
 The permission is declared in the manifest and requested by
 `AVRSettings.requestLocalNetworkPermission()`, from `AVRRemote.onCreate` (once per process: on a
 fresh start, and on a restore after the process died — a revoke in the settings kills it — but not on
-a rotation, which could otherwise fire a second request beside an open system dialog — nor on a
-restore whose own request was still open when the process died, because that dialog is still there) and again from
-`AVRScanner.scanIP()`, because the scan is reachable
+a rotation, which could otherwise fire a second request beside an open system dialog; a restore
+while a dialog of its own was open asks again, and Android answers one of the two empty — accepted,
+because treating the old request as still running could leave the process never asking) and again
+from `AVRScanner.scanIP()`, because the scan is reachable
 from the options menu and the setup assistant without `AVRRemote` having started. There is no
 rationale dialog of the app's own — the reasons are in the comment at the request. On a grant the
 connector is told to reconnect, from `AVRRemote` and `OnScreenDisplayActivity` alike, because the
