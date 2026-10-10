@@ -81,8 +81,8 @@ What is left is the part no build can answer.
       asking from the other activities as well, with the same per-process gate.
 - [ ] **Auto-revoke with a stale asked marker.** The marker is only cleared when
       `requestLocalNetworkPermission()` sees the permission granted. Refused once, granted later in
-      the settings while the app keeps running, then left unused until the revoke — every new
-      process asks again in `AVRRemote.onCreate`, so the marker is only stale if no process start
+      the settings while the app keeps running, then left unused until the revoke — every process
+      that reaches `AVRRemote` asks again in its `onCreate`, so the marker is only stale if no such start
       fell between the grant and the revoke. If that revoke also resets
       the rationale flag, the app takes it for a final refusal and never asks. The hint's button
       still leads out. Which flags the disuse revoke sets is unmeasured.

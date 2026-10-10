@@ -417,7 +417,7 @@ In a full log, these lines carry the same questions over time:
 | `LocalNetwork: WiFi available` / `lost` / `address arrived` | the callback; `lost` only for a Wi-Fi that was there |
 | `LocalNetwork: WiFi lost, falling back to another` | the bound Wi-Fi went away while a second one was still up; the binding moves to the most recently available of those |
 | `LocalNetwork: WiFi lost, another stays bound` | a Wi-Fi the binding had already moved away from went away — make-before-break; a connection opened before the move still ran over it |
-| `Wifi switched, active:…` | either of the two lines above reached `AVRApplication`; with `active:true` it reconnects at once instead of waiting for the old socket to fail |
+| `Wifi switched, active:…` | either of the two lines above reached `AVRApplication`; with `active:true` it reconnects at once instead of waiting for the old socket to fail, with `active:false` the next resume reconnects even inside the quick-return window |
 | `LocalNetwork: WiFi not present at startup` | the seed — no Wi-Fi was ever reported, nothing dropped |
 | `LocalNetwork: WiFi address changed from …` | new IPv4 address or prefix on the same Wi-Fi, e.g. roaming |
 | `binding accepted` / `binding refused with EPERM (VPN?)` | how sockets leave; logged on every change, the first one included |
