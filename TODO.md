@@ -119,12 +119,6 @@ What is left is the part no build can answer.
       only ever looks at replies to its own `M-SEARCH`. If a receiver turns out to answer nothing
       (no `MulticastLock` — see [CONNECTION.md](CONNECTION.md)), the sweep fallback hides it, and
       the only sign is `SSDP: 0 device(s) answered` in the log.
-- [ ] The NPE in `AVRApplication$1.onReceive` (1.5.1, Pixel 8 Pro, Android 17 **Beta**) can no
-      longer happen: the `BroadcastReceiver` is gone with the `WifiManager` broadcast, and so is the
-      crash site. The cause was never found — it was `getNetworkInfo(TYPE_WIFI)` returning null, and
-      that null was not reproducible on a Pixel 8 with the finished Android 17 (three Wi-Fi off/on
-      cycles, airplane mode, Data Saver on a metered Wi-Fi in the background). Closed by removal, not
-      by understanding; worth knowing if something similar turns up in `LocalNetwork`.
 - [ ] **`Connector.Receiver.run()` logs a read error and tries again, without closing anything**
       (`core/Connector.java:168`). Predates the read watchdog, which only covers the timeout path.
       Only the `IOException` arm is meant here — the `catch (Exception)` beside it is new and does its

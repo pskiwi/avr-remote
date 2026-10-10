@@ -460,8 +460,15 @@ Two details there are answers to real failures, not taste:
   `BroadcastReceiver` this replaced ran in `onReceive` on the main thread, so the Wi-Fi changes
   reach `EnableManager` in the order they happened, as before. (`setStatus()` is `synchronized`
   now, log line included so the `setEnabled` lines follow `#seq` in the order of the changes; it
-  used to be a bare read-modify-write, and the main thread was the only protection this path had.) The `Handler` overload of `registerNetworkCallback` would
-  be the direct way to say it, and is API 26.
+  used to be a bare read-modify-write, and the main thread was the only protection this path had.)
+  The `Handler` overload of `registerNetworkCallback` would be the direct way to say it, and is
+  API 26.
+- **The old receiver's one crash was closed by removal, not by understanding.** 1.5.1 crashed with
+  an NPE in `AVRApplication$1.onReceive` on a Pixel 8 Pro with the Android 17 **Beta**:
+  `getNetworkInfo(TYPE_WIFI)` returned null. The receiver and its `WifiManager` broadcast are gone,
+  and with them the crash site; the null was never reproduced on a Pixel 8 with the finished
+  Android 17 (three Wi-Fi off/on cycles, airplane mode, Data Saver on a metered Wi-Fi in the
+  background). Worth remembering if a null of the same kind turns up in `LocalNetwork`.
 
 Everything that opens a socket to the receiver goes through `LocalNetwork` — `core/Connector`
 (telnet 23), `http/HTTPSupport` (both entry points, via `Network.openConnection`),
