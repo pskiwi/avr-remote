@@ -228,12 +228,19 @@ public final class AVRScanner {
 				// Hintergrund aufgehen, er ist dann beim Zurueckkommen da.
 				// Nur ein zerstoertes Fenster nimmt weder dismiss() noch
 				// show() an.
-				if (ctx.isFinishing() || ctx.isDestroyed()) {
+				if (ctx.isDestroyed()) {
 					Logger.info("Scan: finished after activity is gone");
 					return;
 				}
 				Logger.setLocation("scan-3");
 				progress.dismiss();
+				// Ein Fenster, das noch steht, aber geht: den Dialog schliessen,
+				// sonst bleibt er als geleaktes Fenster liegen - nur nichts
+				// Neues mehr aufmachen
+				if (ctx.isFinishing()) {
+					Logger.info("Scan: finished while activity is finishing");
+					return;
+				}
 				if (result.size() > 0) {
 					handler.finished(result);
 				} else if (prefixLength < 24) {

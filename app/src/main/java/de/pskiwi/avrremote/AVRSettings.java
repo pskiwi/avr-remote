@@ -279,10 +279,10 @@ public final class AVRSettings extends PreferenceActivity implements
 	 * Ob eine Ablehnung endgueltig ist, weiss nur
 	 * shouldShowRequestPermissionRationale(), und das braucht eine Activity -
 	 * der Feedback-Bericht hat keine sicher, der Crash-Bericht nie. Deshalb
-	 * gemerkt, wo eine da ist: in requestLocalNetworkPermission() bei jedem
-	 * Start ohne gespeicherten Zustand, in noteLocalNetworkDenial() bei einer
-	 * wiederhergestellten Activity - nach einem Prozess-Tod im Hintergrund der
-	 * haeufigste Weg zurueck in die App - und bei jeder Antwort in
+	 * gemerkt, wo eine da ist: in requestLocalNetworkPermission() beim ersten
+	 * AVRRemote.onCreate eines Prozesses - auch einem wiederhergestellten nach
+	 * einem Prozess-Tod -, in noteLocalNetworkDenial() bei jedem weiteren im
+	 * selben Prozess, etwa nach einer Drehung, und bei jeder Antwort in
 	 * localNetworkPermissionResult(). Aendert der Anwender die Permission in
 	 * den Einstellungen, waehrend die App laeuft, bleibt der Wert bis zum
 	 * naechsten Aufruf alt; BLOCKED/granted daneben wird immer frisch gelesen.
@@ -294,7 +294,8 @@ public final class AVRSettings extends PreferenceActivity implements
 	/**
 	 * Nur den Stand fuer den Bericht erheben, ohne zu fragen - fuer eine
 	 * Activity, die mit gespeichertem Zustand neu entsteht und deshalb nicht
-	 * fragen darf (sie wird bei jeder Drehung neu gebaut).
+	 * fragen darf (sie wird bei jeder Drehung neu gebaut, und in diesem Prozess
+	 * wurde schon gefragt, siehe AVRRemote.onCreate).
 	 * shouldShowRequestPermissionRationale() hat keine Nebenwirkung.
 	 */
 	public static void noteLocalNetworkDenial(Activity activity) {

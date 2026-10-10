@@ -68,6 +68,13 @@ public final class LocalNetwork {
 	/** Wechsel des WLAN-Zustands, gemeldet auf dem Main-Thread. */
 	public interface IWiFiListener {
 		void wifiChanged(boolean connected);
+
+		/**
+		 * Das gebundene WLAN ist weg, ein anderes noch da und jetzt gebunden.
+		 * Fuer wifiChanged() ist das kein Wechsel, verbunden war und ist man -
+		 * aber eine Verbindung ueber das verlorene Netz ist tot.
+		 */
+		void wifiSwitched();
 	}
 
 	public LocalNetwork(Context ctx) {
@@ -591,7 +598,7 @@ public final class LocalNetwork {
 				final Network fallback = available.get(available.size() - 1);
 				boundNetwork = fallback;
 				linkProperties = connectivity.getLinkProperties(fallback);
-				notifyListener(true, "lost, falling back to another");
+				notifyListener(true, "lost, falling back to another", true);
 			}
 		}
 	};
@@ -630,8 +637,12 @@ public final class LocalNetwork {
 	 * Callback kein zweites Mal. Unter dem Schloss postet, wer zuerst meldet,
 	 * auch zuerst.
 	 */
+	private void notifyListener(boolean connected, String event) {
+		notifyListener(connected, event, false);
+	}
+
 	private synchronized void notifyListener(final boolean connected,
-			String event) {
+			String event, final boolean switched) {
 		reported = true;
 		Logger.info("LocalNetwork: WiFi " + event + " " + this);
 		final Handler h = handler;
@@ -642,6 +653,9 @@ public final class LocalNetwork {
 		h.post(new Runnable() {
 			public void run() {
 				l.wifiChanged(connected);
+				if (switched) {
+					l.wifiSwitched();
+				}
 			}
 		});
 	}

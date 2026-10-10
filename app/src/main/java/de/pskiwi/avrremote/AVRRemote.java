@@ -114,8 +114,15 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 		// bleibt im selben Prozess. Sie kann also auch keine zweite Anfrage
 		// neben einem noch offenen System-Dialog abschicken, die Android mit
 		// leeren Ergebnissen beantworten wuerde.
-		if (savedInstanceState == null || !permissionsRequestedInProcess) {
-			permissionsRequestedInProcess = true;
+		// Ausnahme: stirbt der Prozess, waehrend der System-Dialog dieser
+		// Kette offen ist, steht der Dialog beim Zurueckkommen noch ueber der
+		// Activity und liefert sein Ergebnis an sie. Eine neue Anfrage laege
+		// dann daneben - also die Kette fortsetzen wie nach einer Drehung.
+		// NOTIFICATION_PENDING ist genau dann gesetzt, siehe unten.
+		final boolean requestInFlight = savedInstanceState != null
+				&& savedInstanceState.getBoolean(NOTIFICATION_PENDING);
+		if (savedInstanceState == null
+				|| (!permissionsRequestedInProcess && !requestInFlight)) {
 			// Nacheinander, nicht nebeneinander: requestPermissions() weist
 			// eine zweite Anfrage ab, solange die erste laeuft, und liefert
 			// ihr sofort ein leeres Ergebnis - die zweite Permission wird dann
@@ -139,6 +146,7 @@ public final class AVRRemote extends TabActivity implements IActivityShowing,
 			// geaendert haben, ohne dass der Prozess dabei starb
 			AVRSettings.noteLocalNetworkDenial(this);
 		}
+		permissionsRequestedInProcess = true;
 
 		Logger.setLocation("AVRRemote-onCreate-2");
 

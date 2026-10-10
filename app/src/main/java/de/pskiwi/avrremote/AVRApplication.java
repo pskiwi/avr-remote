@@ -76,6 +76,16 @@ public final class AVRApplication extends Application {
 			}
 		}
 
+		// Ohne das wartete die Verbindung ueber das verlorene WLAN, bis ihr
+		// eigener Socket scheitert, und danach den Backoff - wifiChanged()
+		// sieht keinen Wechsel und loest nichts aus.
+		public void wifiSwitched() {
+			Logger.info("Wifi switched, active:" + activeHandler.isActive());
+			if (activeHandler.isActive()) {
+				connector.triggerReconnect();
+			}
+		}
+
 		private boolean connected;
 	};
 

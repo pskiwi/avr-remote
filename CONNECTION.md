@@ -415,6 +415,7 @@ In a full log, these lines carry the same questions over time:
 | line | meaning |
 | --- | --- |
 | `LocalNetwork: WiFi available` / `lost` / `address arrived` | the callback; `lost` only for a Wi-Fi that was there |
+| `LocalNetwork: WiFi lost, falling back to another` | the bound Wi-Fi went away while a second one was still up; the binding moves to the most recently available of those |
 | `LocalNetwork: WiFi not present at startup` | the seed — no Wi-Fi was ever reported, nothing dropped |
 | `LocalNetwork: WiFi address changed from …` | new IPv4 address or prefix on the same Wi-Fi, e.g. roaming |
 | `binding accepted` / `binding refused with EPERM (VPN?)` | how sockets leave; logged on every change, the first one included |
@@ -552,7 +553,8 @@ is not scan-less, it is dead.
 The permission is declared in the manifest and requested by
 `AVRSettings.requestLocalNetworkPermission()`, from `AVRRemote.onCreate` (once per process: on a
 fresh start, and on a restore after the process died — a revoke in the settings kills it — but not on
-a rotation, which could otherwise fire a second request beside an open system dialog) and again from
+a rotation, which could otherwise fire a second request beside an open system dialog — nor on a
+restore whose own request was still open when the process died, because that dialog is still there) and again from
 `AVRScanner.scanIP()`, because the scan is reachable
 from the options menu and the setup assistant without `AVRRemote` having started. There is no
 rationale dialog of the app's own — the reasons are in the comment at the request. On a grant the
