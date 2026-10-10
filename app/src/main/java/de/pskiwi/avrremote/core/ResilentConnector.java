@@ -41,10 +41,11 @@ public final class ResilentConnector implements ISender {
 
 		// isAlive(), nicht nur "!= null": ein gestorbener Thread wuerde
 		// reconfigure() sonst glauben machen, es laufe noch ein Reconnect-Loop,
-		// und der Kurzschluss dort startet dann nie einen neuen. Aktuell kann
-		// das nicht passieren - stop() nullt das Feld - aber die Fehlerklasse
-		// ist genau die, die den Reconnect schon einmal stillschweigend
-		// beerdigt hat.
+		// und der Kurzschluss dort startet dann nie einen neuen. Der regulaere
+		// Weg ist trotzdem, dass das Feld genullt wird - durch stop() oder,
+		// wenn der Loop von selbst aufhoert, durch retire(). isAlive() faengt
+		// nur ab, was an beiden vorbei stirbt; die Fehlerklasse ist genau die,
+		// die den Reconnect schon einmal stillschweigend beerdigt hat.
 		public synchronized boolean isDefined() {
 			return thread != null && thread.isAlive();
 		}
@@ -68,6 +69,32 @@ public final class ResilentConnector implements ISender {
 						+ thread.getName() + ")");
 				thread = null;
 			}
+		}
+
+		/**
+		 * Der laufende Loop fragt, ob er aufhoeren soll, und traegt sich dann
+		 * selbst aus - unter demselben Monitor wie isDefined(). Getrennt
+		 * entschieden und ausgetragen, gaebe es ein Fenster, in dem der Thread
+		 * schon beschlossen hat zu gehen, isAlive() aber noch true sagt: ein
+		 * reconfigure() genau dann haelt ihn fuer lebendig, startet keinen
+		 * neuen, und danach ist gar keiner mehr da. So entscheidet, wer den
+		 * Monitor zuerst hat: der Thread geht und isDefined() sagt danach false,
+		 * oder reconfigure() war vorher dran - dann hat contextResumed() die
+		 * Activity schon als aktiv gemeldet, und der Thread bleibt.
+		 *
+		 * Ein schon abgeloester Thread traegt nichts aus, er ist nicht mehr der
+		 * gefuehrte.
+		 *
+		 * @return true, wenn der aufrufende Thread aufhoeren soll
+		 */
+		public synchronized boolean retire(BooleanSupplier stillWanted) {
+			if (stillWanted.getAsBoolean()) {
+				return false;
+			}
+			if (thread == Thread.currentThread()) {
+				thread = null;
+			}
+			return true;
 		}
 
 		public synchronized void start(Runnable runner, int epoch) {
@@ -299,13 +326,14 @@ public final class ResilentConnector implements ISender {
 		 * dort nach wenigen Sekunden das Netz (Pixel 8, Android 17: Firewall-
 		 * Regel APP_BACKGROUND 6 s nach onPause, der Socket bricht sofort ab),
 		 * und jede weitere Runde liefe bis zum Ablauf der Trennzeit gegen
-		 * diese Sperre. Den Neuaufbau macht das naechste contextResumed():
-		 * reconfigure() sieht ueber isAlive() keinen laufenden Loop mehr,
-		 * forceReconnect() fragt ohnehin nicht.
+		 * diese Sperre. Gefragt wird vor und nach der Pause: wer in eine 16-s-
+		 * Pause im Vordergrund geht, ist danach oft im Hintergrund. Der Loop
+		 * traegt sich dabei selbst aus (ThreadHandler.retire()), so dass das
+		 * naechste contextResumed() einen neuen startet - reconfigure() ueber
+		 * isDefined(), forceReconnect() ohnehin.
 		 */
 		private boolean waitBeforeRetry() {
-			if (!foreground.getAsBoolean()) {
-				Logger.info("Reconnector:in background -> no further attempt");
+			if (retireInBackground()) {
 				return false;
 			}
 			try {
@@ -316,11 +344,19 @@ public final class ResilentConnector implements ISender {
 						+ RECONNECT_DELAY[reconnectDelayIndex]
 						+ " sec. for reconnect");
 				Thread.sleep(RECONNECT_DELAY[reconnectDelayIndex] * 1000);
-				return true;
+				return !retireInBackground();
 			} catch (InterruptedException e) {
 				Logger.info("Reconnector:connector interrupted -> return");
 				return false;
 			}
+		}
+
+		private boolean retireInBackground() {
+			if (!threadHandler.retire(foreground)) {
+				return false;
+			}
+			Logger.info("Reconnector:in background -> no further attempt");
+			return true;
 		}
 
 		private int reconnectDelayIndex = 0;
@@ -512,7 +548,11 @@ public final class ResilentConnector implements ISender {
 		return controlPortBusy;
 	}
 
-	/** Ob eine Activity im Vordergrund ist, siehe Reconnector.waitBeforeRetry(). */
+	/**
+	 * Ob die App gerade Netz haben darf, siehe Reconnector.waitBeforeRetry().
+	 * Muss true sein, bevor ein contextResumed() reconfigure() ruft - darauf
+	 * stuetzt sich ThreadHandler.retire().
+	 */
 	public void setForeground(BooleanSupplier foreground) {
 		this.foreground = foreground;
 	}

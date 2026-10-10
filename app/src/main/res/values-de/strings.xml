@@ -219,7 +219,7 @@
 		haben (benötigt Neustart).</string>
 
 	<string name="DisconnectTimeout">Verbindungstrennzeit</string>
-	<string name="DisconnectTimeoutHelp">Zeit bis zum Trennen der Verbindung im Hintergrund. Aktuelle Android-Versionen unterbrechen das Netz einer App im Hintergrund allerdings schon nach wenigen Sekunden.</string>
+	<string name="DisconnectTimeoutHelp">Zeit bis zum Trennen der Verbindung im Hintergrund. Neuere Android-Versionen können das Netz einer App im Hintergrund allerdings schon nach wenigen Sekunden unterbrechen.</string>
 
 	<string name="iPodInput">iPod Eingang</string>
 	<string name="iPodInputHelp">Name des umbenannten iPod Eingangs (AVR-4306)

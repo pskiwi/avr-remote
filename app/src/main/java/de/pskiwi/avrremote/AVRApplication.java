@@ -22,6 +22,7 @@ import java.net.CookieManager;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.Application;
 import android.app.ProgressDialog;
 import android.content.Context;
@@ -166,7 +167,14 @@ public final class AVRApplication extends Application {
 		displayManager.setAvrState(avrState);
 
 		activeHandler = new ActiveHandler(connector);
-		connector.setForeground(activeHandler::isActive);
+		// Aktive Activity oder sichtbarer Prozess: isActive() allein ist auch
+		// hinter einem Systemdialog, einem Chooser oder im nicht fokussierten
+		// Split-Screen-Fenster false, und dort hat die App ihr Netz noch - die
+		// Sperre haengt am Prozesszustand, nicht an onPause. isActive() muss
+		// trotzdem mit hinein: contextResumed() setzt es vor reconfigure(), und
+		// darauf baut ThreadHandler.retire().
+		connector.setForeground(() -> activeHandler.isActive()
+				|| isProcessVisible());
 
 		localNetwork.register(handler, wifiListener);
 
@@ -229,6 +237,17 @@ public final class AVRApplication extends Application {
 
 	public void activityResumed(Context context) {
 		activeHandler.contextResumed(context);
+	}
+
+	/**
+	 * Sichtbar oder im Vordergrund, so wie das System den Prozess einstuft -
+	 * danach richtet sich, ob es ihm das Netz sperrt. Vom Reconnect-Thread
+	 * gerufen; getMyMemoryState() ist statisch und braucht keinen Context.
+	 */
+	private static boolean isProcessVisible() {
+		final ActivityManager.RunningAppProcessInfo info = new ActivityManager.RunningAppProcessInfo();
+		ActivityManager.getMyMemoryState(info);
+		return info.importance <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE;
 	}
 
 	public ActiveHandler getActiveHandler() {
