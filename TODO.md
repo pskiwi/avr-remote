@@ -132,6 +132,11 @@ What is left is the part no build can answer.
       thread left through the normal path. Closing on any `IOException` is the obvious fix and is
       exactly what the surrounding comments decided against, so it needs a case first — a captured
       log with the same error repeating would be one.
+      Seen once more on a Pixel 8 on 2026-10-10, and again harmless: Wi-Fi switched off with the app
+      in the background, Android aborted the Wi-Fi-bound socket about 100 ms after `WiFi lost`
+      (`read failed … Software caused connection abort`), the next read returned end-of-stream and
+      the thread left through the normal path. The same run settles a side question: a lost Wi-Fi
+      needs no explicit reconnect from `wifiChanged()`, the system kills the bound socket itself.
 
 - [ ] **Two cases behind the "Use mobile network" switch that no hardware here can produce.** The
       switch and the address test behind it (`LocalNetwork.mayConnect(String)`, the guard at the top
