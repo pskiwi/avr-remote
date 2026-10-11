@@ -54,9 +54,12 @@ public final class ConfigurationAssistant {
 	 * in onCreate und fragt nur nach der Adresse, und die steht seit dem
 	 * umgedrehten Ablauf vor dem Modell fest. Deshalb aus onResume, damit auch
 	 * die Rueckkehr aus den Einstellungen es sieht.
+	 *
+	 * Beides fuer Receiver 1 und nicht fuer den aktiven: die Einrichtung
+	 * richtet nur den ein, und showModelList() schreibt dorthin.
 	 */
 	public void checkModel() {
-		if (app.getModelConfigurator().getConnectionConfig().isDefined()
+		if (AVRSettings.getAVRIP(ctx, 0).length() > 0
 				&& AVRSettings.getAVRModel(ctx, 0).length() == 0) {
 			Logger.info("assistant: address set, model never chosen");
 			showModelList();

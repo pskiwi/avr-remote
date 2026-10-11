@@ -192,13 +192,13 @@ public final class AVRScanner {
 			}
 			final String fallback = DeviceDescription.defaultURL(ia
 					.getHostAddress());
-			if (!urls.contains(fallback)) {
-				urls.add(fallback);
+			// Der Rueckfall immer als letzter und immer dabei, auch wenn SSDP
+			// ihn schon irgendwo mitten in der Liste genannt hat
+			urls.remove(fallback);
+			if (urls.size() > MAX_DESCRIPTION_URLS - 1) {
+				urls.subList(MAX_DESCRIPTION_URLS - 1, urls.size()).clear();
 			}
-			if (urls.size() > MAX_DESCRIPTION_URLS) {
-				// der Rueckfall bleibt dabei, er steht am Ende
-				urls.subList(MAX_DESCRIPTION_URLS - 1, urls.size() - 1).clear();
-			}
+			urls.add(fallback);
 			for (String url : urls) {
 				final DeviceDescription description = DeviceDescription
 						.read(url);
