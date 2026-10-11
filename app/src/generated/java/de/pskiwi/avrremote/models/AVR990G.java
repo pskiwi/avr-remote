@@ -28,7 +28,7 @@ import de.pskiwi.avrremote.core.Selection;
 import de.pskiwi.avrremote.core.SelectionBuilder;
 import de.pskiwi.avrremote.core.ZoneState.LevelType;
 
-public final class GeneratedAVR3310 extends AbstractModel {
+public final class AVR990G extends AbstractModel {
 
 	private static final Set<LevelType> LEVELS = EnumSet.of(LevelType.BAS,
 			LevelType.TRE, LevelType.LFE, LevelType.EFF, LevelType.DEL,
@@ -82,7 +82,7 @@ public final class GeneratedAVR3310 extends AbstractModel {
 	}
 
 	public String getName() {
-		return "AVR-3310";
+		return "AVR-990-G";
 	}
 
 	@Override

@@ -195,10 +195,10 @@ files in that directory are infrastructure: `AbstractModel`, `AbstractMarantzAV`
 `ModelArea`, `ModelConfigurator` and the two `DynamicEQ*` enums. All 60 reach `AbstractModel`, some
 directly and some through `AbstractMarantzAV` or another model class (`AVR990 extends AVR3310`, …).
 
-Another **26 classes are generated** into `app/src/generated/java/` (same package, added as a source
-directory in `app/build.gradle`) by `generate_java.py` in
-`avr-remote-specs`, one per model file there — the
-2014 and FY20–FY23 Denon receivers the hand-written classes stop short of. They are committed, so the
+Another **28 classes are generated** into `app/src/generated/java/` (same package, added as a source
+directory in `app/build.gradle`) by `generate_java.py` in `avr-remote-specs`, one per model file
+there — the 2014 and FY20–FY23 Denon receivers the hand-written classes stop short of, plus
+`AVR3310G` and `AVR990G`, generated variants of two models that also have a hand-written class. They are committed, so the
 build does not need that repository; **never edit them** — change the rule there and regenerate:
 
 ```sh
@@ -208,9 +208,12 @@ uv run ./generate_java.py models/*.json --app ../avr-remote --check  # stale or 
 
 The same run sorts the generated models into the receiver block of `@array/modelNames` (the part
 between its two comments, in natural order; entries carry `(experimental)` until a receiver confirms
-them), and writes `GeneratedAVR3310` into the test sources, which `GeneratedAVR3310Test` compares
-with the hand-written `AVR3310` — the only model that exists both ways. A model with a
-hand-written class is never generated. Which document field answers which `IAVRModel` method is in
+them). A model that has a hand-written class is generated beside it as `-G`: "AVR-3310-G
+(experimental)" → `AVR3310G`. The suffix is in the name, not the remark, because `createModel`
+strips the remark and would otherwise land in the hand-written class. The hand-written one stays the
+default — the setup's UPnP suggestion matches it, not the variant (`ModelSuggestionTest`).
+`GeneratedAVR3310Test` compares `AVR3310G` with `AVR3310` and states every difference, some of them
+confirmed on the receiver. Which document field answers which `IAVRModel` method is in
 `APP_MAPPING.md` there.
 
 `ModelConfigurator.update()` resolves the model **by reflection** from the user's preference string:
@@ -225,7 +228,7 @@ to `AVRGeneric` — silent to the user, but visible in the log.
 Consequences:
 - Adding a receiver needs **two** changes: a class in `models/` *and* an entry in
   `@array/modelNames` in `res/values/lists.xml`. The names must correspond after dash-stripping.
-  Both sides currently hold exactly 86 entries (60 hand-written, 26 generated) and resolve 1:1 — if they drift apart, the orphaned
+  Both sides currently hold exactly 88 entries (60 hand-written, 28 generated) and resolve 1:1 — if they drift apart, the orphaned
   name falls back to `AVRGeneric` and the user just silently misses features. `ModelConfiguratorTest`
   is what turns that silent drift into a red build, in both directions; it drives the real lookup in
   `ModelConfigurator.createModel(String)`, split out of `update()` because there it sat behind a

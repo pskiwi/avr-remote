@@ -270,9 +270,9 @@ What is left is the part no build can answer.
 
 ## Generated models: what the documents offer and the app does not
 
-The 26 classes in `app/src/generated/java/` (see CLAUDE.md, "Receiver models") cover what
+The generated classes in `app/src/generated/java/` (see CLAUDE.md, "Receiver models") cover what
 `IAVRModel` can express. The protocol documents behind them describe more — features of the 2014
-and FY20–FY23 generations the app has no code for at all. Counts are how many of the 26 models the
+and FY20–FY23 generations the app has no code for at all. Counts are how many of the 26 newly covered models the
 document lists a feature for. None of it is tested on hardware; the documents are all there is.
 
 - [ ] **Simple settings — the cheap ones.** Each is a switch or a short value list, the shape

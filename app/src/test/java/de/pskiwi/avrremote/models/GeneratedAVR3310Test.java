@@ -32,17 +32,21 @@ import de.pskiwi.avrremote.core.OptionType;
 import de.pskiwi.avrremote.core.ZoneState.LevelType;
 
 /**
- * Der AVR-3310 ist das einzige Modell, das es von Hand und generiert gibt:
- * {@link AVR3310} wurde gegen das Gerät geschrieben, {@code GeneratedAVR3310}
- * (nur in den Test-Quellen) erzeugt generate_java.py aus dessen
- * Protokolldokument. Gleich sind sie nicht - die Unterschiede unten sind
- * genau die bekannten, jeder einzeln. Ändert sich eine Regel im Generator,
- * wird es hier rot statt still in 26 Modellen.
+ * Den AVR-3310 gibt es zweimal in der Auswahl: {@link AVR3310} wurde gegen
+ * das Gerät geschrieben und ist der Standard, {@link AVR3310G} ("AVR-3310-G
+ * (experimental)") erzeugt generate_java.py aus dessen Protokolldokument.
+ * Gleich sind sie nicht - die Unterschiede unten sind genau die bekannten,
+ * jeder einzeln. Ändert sich eine Regel im Generator, wird es hier rot statt
+ * still in allen generierten Modellen.
+ *
+ * Am Gerät (EU-Modell, Oktober 2026) bestätigt: SB, VIDEO GAME und das
+ * fehlende VSMONI sprechen für die generierte Fassung; SIUSB ignorierte es,
+ * ob mangels USB-Gerät, ist offen.
  */
 public final class GeneratedAVR3310Test {
 
 	private final IAVRModel hand = new AVR3310();
-	private final IAVRModel generated = new GeneratedAVR3310();
+	private final IAVRModel generated = new AVR3310G();
 
 	/**
 	 * Das Dokument kennt USB, die Klasse nicht; TUNER bietet es in
@@ -112,7 +116,7 @@ public final class GeneratedAVR3310Test {
 	 */
 	@Test
 	public void everythingElseIsTheSame() {
-		assertEquals(hand.getName(), generated.getName());
+		assertEquals(hand.getName() + "-G", generated.getName());
 		assertEquals(hand.getZoneCount(), generated.getZoneCount());
 		assertEquals(hand.hasZones(), generated.hasZones());
 		assertEquals(hand.hasQuick(), generated.hasQuick());
