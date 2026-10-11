@@ -206,9 +206,10 @@ uv run ./generate_java.py models/*.json --app ../avr-remote          # in avr-re
 uv run ./generate_java.py models/*.json --app ../avr-remote --check  # stale or hand-edited?
 ```
 
-The same run rewrites the marked block in `@array/modelNames` (entries carry `(experimental)` until a
-receiver confirms them) and `GeneratedAVR3310` in the test sources, which `GeneratedAVR3310Test`
-compares with the hand-written `AVR3310` — the only model that exists both ways. A model with a
+The same run sorts the generated models into the receiver block of `@array/modelNames` (the part
+between its two comments, in natural order; entries carry `(experimental)` until a receiver confirms
+them), and writes `GeneratedAVR3310` into the test sources, which `GeneratedAVR3310Test` compares
+with the hand-written `AVR3310` — the only model that exists both ways. A model with a
 hand-written class is never generated. Which document field answers which `IAVRModel` method is in
 `APP_MAPPING.md` there.
 
