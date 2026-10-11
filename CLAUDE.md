@@ -235,6 +235,11 @@ Consequences:
   `Context`. Its own `expectedClassName` restates the dash and `(experimental)` stripping on purpose
   — that second copy is what pins the naming convention. (Note `lists.xml` holds 130 `<item>`s
   across 14 arrays; only the 60 in `modelNames` are receivers.)
+- The stored preference is the whole list entry, remark included, and `ModelConfigurator.update()`
+  rewrites it to the list's current spelling on every load (`currentListName`, matched like the
+  setup suggestion). So dropping `(experimental)` from an entry later needs no migration.
+  Renaming or removing a *class* does: `ReleasedModelNamesTest` holds every name ever released and
+  fails when one of them would fall back to `AVRGeneric` — RELEASE.md step 3 appends to it.
 - The model classes have no static references. Never enable R8/ProGuard shrinking without a
   keep rule for `de.pskiwi.avrremote.models.**`.
 

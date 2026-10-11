@@ -95,6 +95,28 @@ public final class ModelConfiguratorTest {
 				ModelConfigurator.createModel("Kein-Solches-Modell").getClass());
 	}
 
+	/**
+	 * Der gespeicherte Name folgt der Liste, wenn ein Zusatz wegfällt oder
+	 * dazukommt - die Klasse bleibt dieselbe, nur die Schreibweise wechselt.
+	 */
+	@Test
+	public void storedNameFollowsTheListsSpelling() {
+		assertEquals("AVR-X3700H", ModelConfigurator.currentListName(
+				"AVR-X3700H (experimental)", new String[] { "AVR-3310",
+						"AVR-X3700H" }));
+		assertEquals("ASD-51 (experimental)",
+				ModelConfigurator.currentListName("ASD-51", new String[] {
+						"ASD-51 (experimental)", "DNP-720AE" }));
+		// Die -G-Variante ist ein eigenes Modell, kein Zusatz
+		assertEquals("AVR-3310", ModelConfigurator.currentListName("AVR-3310",
+				new String[] { "AVR-3310", "AVR-3310-G (experimental)" }));
+		// Nicht in der Liste, oder nie gewählt: bleibt, wie es ist
+		assertEquals("Kein-Solches-Modell", ModelConfigurator.currentListName(
+				"Kein-Solches-Modell", new String[] { "AVR-3310" }));
+		assertEquals("", ModelConfigurator.currentListName("",
+				new String[] { "AVR-3310" }));
+	}
+
 	/** "ASD-51 (experimental)" -> "ASD51" */
 	private static String expectedClassName(String modelName) {
 		final int p = modelName.indexOf('(');
