@@ -290,9 +290,11 @@ Three things are easy to forget and all are required at `targetSdk 37`:
    need it.
 3. If the activity requests a runtime permission, gate the request on
    `savedInstanceState == null` — these activities are recreated on every rotation.
-   `AVRRemote` is the one deliberate exception: it also asks on a restore after the process died
-   (a revoke in the settings kills it), using a static per-process flag. The comment in its
-   `onCreate` explains why, including the one duplicate request this accepts; do not "fix" it back.
+   `AVRRemote` and `OnScreenDisplayActivity` are the deliberate exceptions: they also ask on a
+   restore after the process died (a revoke in the settings kills it, and recents restores whichever
+   of the two was on top), sharing the static per-process flag
+   `AVRRemote.permissionsRequestedInProcess`. The comment in `AVRRemote.onCreate` explains why,
+   including the one duplicate request this accepts; do not "fix" it back.
 
 ## What comes next
 

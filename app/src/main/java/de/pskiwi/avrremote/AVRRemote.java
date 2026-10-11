@@ -713,8 +713,15 @@ public final class AVRRemote extends TabActivity implements
 	private boolean notificationRequestPending;
 	/** Changelog wartet auf das Ende dieser Kette, siehe onCreate. */
 	private boolean changeLogPending;
-	/** Hat in diesem Prozess schon ein onCreate gefragt ? Siehe dort. */
-	private static boolean permissionsRequestedInProcess;
+	/**
+	 * Hat in diesem Prozess schon ein onCreate gefragt ? Siehe dort. Auch
+	 * OnScreenDisplayActivity setzt es: liegt sie nach einem Entzug oben, wird
+	 * sie wiederhergestellt und nicht diese hier. Hat sie zuerst gefragt,
+	 * fragt diese hier beim Zurueckgehen nicht mehr nach der
+	 * Benachrichtigung - erst beim naechsten Start ohne gespeicherten
+	 * Zustand. Hingenommen.
+	 */
+	static boolean permissionsRequestedInProcess;
 	private ViewList viewList;
 	private TextDisplayHandler textDisplayHandler;
 	private OptionsMenu optionsMenu;

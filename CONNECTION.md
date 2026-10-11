@@ -606,16 +606,19 @@ The binding is also what Android 17 requires. Local Network Protection is mandat
 is not scan-less, it is dead.
 
 The permission is declared in the manifest and requested by
-`AVRSettings.requestLocalNetworkPermission()`, from `AVRRemote.onCreate` (once per process: on a
-fresh start, and on a restore after the process died — a revoke in the settings kills it — but not on
+`AVRSettings.requestLocalNetworkPermission()`, from `AVRRemote.onCreate` and, since recents
+restores whichever of the two was on top, `OnScreenDisplayActivity.onCreate` (once per process, one
+flag shared by both: on a fresh start, and on a restore after the process died — a revoke in the settings kills it — but not on
 a rotation, which could otherwise fire a second request beside an open system dialog; a restore
 while a dialog of its own was open asks again, and Android answers one of the two empty — accepted,
 because treating the old request as still running could leave the process never asking) and again
 from `AVRScanner.scanIP()`, because the scan is reachable
 from the options menu and the setup assistant without `AVRRemote` having started. There is no
 rationale dialog of the app's own — the reasons are in the comment at the request. On a grant the
-connector is told to reconnect, from `AVRRemote` and `OnScreenDisplayActivity` alike, because the
-attempts made without it went nowhere; and if no address is configured yet, the grant came from the
+connection is marked as distrusted (`ActiveHandler.distrustConnection()`), from `AVRRemote` and
+`OnScreenDisplayActivity` alike, because the attempts made without it went nowhere — the result
+always arrives before `onResume`, whose `contextResumed()` then rebuilds it once; reconnecting from
+the result as well started two connectors 5 ms apart; and if no address is configured yet, the grant came from the
 setup's scan, so the assistant reopens its IP dialog.
 
 **LNP blocks silently.** Measured on a Pixel 8 with the restriction forced on: without the

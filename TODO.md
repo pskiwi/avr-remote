@@ -78,12 +78,6 @@ What is left is the part no build can answer.
       assistant offered the IP dialog — the Wi-Fi the receiver is in had not come back at all, so
       there was no better choice to make. The fallback half is not in any log yet:
       `lost, falling back to another` followed by timeouts would be the case.
-- [ ] **A restore into another activity does not ask for the permission.** `AVRRemote.onCreate`
-      asks once per process, so a revoke — which kills the process — is followed by a new request
-      when `AVRRemote` comes back. If `OnScreenDisplayActivity` was on top instead, the restore from
-      recents asks nothing until the user goes back to `AVRRemote`; until then every socket times
-      out without the assistant to explain it, since that lives in `AVRRemote`. Fixing it means
-      asking from the other activities as well, with the same per-process gate.
 - [ ] **Auto-revoke with a stale asked marker.** The marker is only cleared when
       `requestLocalNetworkPermission()` sees the permission granted. Refused once, granted later in
       the settings while the app keeps running, then left unused until the revoke — every process
