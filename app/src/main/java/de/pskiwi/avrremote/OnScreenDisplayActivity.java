@@ -299,10 +299,11 @@ public final class OnScreenDisplayActivity extends ListActivity {
 		if (requestCode == AVRSettings.REQUEST_ACCESS_LOCAL_NETWORK) {
 			AVRSettings.localNetworkPermissionResult(this, grantResults);
 			// wie in AVRRemote: der laufende Loop hat ohne die Permission ins
-			// Leere gewaehlt, und sein Backoff steht womoeglich schon auf 16 s
+			// Leere gewaehlt, und sein Backoff steht womoeglich schon auf 16 s.
+			// Den Neuaufbau macht das folgende onResume, hier nur vormerken.
 			if (grantResults.length > 0
 					&& grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-				getApp().getConnector().triggerReconnect();
+				getApp().getActiveHandler().distrustConnection();
 			}
 		}
 	}

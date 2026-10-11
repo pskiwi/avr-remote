@@ -149,13 +149,6 @@ What is left is the part no build can answer.
       routing table. Both answer themselves in the field: every feedback report carries the `IPv4`
       line, every log the startup line `LocalNetwork: interfaces …`. A report showing `eth0:…`
       settles whether such devices are out there at all.
-- [ ] **A grant starts the connector twice.** `onRequestPermissionsResult` calls
-      `triggerReconnect()`, and the `onResume` that follows the system dialog calls
-      `forceReconnect()` — two `start new connector` lines 5 ms apart in the log (Pixel 8,
-      2026-10-10). The generation counter detaches the first thread, so nothing is published twice,
-      but its connect attempt still goes out, and against a receiver that allows one telnet session
-      that is not free. Whether the first attempt can take the session from the second was not
-      visible in that log — the port was held by the killed process then anyway.
 - [ ] **The AVR-3310 holds its telnet session far longer than assumed.** Measured on 2026-10-10:
       after the process was killed by a permission revoke (the phone's side closed, nothing on port
       23 in `ss -tn`), port 23 answered `ECONNREFUSED` for more than 4.5 minutes; after a Wi-Fi

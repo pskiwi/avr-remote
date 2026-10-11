@@ -277,8 +277,13 @@ public final class AVRRemote extends TabActivity implements
 			AVRSettings.localNetworkPermissionResult(this, grantResults);
 			if (granted) {
 				// Der Verbindungsversuch beim Start lief ohne die Permission
-				// und ist unter Local Network Protection ins Leere gegangen
-				getApp().getConnector().triggerReconnect();
+				// und ist unter Local Network Protection ins Leere gegangen.
+				// Nicht selbst neu starten: das Ergebnis kommt immer vor
+				// onResume, und dessen contextResumed() startete gleich noch
+				// einen - zwei Connects gegen einen Receiver, der nur eine
+				// Telnet-Sitzung erlaubt (Pixel 8). Vorgemerkt baut es auch bei
+				// schneller Rueckkehr neu auf, etwa nach dem Suchlauf.
+				getApp().getActiveHandler().distrustConnection();
 				// Nachgelagert: das Ergebnis kommt vor onResume, und bis dahin
 				// zeigt der Assistent nichts an (isShowing() ist false)
 				getWindow().getDecorView().post(new Runnable() {
