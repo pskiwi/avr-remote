@@ -198,6 +198,47 @@ does take such a socket down now, but only some 70 s after it went quiet and onl
 receiver thread is really running — which in the background is exactly what is not guaranteed. So
 the cap stays.
 
+**In practice Android hangs up first.** Measured on a Pixel 8 with Android 17 against an AVR-3310
+on 2026-10-10, disconnect time 5 min, screen on and on the charger, so no Doze involved:
+
+```
+15:42:21.048  ActiveHandler.activity paused AVRRemote
+15:42:27.079  (netpolicy) Firewall rule changed: 10583-background-default
+15:42:27.096  read failed ... Software caused connection abort
+```
+
+`dumpsys netpolicy` shows the app's UID as `blocked=APP_BACKGROUND` while it is not in the
+foreground: about six seconds after `onPause` the system cuts its network and aborts the socket.
+So no disconnect time above that keeps a connection alive, and a "never" option could not either
+— only a foreground service would. What the setting still decides is how long the quick-return
+shortcut may trust a socket, and by the time that matters the socket is usually gone. The
+reconnect on return took 1.06 s in the same run; the abort apparently reached the receiver, the
+port was free at once.
+
+What the cut used to cost: the reconnect loop did not know about the foreground, so it kept
+retrying against the block until `StopConnectorTask` fired — up to two hours of 16 s rounds that
+cannot succeed. `Reconnector.waitBeforeRetry()` now ends the loop instead, before and after its
+backoff pause, logged as `in background -> no further attempt`. Three details carry it:
+
+- **"Background" is `ActiveHandler.isActive()` *or* a visible process**
+  (`ActivityManager.getMyMemoryState`, importance up to `IMPORTANCE_VISIBLE`), wired in
+  `AVRApplication` through `ResilentConnector.setForeground`. `isActive()` alone is also false
+  behind a system dialog, a chooser or in an unfocused split-screen pane, where the process keeps
+  its network — the block follows the process state, not `onPause`.
+- **The loop retires itself under the `ThreadHandler` monitor** (`retire()`), the one
+  `isDefined()` takes. Decided and cleared separately, there would be a window in which the
+  thread has decided to go but `isAlive()` still says yes; a quick-return `reconfigure()` in that
+  window would see a running loop, start none, and leave none behind. Under the monitor either
+  the thread goes first and `isDefined()` is false afterwards, or `reconfigure()` goes first —
+  and then `contextResumed()` has already set the activity active, so the thread stays.
+  `ThreadHandlerTest` pins this, and that a detached thread does not retire its successor.
+- **Only rounds that already failed are cut short.** The first round after a start or a reconnect
+  still runs, which matters for the grant path, where `triggerReconnect()` comes before the
+  activity is resumed again.
+
+Where Android does not cut background networking, this costs a background drop its retry; the
+next resume reconnects as it would after any pause longer than the quick-return window.
+
 `StopConnectorTask` also checks whether an activity became active again before it fires, and
 reconnects itself if a resume slipped in between its check and the stop. Both belong to the Doze
 story below.

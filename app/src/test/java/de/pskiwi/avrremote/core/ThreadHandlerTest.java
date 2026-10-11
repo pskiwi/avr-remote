@@ -21,6 +21,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Test;
 
@@ -162,5 +163,98 @@ public final class ThreadHandlerTest {
 		handler.stop();
 		assertTrue("stop() ging nicht an den zweiten Thread",
 				second.interrupts.await(5, TimeUnit.SECONDS));
+	}
+
+	/**
+	 * Ein Thread, der auf Zuruf {@code retire()} fragt und danach noch lebt -
+	 * wie der Reconnect-Thread zwischen seinem Entschluss und dem Ende von
+	 * {@code run()}.
+	 */
+	private static final class RetiringRunner implements Runnable {
+
+		RetiringRunner(ThreadHandler handler, boolean stillWanted) {
+			this.handler = handler;
+			this.stillWanted = stillWanted;
+		}
+
+		public void run() {
+			retired.set(handler.retire(() -> stillWanted));
+			asked.countDown();
+			try {
+				release.await(5, TimeUnit.SECONDS);
+			} catch (InterruptedException x) {
+				// stop() im Test - egal
+			}
+		}
+
+		private final ThreadHandler handler;
+		private final boolean stillWanted;
+		private final AtomicBoolean retired = new AtomicBoolean();
+		private final CountDownLatch asked = new CountDownLatch(1);
+		private final CountDownLatch release = new CountDownLatch(1);
+	}
+
+	/**
+	 * Der Kern von retire(): ausgetragen ist der Thread, sobald er gefragt hat,
+	 * nicht erst, wenn er tot ist. Dazwischen hielte isAlive() ihn fuer
+	 * lebendig, und ein reconfigure() in diesem Fenster startete keinen neuen
+	 * Loop - danach waere gar keiner mehr da.
+	 */
+	@Test
+	public void retireClearsTheThreadBeforeItDies() throws Exception {
+		final ThreadHandler handler = new ThreadHandler();
+		final RetiringRunner runner = new RetiringRunner(handler, false);
+		handler.start(runner, 1);
+		assertTrue(runner.asked.await(5, TimeUnit.SECONDS));
+
+		assertTrue("retire() hat nicht zum Aufhoeren geraten",
+				runner.retired.get());
+		assertFalse("Thread lebt noch und gilt als definiert",
+				handler.isDefined());
+		runner.release.countDown();
+	}
+
+	@Test
+	public void retireKeepsTheThreadWhileWanted() throws Exception {
+		final ThreadHandler handler = new ThreadHandler();
+		final RetiringRunner runner = new RetiringRunner(handler, true);
+		handler.start(runner, 1);
+		assertTrue(runner.asked.await(5, TimeUnit.SECONDS));
+
+		assertFalse(runner.retired.get());
+		assertTrue(handler.isDefined());
+		runner.release.countDown();
+	}
+
+	/**
+	 * Ein abgeloester Thread, der im Hintergrund aufgibt, darf den neuen nicht
+	 * mit austragen - sonst startete reconfigure() einen zweiten Loop neben dem
+	 * laufenden.
+	 */
+	@Test
+	public void retireOfADetachedThreadKeepsTheNewOne() throws Exception {
+		final ThreadHandler handler = new ThreadHandler();
+		final CountDownLatch go = new CountDownLatch(1);
+		final CountDownLatch asked = new CountDownLatch(1);
+		final AtomicBoolean retired = new AtomicBoolean();
+		handler.start(() -> {
+			try {
+				go.await(5, TimeUnit.SECONDS);
+			} catch (InterruptedException x) {
+				// kommt vom stop() unten - weiter wie der echte Thread
+			}
+			retired.set(handler.retire(() -> false));
+			asked.countDown();
+		}, 1);
+		handler.stop();
+		final UninterruptibleRunner second = new UninterruptibleRunner();
+		handler.start(second, 2);
+		assertTrue(second.started.await(5, TimeUnit.SECONDS));
+
+		go.countDown();
+		assertTrue(asked.await(5, TimeUnit.SECONDS));
+		assertTrue(retired.get());
+		assertTrue("der neue Thread wurde mit ausgetragen", handler.isDefined());
+		handler.stop();
 	}
 }

@@ -228,6 +228,14 @@ What is left is the part no build can answer.
       report we have a log for was *not* this — the process had survived; it was a stale-teardown
       race between `ActiveHandler.contextResumed()` and the reconnect thread, fixed since. How the
       loop works today: [CONNECTION.md](CONNECTION.md).
+      A user asked in October 2026 for the connection to be kept while the app is in the
+      background, so that switching back needs no reconnect. A Service is the only way to do that:
+      on a Pixel 8 with Android 17 the system cuts a background app's network about six seconds
+      after `onPause` (`blocked=APP_BACKGROUND`, measured 2026-10-10, see CONNECTION.md → *Who
+      decides when to hang up*), so the disconnect-time setting cannot keep anything alive beyond
+      that. Weigh it against the cost: a permanent notification, a foreground-service type Play has
+      to accept, and the receiver's single telnet session blocked for every other app and device
+      the whole time. The reconnect it would save took about 1 s in the same measurement.
 - [ ] **`AVRTargetTester.PING_TIMEOUT` is 250 ms, which a phone waking from standby cannot meet.**
       Wi-Fi power save puts the receiver out of reach for the first moments after the user picks the
       phone up, so `checkAddress()` reports "not reachable" for a device that is plainly there — the
