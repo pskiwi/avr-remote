@@ -8,6 +8,31 @@
 		</p>
 		</p>
 		</ul>
+		<b>1.8.0</b>
+		<ul>
+			<li><b>Easier setup:</b> the app now searches for your receiver first
+				and then suggests the model the receiver reports about itself. So
+				far this is confirmed on an AVR-3310 only - if the suggestion is
+				missing or wrong for your receiver, please send a report (pskiwi)</li>
+			<li>The search results show the receiver's own name instead of a
+				network host name (pskiwi)</li>
+			<li>If a receiver is configured but no model was ever chosen, the app
+				asks for it once per start (pskiwi)</li>
+			<li>In the background the app no longer keeps retrying the connection:
+				newer Android versions cut an app's network there after a few
+				seconds anyway. It reconnects when you come back (pskiwi)</li>
+			<li>Fixed: after switching between Wi-Fi networks the connection was
+				only re-established after a delay (pskiwi)</li>
+			<li>Fixed: the release notes could cover the question for local network
+				access on the first start after an update (pskiwi)</li>
+			<li>Fixed: after granting local network access the app connected twice,
+				which some receivers answer with a busy control port (pskiwi)</li>
+			<li>The display screen now asks for local network access too, when
+				Android restores it after the access was revoked (pskiwi)</li>
+			<li>Fixed: a progress dialog could stay on screen for good after
+				leaving the app during a receiver search, a reset or a query
+				(pskiwi)</li>
+		</ul>
 		<b>1.7.0</b>
 		<ul>
 			<li><b>Updated for Android 17.</b> The app now asks for access to
