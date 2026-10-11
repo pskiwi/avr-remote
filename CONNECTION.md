@@ -279,6 +279,17 @@ plainly there. The connect is attempted regardless — the *"Auf jeden Fall vers
 `Reconnector.run()` covers that — so this is about displayed state and the backoff, not about
 refusing to connect. Still open, see [TODO.md](TODO.md).
 
+Repeated on 2026-10-11 with the same phone and receiver, and **not reproduced**. On USB the phone
+charges and Wi-Fi power save stays off: three rounds of three minutes with the screen off, and every
+ping arrived — 23–126 ms for the first one with the screen still off, 5–98 ms right after waking. On
+battery, one run survived in logcat (the other rolled out of the buffer): locked for a few minutes,
+unlocked, app opened, ping 33 ms and connected 1.2 s after `onResume`. So the August failure is real
+but not the common case, and nothing measured since justifies a longer timeout. Since then
+`testAddress()` logs the duration of every ping (`ping /… 33 ms`, `ping failed /… after 251 ms`),
+so a report from an affected device carries the number. Two things for whoever repeats this: measure
+on battery, and raise the logcat buffer first (`adb logcat -G 16M`), or the interesting run is gone
+by the time the phone is plugged back in.
+
 **The process can also simply be reclaimed**, and then the daemon thread dies with it. That is the
 Service item in [TODO.md](TODO.md). Worth stressing: the field report above was *not* this. The
 process had survived — `openend at` appears only at the app's own restart.

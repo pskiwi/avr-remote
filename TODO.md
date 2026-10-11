@@ -212,15 +212,15 @@ What is left is the part no build can answer.
       that. Weigh it against the cost: a permanent notification, a foreground-service type Play has
       to accept, and the receiver's single telnet session blocked for every other app and device
       the whole time. The reconnect it would save took about 1 s in the same measurement.
-- [ ] **`AVRTargetTester.PING_TIMEOUT` is 250 ms, which a phone waking from standby cannot meet.**
-      Wi-Fi power save puts the receiver out of reach for the first moments after the user picks the
-      phone up, so `checkAddress()` reports "not reachable" for a device that is plainly there — the
-      measurement and what it costs the user is in [CONNECTION.md](CONNECTION.md) → *What Doze does*.
-      This may well be part of what users report as "does not reconnect after standby". Worth
-      measuring before changing: the same constant serves the subnet sweep, and raising it there
-      costs scan time, so the two uses probably want separate values. The sweep matters less than it
-      did — it only runs when SSDP found nothing — but the constant is also on the path of every
-      SSDP candidate, since those go through `testAddress()` too. Separately: that ping is the one
+- [ ] **`AVRTargetTester.PING_TIMEOUT` (250 ms) may be too short for a phone waking from standby.**
+      Measured once in August 2026: right after waking, the ping failed entirely, so `checkAddress()`
+      reported "not reachable" for a receiver that was plainly there — see
+      [CONNECTION.md](CONNECTION.md) → *What Doze does*. A repeat on 2026-10-11 did **not** reproduce
+      it (33 ms on battery right after unlocking), so the value stays until a report shows the
+      failure. Every ping now logs its duration; `ping failed /… after 25x ms` lines right after an
+      `activity resumed` in a report from a working setup are the case. If it comes: the scan and
+      the connection path share the constant (SSDP candidates go through `testAddress()` too), so
+      raise it only for `ConnectionConfiguration.checkAddress()`. Separately: that ping is the one
       socket operation that cannot be bound to the Wi-Fi at all, so it may be measuring the wrong
       interface; see [CONNECTION.md](CONNECTION.md).
 
