@@ -271,9 +271,10 @@ What is left is the part no build can answer.
 ## Generated models: what the documents offer and the app does not
 
 The generated classes in `models/` (see CLAUDE.md, "Receiver models") cover what
-`IAVRModel` can express. The protocol documents behind them describe more — features of the 2014
-and FY20–FY23 generations the app has no code for at all. Counts are how many of the 26 newly covered models the
-document lists a feature for. None of it is tested on hardware; the documents are all there is.
+`IAVRModel` can express. The protocol documents behind them describe more — features of the 2014,
+2015 and FY20–FY23 generations the app has no code for at all. Counts are how many of the first
+26 newly covered models list a feature (the 2015 AVR-X1200W–X4200W came later and are not
+counted). None of it is tested on hardware; the documents are all there is.
 
 - [ ] **Simple settings — the cheap ones.** Each is a switch or a short value list, the shape
       `ZoneState` already has for its options: an `OptionType` constant, an `AbstractManualSelect`

@@ -17,7 +17,7 @@ Picked in the app under *Settings → Model Settings → Model*. The choice deci
 offered (number of zones, quick-select, level controls, DAB, …), so it is worth setting even when a
 similar model appears to work.
 
-**Denon (65)**
+**Denon (69)**
 
 AVC-A1HDA, AVP-A1HDCI, AVR-100, AVR-990, AVR-991, AVR-1613, AVR-1713, AVR-1912, AVR-1913, AVR-2112,
 AVR-2113, AVR-2312, AVR-2313, AVR-3310, AVR-3311, AVR-3312, AVR-3313, AVR-3805, AVR-3806, AVR-3808,
@@ -26,8 +26,9 @@ AVR-E400, AVR-X1000, AVR-X2000, AVR-X3000, AVR-X4000, DN-500AV
 
 Generated from Denon's protocol documents, all *(experimental)* until a receiver confirms them:
 AVC-3310, AVR-A110, AVR-A1H, AVR-S650H, AVR-S750H, AVR-S950H, AVR-S960H, AVR-S970H, AVR-X1100W,
-AVR-X1600H, AVR-X2100W, AVR-X2600H, AVR-X2700H, AVR-X2800H, AVR-X3100W, AVR-X3600H, AVR-X3700H,
-AVR-X3800H, AVR-X4100W, AVR-X4700H, AVR-X4800H, AVR-X5200W, AVR-X6700H, DRA-800H, S700W, S900W.
+AVR-X1200W, AVR-X1600H, AVR-X2100W, AVR-X2200W, AVR-X2600H, AVR-X2700H, AVR-X2800H, AVR-X3100W,
+AVR-X3200W, AVR-X3600H, AVR-X3700H, AVR-X3800H, AVR-X4100W, AVR-X4200W, AVR-X4700H, AVR-X4800H,
+AVR-X5200W, AVR-X6700H, DRA-800H, S700W, S900W.
 DAB is not supported on these yet. AVR-3310-G and AVR-990-G are generated the same way, as an
 alternative to the hand-written AVR-3310 and AVR-990.
 
