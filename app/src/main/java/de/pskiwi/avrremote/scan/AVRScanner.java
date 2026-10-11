@@ -121,10 +121,11 @@ public final class AVRScanner {
 	}
 
 	/**
-	 * Was nach der Auswahl im Suchlauf geschieht. Bekommt den gewaehlten
-	 * Treffer, oder null, wenn der Suchlauf ohne Auswahl endete - Fehler oder
-	 * Abbruch. Nicht gerufen, wenn der Suchlauf gar nicht erst lief, weil
-	 * zuerst nach der Permission gefragt wurde.
+	 * Was nach der Auswahl im Suchlauf geschieht. Nur gerufen, wenn ein
+	 * Treffer gewaehlt wurde - also eine Adresse feststeht. Endet der Suchlauf
+	 * anders (Fehler, Abbruch, Permission-Frage, Activity weg), bleibt es
+	 * still; dann fehlt die Adresse, und die Einrichtung beginnt beim
+	 * naechsten Start von vorn.
 	 */
 	public interface ISelectionListener {
 		void selected(ScanResult result);
@@ -153,9 +154,22 @@ public final class AVRScanner {
 			for (InetAddress ia : addresses) {
 				try {
 					if (AVRTargetTester.testAddress(ia, false)) {
+						// Erst eintragen, dann die Beschreibung holen: die
+						// kostet bis zu MAX_DESCRIPTION_URLS Abrufe, und wer
+						// bei Ablauf von JOIN_TIMEOUT noch darin steckt, darf
+						// den Treffer nicht verlieren - nur die Beschriftung.
+						final ScanResult plain = new ScanResult(ia, foundBy,
+								null, null);
+						result.add(plain);
 						final DeviceDescription description = readDescription(ia);
-						result.add(new ScanResult(ia, foundBy, description,
-								suggest(description)));
+						if (description != null) {
+							synchronized (result) {
+								result.set(result.indexOf(plain),
+										new ScanResult(ia, foundBy,
+												description,
+												suggest(description)));
+							}
+						}
 					}
 				} catch (Exception e) {
 					Logger.error("scan exception", e);
@@ -166,8 +180,9 @@ public final class AVRScanner {
 		/**
 		 * Erst die LOCATIONs aus SSDP - die sind autoritativ -, dann der feste
 		 * Port 8080, auf dem auch {@link DeviceDescription#read} sucht. Ein
-		 * Sweep-Treffer kennt nur den. Nur fuer bestaetigte Receiver, also
-		 * eine Handvoll Abrufe.
+		 * Sweep-Treffer kennt nur den. Nur fuer bestaetigte Receiver, und
+		 * hoechstens MAX_DESCRIPTION_URLS je Geraet - ein Absender bestimmt
+		 * selbst, wie viele LOCATIONs er schickt.
 		 */
 		private DeviceDescription readDescription(InetAddress ia) {
 			final List<String> urls = new ArrayList<String>();
@@ -179,6 +194,10 @@ public final class AVRScanner {
 					.getHostAddress());
 			if (!urls.contains(fallback)) {
 				urls.add(fallback);
+			}
+			if (urls.size() > MAX_DESCRIPTION_URLS) {
+				// der Rueckfall bleibt dabei, er steht am Ende
+				urls.subList(MAX_DESCRIPTION_URLS - 1, urls.size() - 1).clear();
 			}
 			for (String url : urls) {
 				final DeviceDescription description = DeviceDescription
@@ -209,7 +228,8 @@ public final class AVRScanner {
 		 * Der Thread kann noch laufen: das {@code join(JOIN_TIMEOUT)} in
 		 * {@link AVRScanner#testAll} darf ablaufen, und in einem /24 hat jeder
 		 * Thread 16 Adressen zu je bis zu 2,25 s - Ping plus vier
-		 * Connect-Timeouts. Ohne die Sperre liest der Aufrufer dann eine Liste,
+		 * Connect-Timeouts -, ein bestaetigter Receiver dazu bis zu
+		 * MAX_DESCRIPTION_URLS Abrufe seiner Beschreibung. Ohne die Sperre liest der Aufrufer dann eine Liste,
 		 * in die nebenher geschrieben wird, und {@code addAll()} wirft eine
 		 * ConcurrentModificationException oder sieht einen halben Stand.
 		 */
@@ -502,7 +522,6 @@ public final class AVRScanner {
 
 								public void onCancel(DialogInterface dialog) {
 									runFinished.run();
-									reportSelection(listener, null);
 								}
 							})
 							.setTitle(R.string.SelectAVRIP)
@@ -529,7 +548,10 @@ public final class AVRScanner {
 											} finally {
 												runFinished.run();
 											}
-											reportSelection(listener, selected);
+											if (selected != null) {
+												reportSelection(listener,
+														selected);
+											}
 										}
 									}).show();
 
@@ -545,7 +567,6 @@ public final class AVRScanner {
 								public void onClick(DialogInterface dialog,
 										int which) {
 									runFinished.run();
-									reportSelection(listener, null);
 								}
 							});
 					// Auch der Abbruch muss runFinished erreichen: der
@@ -555,7 +576,6 @@ public final class AVRScanner {
 					builder.setOnCancelListener(new OnCancelListener() {
 						public void onCancel(DialogInterface dialog) {
 							runFinished.run();
-							reportSelection(listener, null);
 						}
 					});
 					AlertDialog alert = builder.create();
@@ -585,6 +605,7 @@ public final class AVRScanner {
 
 	private final AVRApplication app;
 	private static final int JOIN_TIMEOUT = 10000;
+	private static final int MAX_DESCRIPTION_URLS = 3;
 	private static final int SCAN_THREADS = 16;
 
 }

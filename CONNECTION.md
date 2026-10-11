@@ -677,13 +677,14 @@ see the blocking before the target moved, and it is the weaker test now.
 
 `scan/SSDPDiscovery` sends an `M-SEARCH` to `239.255.255.250:1900` (three times, ~800 ms apart,
 collecting for three seconds — UDP is allowed to lose packets) and returns the addresses that
-answered. Every candidate then goes through the existing `AVRTargetTester.testAddress()`, which is
+answered, each with the `LOCATION`s it named. Every candidate then goes through the existing `AVRTargetTester.testAddress()`, which is
 what keeps printers, TVs and routers — they all answer `ssdp:all` — out of the result, and is why
 nothing else about the scan had to change.
 
 Separately from the search, `http/DeviceDescription` fetches the receiver's UPnP description once
 an hour from `http://<ip>:8080/description.xml` — hard-coded port, because port 80 answers that path
-with a 404 on an AVR-3310 and the authoritative `LOCATION` exists only during a scan. It runs on the
+with a 404 on an AVR-3310 and the authoritative `LOCATION` exists only during a scan (which does use
+it, see below). It runs on the
 background thread in `StatusAreaManager` that already fetches the XML state, and on `Reachable`
 rather than only on `Connected`: a receiver that answers ping and port 80 but holds its single
 control channel is exactly the state field reports come from, and the description is what says which
@@ -692,15 +693,22 @@ the feedback report. `serialNumber` and `UDN` are deliberately not read: both ca
 MAC, and a report travels by mail.
 
 The scan reads the same description for every receiver it confirms, there from the `LOCATION`s the
-`M-SEARCH` replies carried and only then from port 8080 (a sweep hit knows nothing else). A
-`LOCATION` is only taken when its host is the reply's sender address — `SSDPDiscovery.fromSender()`
-— because anything on the network can answer and would otherwise make the app fetch a URL of its
-choosing. The result labels the entry in the selection list (`Denon AVR-3310 – 192.168.10.30`) and,
+`M-SEARCH` replies carried and only then from port 8080 (a sweep hit knows nothing else) — at most
+three URLs per device. The hit is recorded *before* the fetch and only relabelled after it, so a
+thread still fetching when `JOIN_TIMEOUT` runs out loses the label, not the receiver. A `LOCATION`
+is only taken when its host is the reply's sender address — `SSDPDiscovery.fromSender()` — because
+anything on the network can answer. That keeps foreign addresses out of the request itself and no
+more: `HTTPSupport` follows redirects and reads without a size limit, so the sender can still point
+onwards from its own URL, exactly as it could on the hourly 8080 fetch — after passing
+`AVRTargetTester`. The result labels the entry in the selection list (`Denon AVR-3310 – 192.168.10.30`) and,
 during setup, becomes the model suggestion that `ConfigurationAssistant` asks the user to confirm.
+Setup asks for the address first and the model second; an address with a model never chosen (the
+dialog dismissed, or the address typed into the settings) is caught by
+`ConfigurationAssistant.checkModel()` on every `onResume` of `AVRRemote`.
 
 Both searches hand their addresses to the same `AVRScanner.testAll()`, which fans them out over
 `SCAN_THREADS` threads. That matters more for SSDP than it looks: a candidate costs up to four
-connect timeouts, so testing a household's worth of UPnP devices one after another would take
+connect timeouts, a confirmed one its description fetches on top, so testing a household's worth of UPnP devices one after another would take
 longer than the whole sweep it is supposed to replace. A hit carries the way it was found
 (`FoundBy.SSDP` or `FoundBy.SWEEP`) into the selection list, because the two say different things —
 SSDP means the device announced itself as a UPnP device, the sweep only means the right ports are

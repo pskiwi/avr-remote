@@ -382,6 +382,7 @@ public final class AVRRemote extends TabActivity implements
 		getApp().activityResumed(this);
 		getApp().getEnableManager().setClassListener(viewList);
 		connectionProgressMonitor.checkOnResume();
+		configurationAssistant.checkModel();
 
 		updateDisplayListener();
 

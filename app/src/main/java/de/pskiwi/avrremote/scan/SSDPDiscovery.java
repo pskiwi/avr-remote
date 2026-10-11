@@ -159,10 +159,13 @@ public final class SSDPDiscovery {
 	 * Zeigt die LOCATION auf den Absender selbst ?
 	 *
 	 * Abgerufen wird, was hier durchkommt - und eine Antwort kann jedes Gerät
-	 * im Netz schicken. Ohne die Prüfung genügte ein einziges Paket, um die App
-	 * eine beliebige URL abrufen zu lassen. Verglichen wird die Adresse als
-	 * Literal, ohne DNS: ein Name in der LOCATION fällt damit durch, was bei
-	 * Denon und Marantz nicht vorkommt.
+	 * im Netz schicken. Die Prüfung hält fremde Adressen aus der Anfrage
+	 * selbst heraus, mehr nicht: HTTPSupport folgt Redirects und liest ohne
+	 * Größengrenze, ein Gerät kann also von seiner eigenen URL aus weiter
+	 * verweisen. Das kann es beim stündlichen Abruf auf 8080 genauso, und es
+	 * muss vorher {@link AVRTargetTester} bestanden haben. Verglichen wird
+	 * die Adresse als Literal, ohne DNS: ein Name in der LOCATION fällt damit
+	 * durch, was bei Denon und Marantz nicht vorkommt.
 	 */
 	static boolean fromSender(String location, InetAddress sender) {
 		try {

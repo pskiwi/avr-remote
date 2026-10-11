@@ -47,18 +47,34 @@ public final class ConfigurationAssistant {
 	}
 
 	/**
+	 * Adresse da, Modell nie gewaehlt: der Anwender hat den Modell-Dialog der
+	 * Einrichtung weggedrueckt oder die Adresse ueber die Einstellungen
+	 * gesetzt. Leer heisst wirklich "nie gewaehlt" - AVR-Generic ist ein
+	 * eigener Listeneintrag. checkSetup() allein reichte nicht: es laeuft nur
+	 * in onCreate und fragt nur nach der Adresse, und die steht seit dem
+	 * umgedrehten Ablauf vor dem Modell fest. Deshalb aus onResume, damit auch
+	 * die Rueckkehr aus den Einstellungen es sieht.
+	 */
+	public void checkModel() {
+		if (app.getModelConfigurator().getConnectionConfig().isDefined()
+				&& AVRSettings.getAVRModel(ctx, 0).length() == 0) {
+			Logger.info("assistant: address set, model never chosen");
+			showModelList();
+		}
+	}
+
+	/**
 	 * Modell nach dem Suchlauf der Einrichtung. Hat der Receiver einen Namen
 	 * gemeldet, der in der Liste steht, wird der nur vorgeschlagen - bestaetigt
 	 * ist das Abbild Beschreibung -> Liste bisher nur an einem AVR-3310. Ohne
-	 * Treffer, oder wenn der Suchlauf ohne Auswahl endete, die ganze Liste wie
-	 * frueher: sonst bliebe das Modell unbemerkt leer, also AVRGeneric.
+	 * Treffer die ganze Liste. Wird einer der beiden weggedrueckt, fragt
+	 * checkModel() beim naechsten onResume nach.
 	 */
 	private void showModelDialog(final AVRScanner.ScanResult selected) {
 		if (visible.get() || !ctx.isShowing()) {
 			return;
 		}
-		final String suggestion = selected != null ? selected
-				.getSuggestedModel() : null;
+		final String suggestion = selected.getSuggestedModel();
 		if (suggestion == null) {
 			showModelList();
 			return;

@@ -53,9 +53,10 @@ public final class DeviceDescription {
 	 *
 	 * Der Port ist fest 8080 und nicht der eingestellte HTTP-Port: auf einem
 	 * AVR-3310 antwortet Port 80 auf {@code /description.xml} mit 404,
-	 * nachgemessen. Autoritativ wäre der {@code LOCATION}-Header, den
-	 * {@code scan/SSDPDiscovery} bereits liest - aber den gibt es nur während
-	 * eines Suchlaufs, und der läuft bei den meisten Anwendern genau einmal.
+	 * nachgemessen. Autoritativ wäre der {@code LOCATION}-Header - den nimmt
+	 * der Suchlauf über {@link #read(String)}, aber für diesen stündlichen
+	 * Abruf gibt es ihn nicht: ein Suchlauf läuft bei den meisten Anwendern
+	 * genau einmal.
 	 * Schlägt der Abruf fehl, steht das im Bericht, und genau daran wird
 	 * abzulesen sein, ob 8080 über die Baureihen hinweg trägt.
 	 */
@@ -87,6 +88,13 @@ public final class DeviceDescription {
 			// erwartet, sobald der Receiver aus ist oder kein UPnP auf 8080
 			// anbietet - kein Logger.error, das blaeht die Logs auf
 			Logger.info("no UPnP description [" + url + "]: " + x);
+			return null;
+		} catch (RuntimeException x) {
+			// Die URL kann aus einer SSDP-Antwort stammen. Eine, die URI
+			// annimmt und der HTTP-Stack nicht (Port 70000), wirft ungeprueft -
+			// wie in HTTPSupport.status(). Im Suchlauf kostete das sonst den
+			// Treffer, hier nur die Beschreibung.
+			Logger.error("no UPnP description [" + url + "]", x);
 			return null;
 		}
 	}
