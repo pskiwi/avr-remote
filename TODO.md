@@ -96,7 +96,8 @@ What is left is the part no build can answer.
       Whether other generations report `<modelName>` the way the list spells it is unknown: a log
       line `no list entry for reported model [...]` from a supported receiver is the case to fold
       into the matcher, not to guess at beforehand. The models from `avr-remote-specs` bring
-      `aliases` (`AVR-X2700H DAB`, `AVC-X3700H`) that belong in the match once they are added.
+      `aliases` (`AVR-X2700H DAB`, `AVC-X3700H`) that belong in the match; the models themselves are
+      generated now (`app/src/generated/java/`), their aliases not yet.
       An existing configuration is never checked against the description — no hint when the
       hourly fetch in `StatusAreaManager` reports a different model than the one selected.
 

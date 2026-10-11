@@ -76,6 +76,14 @@ android {
         buildConfig = true
     }
 
+    // Receiver-Modelle, die avr-remote-specs/generate_java.py aus den Protokoll-
+    // dokumenten erzeugt: eigenes Verzeichnis, gleiches Paket wie models/, damit
+    // ModelConfigurator sie per Reflection findet. Eingecheckt, damit der Build
+    // das Specs-Repo nicht braucht. Nicht von Hand ändern.
+    sourceSets {
+        main.java.srcDirs += 'src/generated/java'
+    }
+
     // Kein Zugriff auf buildTypes.release hier - der steht unten im signingConfig-if.
     buildTypes {
         debug {

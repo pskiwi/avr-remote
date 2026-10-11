@@ -40,6 +40,34 @@
 		<item>AVR-X2000</item>		
 		<item>AVR-X3000</item>
 		<item>AVR-X4000</item>
+		<!-- avr-remote-specs begin: written by generate_java.py -->
+		<item>AVC-3310 (experimental)</item>
+		<item>AVR-A110 (experimental)</item>
+		<item>AVR-A1H (experimental)</item>
+		<item>AVR-S650H (experimental)</item>
+		<item>AVR-S750H (experimental)</item>
+		<item>AVR-S950H (experimental)</item>
+		<item>AVR-S960H (experimental)</item>
+		<item>AVR-S970H (experimental)</item>
+		<item>AVR-X1100W (experimental)</item>
+		<item>AVR-X1600H (experimental)</item>
+		<item>AVR-X2100W (experimental)</item>
+		<item>AVR-X2600H (experimental)</item>
+		<item>AVR-X2700H (experimental)</item>
+		<item>AVR-X2800H (experimental)</item>
+		<item>AVR-X3100W (experimental)</item>
+		<item>AVR-X3600H (experimental)</item>
+		<item>AVR-X3700H (experimental)</item>
+		<item>AVR-X3800H (experimental)</item>
+		<item>AVR-X4100W (experimental)</item>
+		<item>AVR-X4700H (experimental)</item>
+		<item>AVR-X4800H (experimental)</item>
+		<item>AVR-X5200W (experimental)</item>
+		<item>AVR-X6700H (experimental)</item>
+		<item>DRA-800H (experimental)</item>
+		<item>S700W (experimental)</item>
+		<item>S900W (experimental)</item>
+		<!-- avr-remote-specs end -->
 		<item>DN-500AV</item>
 		<item>NR-1504</item>
 		<item>NR-1602</item>
