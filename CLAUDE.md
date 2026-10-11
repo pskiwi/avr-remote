@@ -192,9 +192,9 @@ Up to 4 zones and up to 3 receivers are supported; the receiver index threads th
 ### Receiver models — reflection registry
 
 `models/` holds **60 receiver classes**, one per receiver family, each overriding capability
-predicates (`hasZones()`, `hasQuick()`, `getSupportedLevels()`, `supportsDAB()`, …). The other seven
+predicates (`hasZones()`, `hasQuick()`, `getSupportedLevels()`, `supportsDAB()`, …). The other eight
 files in that directory are infrastructure: `AbstractModel`, `AbstractMarantzAV`, `IAVRModel`,
-`ModelArea`, `ModelConfigurator` and the two `DynamicEQ*` enums. All 60 reach `AbstractModel`, some
+`ModelArea`, `ModelConfigurator`, `ModelSuggestion` and the two `DynamicEQ*` enums. All 60 reach `AbstractModel`, some
 directly and some through `AbstractMarantzAV` or another model class (`AVR990 extends AVR3310`, …).
 
 Another **28 classes were generated** by `generate_java.py` in `avr-remote-specs`, one per model file

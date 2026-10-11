@@ -86,7 +86,9 @@ public final class ModelConfigurator {
 	/**
 	 * Die heutige Schreibweise von {@code stored} in {@code names}, verglichen
 	 * wie beim Modellvorschlag: ohne Bindestriche, Leerzeichen, Groß/Klein und
-	 * Zusatz in Klammern. Ohne Treffer bleibt der Wert, wie er ist.
+	 * Zusatz in Klammern. Ohne Treffer bleibt der Wert, wie er ist. Eindeutig
+	 * ist das nur, solange keine zwei Listeneinträge gleich normalisieren -
+	 * das prüft {@code ModelSuggestionTest.everyListEntryIsUniqueAndFindsItself}.
 	 */
 	static String currentListName(String stored, String[] names) {
 		final String match = ModelSuggestion.match(stored, names);
