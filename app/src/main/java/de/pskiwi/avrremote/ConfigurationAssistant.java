@@ -57,12 +57,17 @@ public final class ConfigurationAssistant {
 	 *
 	 * Beides fuer Receiver 1 und nicht fuer den aktiven: die Einrichtung
 	 * richtet nur den ein, und showModelList() schreibt dorthin.
+	 *
+	 * Hoechstens einmal je Prozess: onResume kommt bei jeder Drehung und jeder
+	 * Rueckkehr aus einem anderen Bildschirm. Wer die Adresse frueher von Hand
+	 * gesetzt und die Modellauswahl weggedrueckt hat, faehrt seitdem mit
+	 * AVR-Generic und bekaeme die Liste sonst bei jedem davon vorgesetzt.
 	 */
 	public void checkModel() {
-		if (AVRSettings.getAVRIP(ctx, 0).length() > 0
+		if (!modelAskedInProcess && AVRSettings.getAVRIP(ctx, 0).length() > 0
 				&& AVRSettings.getAVRModel(ctx, 0).length() == 0) {
 			Logger.info("assistant: address set, model never chosen");
-			showModelList();
+			modelAskedInProcess = showModelList();
 		}
 	}
 
@@ -115,9 +120,10 @@ public final class ConfigurationAssistant {
 		builder.create().show();
 	}
 
-	private void showModelList() {
+	/** @return false, wenn schon ein anderer Dialog steht */
+	private boolean showModelList() {
 		if (visible.get() || !ctx.isShowing()) {
-			return;
+			return false;
 		}
 		final AlertDialog.Builder builder = new AlertDialog.Builder(ctx);
 		visible.set(true);
@@ -147,6 +153,7 @@ public final class ConfigurationAssistant {
 			}
 		});
 		builder.create().show();
+		return true;
 	}
 
 	public void checkStatus(ReceiverStatus currentStatus) {
@@ -383,4 +390,6 @@ public final class ConfigurationAssistant {
 	private final AVRRemote ctx;
 	private final AVRApplication app;
 	private final AtomicBoolean visible = new AtomicBoolean();
+	/** Siehe checkModel(). Statisch, weil der Assistent je Activity neu entsteht. */
+	private static boolean modelAskedInProcess;
 }
