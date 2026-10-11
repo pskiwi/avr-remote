@@ -97,7 +97,7 @@ What is left is the part no build can answer.
       line `no list entry for reported model [...]` from a supported receiver is the case to fold
       into the matcher, not to guess at beforehand. The models from `avr-remote-specs` bring
       `aliases` (`AVR-X2700H DAB`, `AVC-X3700H`) that belong in the match; the models themselves are
-      generated now (`app/src/generated/java/`), their aliases not yet.
+      generated now (the classes marked "Originally generated" in `models/`), their aliases not yet.
       An existing configuration is never checked against the description — no hint when the
       hourly fetch in `StatusAreaManager` reports a different model than the one selected.
 
@@ -270,7 +270,7 @@ What is left is the part no build can answer.
 
 ## Generated models: what the documents offer and the app does not
 
-The generated classes in `app/src/generated/java/` (see CLAUDE.md, "Receiver models") cover what
+The generated classes in `models/` (see CLAUDE.md, "Receiver models") cover what
 `IAVRModel` can express. The protocol documents behind them describe more — features of the 2014
 and FY20–FY23 generations the app has no code for at all. Counts are how many of the 26 newly covered models the
 document lists a feature for. None of it is tested on hardware; the documents are all there is.

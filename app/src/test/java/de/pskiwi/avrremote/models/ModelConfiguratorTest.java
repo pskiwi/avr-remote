@@ -22,7 +22,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -149,21 +148,10 @@ public final class ModelConfiguratorTest {
 		throw new AssertionError("string-array modelNames fehlt in lists.xml");
 	}
 
-	/**
-	 * Handgeschriebene und generierte Modelle: generate_java.py aus
-	 * avr-remote-specs schreibt in ein eigenes Quellverzeichnis, aber in
-	 * dasselbe Paket - ohne das zweite Verzeichnis wären alle generierten
-	 * Listeneinträge hier "nicht auf der Platte".
-	 */
-	private static List<File> modelSources() {
-		final List<File> files = new ArrayList<File>();
-		for (String dir : new String[] {
-				"src/main/java/de/pskiwi/avrremote/models",
-				"src/generated/java/de/pskiwi/avrremote/models" }) {
-			final File[] inDir = moduleFile(dir).listFiles();
-			assertTrue(dir + " ist nicht lesbar", inDir != null);
-			files.addAll(Arrays.asList(inDir));
-		}
+	static File[] modelSources() {
+		final File[] files = moduleFile(
+				"src/main/java/de/pskiwi/avrremote/models").listFiles();
+		assertTrue("models/ ist nicht lesbar", files != null);
 		return files;
 	}
 
