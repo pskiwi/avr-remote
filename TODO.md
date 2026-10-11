@@ -96,7 +96,8 @@ What is left is the part no build can answer.
       Whether other generations report `<modelName>` the way the list spells it is unknown: a log
       line `no list entry for reported model [...]` from a supported receiver is the case to fold
       into the matcher, not to guess at beforehand. The models from `avr-remote-specs` bring
-      `aliases` (`AVR-X2700H DAB`, `AVC-X3700H`) that belong in the match once they are added.
+      `aliases` (`AVR-X2700H DAB`, `AVC-X3700H`) that belong in the match; the models themselves are
+      generated now (the classes marked "Originally generated" in `models/`), their aliases not yet.
       An existing configuration is never checked against the description — no hint when the
       hourly fetch in `StatusAreaManager` reports a different model than the one selected.
 
@@ -266,6 +267,80 @@ What is left is the part no build can answer.
       a Pixel 8 against a real receiver: the transport buttons and the search paths
       (`btnPlay`/`btnPause`/`btnStop`, `screenMenu.doSearch()`), and the whole of `NetDisplay`'s
       parsing beyond what that one receiver happened to send.
+
+## Generated models: what the documents offer and the app does not
+
+The generated classes in `models/` (see CLAUDE.md, "Receiver models") cover what
+`IAVRModel` can express. The protocol documents behind them describe more — features of the 2014,
+2015 and FY20–FY23 generations the app has no code for at all. Counts are how many of the first
+26 newly covered models list a feature (the 2015 AVR-X1200W–X4200W came later and are not
+counted). None of it is tested on hardware; the documents are all there is.
+
+- [ ] **Simple settings — the cheap ones.** Each is a switch or a short value list, the shape
+      `ZoneState` already has for its options: an `OptionType` constant, an `AbstractManualSelect`
+      subclass, and one line in the `OPTIONS` table of `generate_java.py` (avr-remote-specs) so the
+      model files switch it on per model. Take the values from the documents rather than inventing
+      them.
+
+      | Setting | Command | Models |
+      |---|---|---|
+      | Graphic EQ | `PSGEQ` | 24 |
+      | Loudness Management | `PSLOM` | 24 |
+      | Subwoofer on/off | `PSSWR` | 24 |
+      | Room Size | `PSRSZ` | 24 |
+      | Video Processing Mode | `VSVPM` | 19 |
+      | Headphone EQ | `PSHEQ` | 17 |
+      | Neural:X | `PSNEURAL` | 16 |
+      | Speaker Virtualizer | `PSSPV` | 16 |
+      | Dialog Control | `PSDIC` | 16 |
+      | Picture Mode | `PV` | 14 |
+      | Audyssey LFC | `PSLFC`, `PSCNTAMT` | 10 |
+      | Dialog Level | `PSCLV` / `PSDIL` | 10 / 7 |
+      | Dialog Enhancer | `PSDEH` | 8 |
+      | Center Spread | `PSCES` | 8 |
+      | IMAX | `PSIMAX…` | 8 |
+      | Auro-3D | `PSAUROMODE`, `PSAUROPR`, `PSAUROST` | 6 |
+      | Bass Sync | `PSBSC` | 6 |
+- [ ] **System settings, same mechanism — but do they belong in a remote?** ECO mode (`ECO`),
+      dimmer (`DIM`), auto standby (`STBY`), panel and remote lock (`SYPANEL`, `SYREMOTE`), the menu
+      keys OPTION/INFO/channel level (`MNOPT`, `MNINF`, `MNCHL`) and the forced audio input mode
+      (`SD`) — all 25; All Zone Stereo (`MNZST`, 24), speaker presets (`SPPR`, 10), Bluetooth
+      transmitter (`BTTX`, 10). Decide per item: a lock the remote can switch on but the user cannot
+      find again is worse than none.
+- [ ] **Option values are hard-coded, their availability no longer is.** The generated classes
+      decide *whether* an option shows (`createSupportedOptions`), but its values still come from
+      `ZoneState` — `DRCSetting` offers `AUTO LOW MID HI OFF` for every model. Where a document
+      lists other values, the menu offers ones the receiver may reject. Taking the values from the
+      model files as well is a change to `ZoneState`'s option classes, not to the models.
+- [ ] **Channel levels beyond `ZoneState.LevelType`.** It knows 13 channels; 22 more ids in the
+      documents are dropped by the generator — height, top, Dolby-enabled and Atmos channels
+      (`TFL`/`TFR`/`TML`/`TMR` in 19 models, `RHL`, `TRL`, `FDL`, `SDL`, `BDL`, `SHL`, `TS`, `CH`, …)
+      and the extra subwoofers `SW2`–`SW4`. The AVR-A110 shows 13 of its 32. `LevelType` also
+      carries one range per kind for all models, while the files state each model's own. Both need
+      `LevelType` and `LevelActivity` to stop being a fixed enum.
+- [ ] **Per-zone settings.** Zones 2 and 3 get power, volume, mute, input and quick select through
+      `Zone.getCommandPrefix`. Not: sleep (`Z2SLP`, 23), auto standby (`Z2STBY`, 23), high-pass
+      filter (`Z2HPF`, 11), stereo/mono (`Z2CS`, 11), HDMI audio (`Z2HDA`, 11).
+- [ ] **DAB on the FY20+ receivers** (X2600H, X2700H, X2800H, DRA-800H). Not a missing command but a
+      second dialect — `TMANDAB`, `TPAN`/`TFAN` for stations, `DAODR` for the order, `DA ?` for the
+      status — against the `TMDA` one `TunerDisplay` speaks for the AVR-4308 and the Marantz
+      players. Laid out in `APP_MAPPING.md` (avr-remote-specs). The generated classes leave
+      `supportsDAB()` at `false`; it needs a receiver to test against.
+- [ ] **No network display on the H models.** From FY20 on the documents list no `NS` display
+      commands (HEOS took over); only the 2014 W/S models have them. The generated H classes say
+      `hasPgUpDown() == false`, but nothing stops the app from opening the network display on `NET`
+      and waiting for lines that never come. Check on a device what it shows before deciding
+      whether `NETWORK` needs a model switch of its own.
+- [ ] **RDS station name** (`TFANNAME?`, 16) is not queried; the tuner display shows the frequency
+      only.
+- [ ] **AVR-990: two zones or three?** The hand-written `AVR990` says 2, the protocol document lists
+      Zone 3 commands for it as for the AVR-3310, so the generated `AVR990G` says 3. Whoever picks
+      "AVR-990-G" gets a Zone 3 tab, and volume and mute go there too. `GeneratedAVR990Test` holds
+      the difference; a report from an AVR-990 settles which side to change.
+- [ ] **DRA-800H: bass and treble without tone control.** Its document lists `PSBAS`/`PSTRE` but
+      no `PSTONE CTRL`, so `DRA800H` offers the two levels without the `ToneControl` option. On
+      the receivers that have it, bass and treble only act while tone control is on; whether the
+      DRA-800H needs it at all is unknown. Check on a device before adding or removing anything.
 
 ## Large, no deadline
 

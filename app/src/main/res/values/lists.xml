@@ -2,13 +2,16 @@
 <resources>
 	<string-array name="modelNames">
 		<item>AVR-Generic</item>		
+		<!-- receivers, natural order; generate_java.py sorts its models in -->
 		<item>AV-7005</item>
 		<item>AV-7701</item>
 		<item>AV-8801</item>
+		<item>AVC-3310 (experimental)</item>
 		<item>AVC-A1HDA</item>
 		<item>AVP-A1HDCI</item>
 		<item>AVR-100</item>
 		<item>AVR-990</item>
+		<item>AVR-990-G (experimental)</item>
 		<item>AVR-991</item>
 		<item>AVR-1613</item>
 		<item>AVR-1713</item>
@@ -19,6 +22,7 @@
 		<item>AVR-2312</item>
 		<item>AVR-2313</item>
 		<item>AVR-3310</item>
+		<item>AVR-3310-G (experimental)</item>
 		<item>AVR-3311</item>
 		<item>AVR-3312</item>
 		<item>AVR-3313</item>
@@ -34,27 +38,57 @@
 		<item>AVR-4810</item>
 		<item>AVR-5308</item>
 		<item>AVR-5805</item>
+		<item>AVR-A1H (experimental)</item>
+		<item>AVR-A110 (experimental)</item>
 		<item>AVR-E300</item>
 		<item>AVR-E400</item>
+		<item>AVR-S650H (experimental)</item>
+		<item>AVR-S750H (experimental)</item>
+		<item>AVR-S950H (experimental)</item>
+		<item>AVR-S960H (experimental)</item>
+		<item>AVR-S970H (experimental)</item>
 		<item>AVR-X1000</item>
-		<item>AVR-X2000</item>		
+		<item>AVR-X1100W (experimental)</item>
+		<item>AVR-X1200W (experimental)</item>
+		<item>AVR-X1600H (experimental)</item>
+		<item>AVR-X2000</item>
+		<item>AVR-X2100W (experimental)</item>
+		<item>AVR-X2200W (experimental)</item>
+		<item>AVR-X2600H (experimental)</item>
+		<item>AVR-X2700H (experimental)</item>
+		<item>AVR-X2800H (experimental)</item>
 		<item>AVR-X3000</item>
+		<item>AVR-X3100W (experimental)</item>
+		<item>AVR-X3200W (experimental)</item>
+		<item>AVR-X3600H (experimental)</item>
+		<item>AVR-X3700H (experimental)</item>
+		<item>AVR-X3800H (experimental)</item>
 		<item>AVR-X4000</item>
+		<item>AVR-X4100W (experimental)</item>
+		<item>AVR-X4200W (experimental)</item>
+		<item>AVR-X4700H (experimental)</item>
+		<item>AVR-X4800H (experimental)</item>
+		<item>AVR-X5200W (experimental)</item>
+		<item>AVR-X6700H (experimental)</item>
 		<item>DN-500AV</item>
+		<item>DRA-800H (experimental)</item>
 		<item>NR-1504</item>
 		<item>NR-1602</item>
 		<item>NR-1603</item>
-		<item>NR-1604</item>		
+		<item>NR-1604</item>
+		<item>S700W (experimental)</item>
+		<item>S900W (experimental)</item>
 		<item>SR-5006</item>
 		<item>SR-5007</item>
 		<item>SR-5008</item>
 		<item>SR-6005</item>
 		<item>SR-6006</item>
 		<item>SR-6007</item>
-		<item>SR-6008</item>		
+		<item>SR-6008</item>
 		<item>SR-7005</item>
 		<item>SR-7007</item>
 		<item>SR-7008</item>
+		<!-- end of receivers -->
 		<item>ASD-51 (experimental)</item>
 		<item>DNP-720AE</item>
 		<item>M-CR603 (experimental)</item>

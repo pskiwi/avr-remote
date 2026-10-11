@@ -77,4 +77,19 @@ public final class ModelSuggestionTest {
 			assertEquals(name, ModelSuggestion.match(name, array));
 		}
 	}
+
+	/**
+	 * Ein AVR-3310 meldet sich als "AVR-3310" und bekommt damit die
+	 * handgeschriebene Klasse vorgeschlagen; die generierte Variante
+	 * "AVR-3310-G (experimental)" wählt man nur bewusst. Hängt nicht an der
+	 * Reihenfolge der Liste, sondern daran, dass die Normalisierung das "-G"
+	 * als Teil des Namens behandelt und nicht wie den Zusatz wegwirft.
+	 */
+	@Test
+	public void generatedVariantSuffixIsNotNormalisedAway()
+			throws Exception {
+		final List<String> names = ModelConfiguratorTest.readModelNames();
+		assertEquals("AVR-3310", ModelSuggestion.match("AVR-3310",
+				names.toArray(new String[0])));
+	}
 }

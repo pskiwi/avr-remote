@@ -20,6 +20,7 @@ import java.util.List;
 
 import android.content.Context;
 import de.pskiwi.avrremote.AVRSettings;
+import de.pskiwi.avrremote.R;
 import de.pskiwi.avrremote.core.ConnectionConfiguration;
 import de.pskiwi.avrremote.core.IParameterConverter;
 import de.pskiwi.avrremote.core.OptionType;
@@ -51,12 +52,47 @@ public final class ModelConfigurator {
 			area = ModelArea.valueOf(avrModelArea);
 		}
 		Logger.info("Area set to " + area);
+		alignStoredModelNames();
 		model = createModel(AVRSettings.getAVRModel(ctx, currentReceiver));
 		Logger.info("model is " + model.getClass().getName() + " area is "
 				+ area);
 
 		updateZoneState();
 
+	}
+
+	/**
+	 * Gespeichert ist der ganze Listeneintrag, samt "(experimental)". Fällt der
+	 * Zusatz in einer späteren Version weg (oder kommt dazu), findet
+	 * {@link #createModel(String)} die Klasse zwar weiter, aber die
+	 * Einstellungen markieren keinen Eintrag mehr und das Receiver-Menü zeigt
+	 * den alten Text. Deshalb wird der gespeicherte Wert bei jedem Laden auf
+	 * die heutige Schreibweise der Liste gebracht - für alle Receiver, weil
+	 * das Menü alle zeigt.
+	 */
+	private void alignStoredModelNames() {
+		final String[] names = ctx.getResources().getStringArray(
+				R.array.modelNames);
+		for (int i = 0; i < AVRSettings.MAX_RECEIVERS; i++) {
+			final String stored = AVRSettings.getAVRModel(ctx, i);
+			final String current = currentListName(stored, names);
+			if (!current.equals(stored)) {
+				Logger.info("model name [" + stored + "] -> [" + current + "]");
+				AVRSettings.setAVRModel(ctx, current, i);
+			}
+		}
+	}
+
+	/**
+	 * Die heutige Schreibweise von {@code stored} in {@code names}, verglichen
+	 * wie beim Modellvorschlag: ohne Bindestriche, Leerzeichen, Groß/Klein und
+	 * Zusatz in Klammern. Ohne Treffer bleibt der Wert, wie er ist. Eindeutig
+	 * ist das nur, solange keine zwei Listeneinträge gleich normalisieren -
+	 * das prüft {@code ModelSuggestionTest.everyListEntryIsUniqueAndFindsItself}.
+	 */
+	static String currentListName(String stored, String[] names) {
+		final String match = ModelSuggestion.match(stored, names);
+		return match != null ? match : stored;
 	}
 
 	/**

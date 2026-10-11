@@ -126,7 +126,9 @@ the alias CI actually signs with comes from the `KEY_ALIAS` secret and cannot be
    python3 misc/release-notes.py v1.6.0
    ```
 3. **Remove the items** in [TODO.md](TODO.md) that this release closes — that file records open work
-   only, the history records what was done.
+   only, the history records what was done. If `@array/modelNames` gained entries since the last
+   release, append them to `RELEASED` in `ReleasedModelNamesTest`: from now on they are stored in
+   users' settings, and a class that disappears would drop those users to `AVRGeneric` silently.
 4. **Commit, tag, push.** The tag convention is `v<versionName>`:
 
    ```sh
