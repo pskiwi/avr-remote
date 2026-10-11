@@ -17,6 +17,7 @@
 package de.pskiwi.avrremote.scan;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -24,6 +25,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
 
 import org.junit.Test;
 
@@ -117,6 +119,29 @@ public final class SSDPDiscoveryTest {
 		assertNotNull(response);
 		assertEquals("http://10.0.0.5:8080/d.xml", response.getLocation());
 		assertNull(response.getST());
+	}
+
+	/**
+	 * Abgerufen wird nur eine LOCATION, die auf den Absender selbst zeigt -
+	 * sonst lenkte ein einziges Paket irgendeines Geräts die App auf eine
+	 * beliebige URL. Der Positivfall ist die mitgeschnittene Antwort samt der
+	 * Adresse, von der sie kam.
+	 */
+	@Test
+	public void locationMustPointAtTheSender() throws IOException {
+		final InetAddress sender = InetAddress.getByName("192.168.10.30");
+		final String location = SSDPDiscovery.parse(
+				resource("ssdp-search-response.txt")).getLocation();
+		assertTrue(SSDPDiscovery.fromSender(location, sender));
+		assertFalse(SSDPDiscovery.fromSender(location,
+				InetAddress.getByName("192.168.10.31")));
+		assertFalse(SSDPDiscovery.fromSender(
+				"http://192.168.10.30.example.com:8080/description.xml",
+				sender));
+		assertFalse(SSDPDiscovery.fromSender(
+				"file://192.168.10.30/description.xml", sender));
+		assertFalse(SSDPDiscovery.fromSender("not a url", sender));
+		assertFalse(SSDPDiscovery.fromSender("", sender));
 	}
 
 	@Test

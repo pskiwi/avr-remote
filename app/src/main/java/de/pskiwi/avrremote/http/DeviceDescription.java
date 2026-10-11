@@ -60,8 +60,19 @@ public final class DeviceDescription {
 	 * abzulesen sein, ob 8080 über die Baureihen hinweg trägt.
 	 */
 	public static DeviceDescription read(ConnectionConfiguration config) {
-		final String url = "http://" + config.getIP() + ":" + UPNP_PORT
-				+ "/description.xml";
+		return read(defaultURL(config.getIP()));
+	}
+
+	/** Wo die Beschreibung liegt, wenn keine LOCATION etwas anderes sagt. */
+	public static String defaultURL(String ip) {
+		return "http://" + ip + ":" + UPNP_PORT + "/description.xml";
+	}
+
+	/**
+	 * Holt die Beschreibung von einer bestimmten URL, oder null. Der Suchlauf
+	 * kennt aus SSDP die autoritative {@code LOCATION} und nimmt die.
+	 */
+	public static DeviceDescription read(String url) {
 		try {
 			final DeviceDescription result = parse(new String(
 					HTTPSupport.get(url), "UTF-8"));

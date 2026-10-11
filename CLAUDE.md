@@ -45,10 +45,10 @@ for `android-37` and fails with *"Failed to find target with hash string"*. AGP 
 up to compile SDK 36.1 and warns about 37.2 in every build, which is what
 `android.suppressUnsupportedCompileSdk` in `gradle.properties` silences.
 
-**There is almost no test coverage.** `src/test` holds fifteen JVM test classes on JUnit 4, the only
+**There is almost no test coverage.** `src/test` holds sixteen JVM test classes on JUnit 4, the only
 dependency in the project — `http/HTTPSupportTest`, `http/Series08ParserTest`,
 `core/ThreadHandlerTest`, `core/ConnectorTest`, `core/InDataTest`, `core/display/NetDisplayTest`,
-`core/display/TunerDisplayTest`, `models/ModelConfiguratorTest`, `ReceiverStatusTest`,
+`core/display/TunerDisplayTest`, `models/ModelConfiguratorTest`, `models/ModelSuggestionTest`, `ReceiverStatusTest`,
 `http/AVRXMLInfoParserTest`, `http/DeviceDescriptionTest`, `scan/ScanRangeTest`,
 `scan/SSDPDiscoveryTest`, `scan/LocalNetworkTest` and `log/LoggerTest` — and there is no `src/androidTest` at all. `./gradlew test` runs a few
 dozen cases and nothing else (twice, in fact: once per build variant), so do not report a change as
@@ -67,7 +67,8 @@ knowing before writing more tests:
   are supported. Verified on a Pixel 8; do not "simplify" it to the usual one-liner.
 - A test that reads project files from disk rather than from the classpath — `res/` and `src/` are
   on neither — must be declared as a task input, or Gradle calls the test up to date on exactly the
-  change it exists to catch. `ModelConfiguratorTest` reads `res/values/lists.xml`, hence the
+  change it exists to catch. `ModelConfiguratorTest` reads `res/values/lists.xml` (and lends its
+  reader to `ModelSuggestionTest`), hence the
   `tasks.withType(Test).configureEach { inputs.file(...) }` block at the bottom of `app/build.gradle`
   (it covers both variants — verified by watching `testReleaseUnitTest` re-run too). It also
   resolves its paths against both the module and the root directory, because the working directory

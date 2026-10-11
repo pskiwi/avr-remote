@@ -21,11 +21,12 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketTimeoutException;
+import java.net.URI;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
+import java.util.Map;
 
 import de.pskiwi.avrremote.log.Logger;
 
@@ -87,14 +88,19 @@ public final class SSDPDiscovery {
 
 	/**
 	 * Absender-Adressen aller Geräte, die auf M-SEARCH geantwortet haben, ohne
-	 * Dubletten und in der Reihenfolge des Eintreffens.
+	 * Dubletten und in der Reihenfolge des Eintreffens, jeweils mit den
+	 * {@code LOCATION}s, unter denen sie ihre Beschreibung anbieten.
+	 *
+	 * Mehrere LOCATIONs, weil ein Receiver je Embedded Device und Dienst eine
+	 * eigene Antwort schickt, nicht alle mit derselben URL. Die Liste kann leer
+	 * sein: übernommen wird nur, was {@link #fromSender} besteht.
 	 *
 	 * Dreimal senden, weil UDP verloren gehen darf, und bis
 	 * {@code SEARCH_DURATION} einsammeln: die Geräte antworten laut Spezifikation
 	 * über MX Sekunden verteilt, um den Fragesteller nicht zu überfahren.
 	 */
-	public static List<InetAddress> search() {
-		final Set<InetAddress> found = new LinkedHashSet<InetAddress>();
+	public static Map<InetAddress, List<String>> search() {
+		final Map<InetAddress, List<String>> found = new LinkedHashMap<InetAddress, List<String>>();
 		try (DatagramSocket socket = new DatagramSocket()) {
 			LocalNetwork.bind(socket);
 			socket.setSoTimeout(RECEIVE_TIMEOUT);
@@ -120,16 +126,52 @@ public final class SSDPDiscovery {
 				}
 				final Response response = parse(new String(packet.getData(),
 						packet.getOffset(), packet.getLength(), "US-ASCII"));
-				if (response != null && found.add(packet.getAddress())) {
-					Logger.info("SSDP: " + packet.getAddress().getHostAddress()
-							+ " " + response);
+				if (response == null) {
+					continue;
+				}
+				final InetAddress sender = packet.getAddress();
+				List<String> locations = found.get(sender);
+				if (locations == null) {
+					locations = new ArrayList<String>();
+					found.put(sender, locations);
+					Logger.info("SSDP: " + sender.getHostAddress() + " "
+							+ response);
+				}
+				final String location = response.getLocation();
+				if (location != null && !locations.contains(location)) {
+					if (fromSender(location, sender)) {
+						locations.add(location);
+					} else {
+						Logger.info("SSDP: ignoring foreign location ["
+								+ location + "] from "
+								+ sender.getHostAddress());
+					}
 				}
 			}
 		} catch (IOException x) {
 			Logger.error("SSDP search failed", x);
 		}
 		Logger.info("SSDP: " + found.size() + " device(s) answered");
-		return new ArrayList<InetAddress>(found);
+		return found;
+	}
+
+	/**
+	 * Zeigt die LOCATION auf den Absender selbst ?
+	 *
+	 * Abgerufen wird, was hier durchkommt - und eine Antwort kann jedes Gerät
+	 * im Netz schicken. Ohne die Prüfung genügte ein einziges Paket, um die App
+	 * eine beliebige URL abrufen zu lassen. Verglichen wird die Adresse als
+	 * Literal, ohne DNS: ein Name in der LOCATION fällt damit durch, was bei
+	 * Denon und Marantz nicht vorkommt.
+	 */
+	static boolean fromSender(String location, InetAddress sender) {
+		try {
+			final URI uri = new URI(location);
+			return "http".equalsIgnoreCase(uri.getScheme())
+					&& sender.getHostAddress().equals(uri.getHost());
+		} catch (Exception x) {
+			return false;
+		}
 	}
 
 	/**

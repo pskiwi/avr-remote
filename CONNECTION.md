@@ -688,8 +688,15 @@ background thread in `StatusAreaManager` that already fetches the XML state, and
 rather than only on `Connected`: a receiver that answers ping and port 80 but holds its single
 control channel is exactly the state field reports come from, and the description is what says which
 device is really there — as opposed to which one the user picked from the list of 60. It lands in
-the feedback report and nowhere else. `serialNumber` and `UDN` are deliberately not read: both carry
-the device's MAC, and a report travels by mail.
+the feedback report. `serialNumber` and `UDN` are deliberately not read: both carry the device's
+MAC, and a report travels by mail.
+
+The scan reads the same description for every receiver it confirms, there from the `LOCATION`s the
+`M-SEARCH` replies carried and only then from port 8080 (a sweep hit knows nothing else). A
+`LOCATION` is only taken when its host is the reply's sender address — `SSDPDiscovery.fromSender()`
+— because anything on the network can answer and would otherwise make the app fetch a URL of its
+choosing. The result labels the entry in the selection list (`Denon AVR-3310 – 192.168.10.30`) and,
+during setup, becomes the model suggestion that `ConfigurationAssistant` asks the user to confirm.
 
 Both searches hand their addresses to the same `AVRScanner.testAll()`, which fans them out over
 `SCAN_THREADS` threads. That matters more for SSDP than it looks: a candidate costs up to four

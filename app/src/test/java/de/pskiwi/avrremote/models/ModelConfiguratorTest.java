@@ -102,7 +102,7 @@ public final class ModelConfiguratorTest {
 		return withoutRemark.replace("-", "").trim();
 	}
 
-	private static List<String> readModelNames() throws Exception {
+	static List<String> readModelNames() throws Exception {
 		final Document doc = DocumentBuilderFactory.newInstance()
 				.newDocumentBuilder()
 				.parse(moduleFile("src/main/res/values/lists.xml"));

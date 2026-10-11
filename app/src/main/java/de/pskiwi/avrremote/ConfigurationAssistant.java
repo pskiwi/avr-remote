@@ -39,11 +39,67 @@ public final class ConfigurationAssistant {
 		Logger.setLocation("checkSetup-1");
 		if (!app.getModelConfigurator().getConnectionConfig().isDefined()) {
 			Logger.setLocation("checkSetup-2");
-			showSetupDialog();
+			// Erst die Adresse, dann das Modell: der Receiver sagt in seiner
+			// UPnP-Beschreibung selbst, was er ist, und das ist erst nach dem
+			// Suchlauf bekannt. Siehe showModelDialog().
+			showIPDialog(true);
 		}
 	}
 
-	private void showSetupDialog() {
+	/**
+	 * Modell nach dem Suchlauf der Einrichtung. Hat der Receiver einen Namen
+	 * gemeldet, der in der Liste steht, wird der nur vorgeschlagen - bestaetigt
+	 * ist das Abbild Beschreibung -> Liste bisher nur an einem AVR-3310. Ohne
+	 * Treffer, oder wenn der Suchlauf ohne Auswahl endete, die ganze Liste wie
+	 * frueher: sonst bliebe das Modell unbemerkt leer, also AVRGeneric.
+	 */
+	private void showModelDialog(final AVRScanner.ScanResult selected) {
+		if (visible.get() || !ctx.isShowing()) {
+			return;
+		}
+		final String suggestion = selected != null ? selected
+				.getSuggestedModel() : null;
+		if (suggestion == null) {
+			showModelList();
+			return;
+		}
+		visible.set(true);
+		Logger.info("setup suggests model [" + suggestion + "]");
+		final String label = AVRScanner.ScanResult.describe(selected
+				.getDescription());
+		final AlertDialog.Builder builder = new AlertDialog.Builder(ctx);
+		builder.setTitle(R.string.SetupMessageModel);
+		builder.setMessage(ctx.getString(R.string.SetupModelDetected, label));
+		builder.setPositiveButton(R.string.SetupModelAccept,
+				new OnClickListener() {
+					public void onClick(DialogInterface dialog, int which) {
+						Logger.info("setup model [" + suggestion
+								+ "] (suggested)");
+						visible.set(false);
+						AVRSettings.setAVRModel(ctx, suggestion, 0);
+						app.reconfigure();
+					}
+				});
+		builder.setNegativeButton(R.string.SetupModelOther,
+				new OnClickListener() {
+					public void onClick(DialogInterface dialog, int which) {
+						Logger.info("setup model suggestion declined");
+						visible.set(false);
+						showModelList();
+					}
+				});
+		builder.setOnCancelListener(new OnCancelListener() {
+			public void onCancel(DialogInterface dialog) {
+				visible.set(false);
+			}
+		});
+		builder.create().show();
+	}
+
+	private void showModelList() {
+		if (visible.get() || !ctx.isShowing()) {
+			return;
+		}
 		final AlertDialog.Builder builder = new AlertDialog.Builder(ctx);
 		visible.set(true);
 		builder.setCancelable(true);
@@ -59,7 +115,7 @@ public final class ConfigurationAssistant {
 					Logger.info("setup model [" + selectedModel + "]");
 					AVRSettings.setAVRModel(ctx, selectedModel, 0);
 					visible.set(false);
-					showIPDialog(true);
+					app.reconfigure();
 				}
 			}
 		});
@@ -112,7 +168,7 @@ public final class ConfigurationAssistant {
 	 * mit einem Toast auf. Ohne das hier gaebe es danach keinen Loop, keinen
 	 * Fortschritt und keinen Hinweis mehr, und der Anwender muesste den
 	 * Suchlauf im Menue finden. Laeuft noch ein anderer Dialog - beim ersten
-	 * Start die Modellauswahl -, tut showIPDialog() nichts.
+	 * Start ist das dieser selbe IP-Dialog -, tut showIPDialog() nichts.
 	 */
 	public void permissionGranted() {
 		if (!app.getModelConfigurator().getConnectionConfig().isDefined()) {
@@ -146,7 +202,11 @@ public final class ConfigurationAssistant {
 								Logger.setLocation("showIPDialog-3");
 								visible.set(false);
 							}
-						}, 0);
+						}, 0, setupMode ? new AVRScanner.ISelectionListener() {
+							public void selected(AVRScanner.ScanResult result) {
+								showModelDialog(result);
+							}
+						} : null);
 					}
 				});
 		builder.setNegativeButton(ctx.getString(R.string.ManualSettings),
