@@ -130,8 +130,9 @@ public final class AVRRemote extends TabActivity implements
 			// onRequestPermissionsResult.
 			if (AVRSettings.requestLocalNetworkPermission(this)) {
 				notificationRequestPending = true;
-			} else {
-				AVRSettings.requestNotificationPermission(this);
+				changeLogPending = true;
+			} else if (AVRSettings.requestNotificationPermission(this)) {
+				changeLogPending = true;
 			}
 		} else {
 			// Die Kette laeuft weiter, auch wenn waehrend des System-Dialogs
@@ -140,6 +141,7 @@ public final class AVRRemote extends TabActivity implements
 			// gefragt - genau das, was die Kette verhindern soll.
 			notificationRequestPending = savedInstanceState
 					.getBoolean(NOTIFICATION_PENDING);
+			changeLogPending = savedInstanceState.getBoolean(CHANGELOG_PENDING);
 			// Nicht fragen, aber fuer den Feedback-Bericht auffrischen, ob eine
 			// Ablehnung endgueltig ist - sie kann sich in den Einstellungen
 			// geaendert haben, ohne dass der Prozess dabei starb
@@ -151,13 +153,13 @@ public final class AVRRemote extends TabActivity implements
 
 		FeedbackReporter.checkForCrash(this);
 
-		// Nur bei bestehenden anzeigen
-		if (getApp().getModelConfigurator().getConnectionConfig().isDefined()
-				&& AVRSettings.isShowChangeLog(this)) {
+		// Nicht ueber einen offenen System-Dialog legen: der Changelog
+		// landete obendrauf, und der Anwender laese von einer Permission, nach
+		// der er noch gar nicht gefragt wurde (Pixel 8). Dann zeigt ihn das
+		// Ende der Kette in onRequestPermissionsResult.
+		if (!changeLogPending) {
 			Logger.setLocation("AVRRemote-onCreate-3");
-			Intent intent = new Intent(AVRRemote.this, AboutActivity.class);
-			intent.putExtra("toShow", "whatsnew");
-			startActivity(intent);
+			showChangeLog();
 		}
 
 		configurationAssistant.checkSetup();
@@ -269,6 +271,8 @@ public final class AVRRemote extends TabActivity implements
 				// Benachrichtigung nachziehen, die beim Start verworfen wurde
 				getApp().getStatusbarManager().update();
 			}
+			// letztes Glied der Kette aus onCreate
+			finishPermissionChain();
 		} else if (requestCode == AVRSettings.REQUEST_ACCESS_LOCAL_NETWORK) {
 			AVRSettings.localNetworkPermissionResult(this, grantResults);
 			if (granted) {
@@ -298,8 +302,39 @@ public final class AVRRemote extends TabActivity implements
 			// Benachrichtigung zu fragen haette damit nichts zu tun.
 			if (notificationRequestPending) {
 				notificationRequestPending = false;
-				AVRSettings.requestNotificationPermission(this);
+				if (AVRSettings.requestNotificationPermission(this)) {
+					return;
+				}
 			}
+			finishPermissionChain();
+		}
+	}
+
+	/**
+	 * Die Kette aus onCreate ist durch, kein System-Dialog mehr offen - jetzt
+	 * erst den Changelog, den onCreate zurueckgehalten hat. Nur dann: der
+	 * Suchlauf liefert seine Antwort mit demselben Request-Code hier ab, und
+	 * die Einstellungen fragen die Benachrichtigung selbst an.
+	 */
+	private void finishPermissionChain() {
+		if (changeLogPending) {
+			changeLogPending = false;
+			showChangeLog();
+		}
+	}
+
+	/**
+	 * Nur bei bestehender Konfiguration. isShowChangeLog() merkt sich die
+	 * Version schon beim Pruefen, also erst unmittelbar vor dem Anzeigen
+	 * fragen - so kommt ein zurueckgehaltener Changelog auch nach einem
+	 * Prozess-Tod mitten in der Kette beim naechsten Start noch.
+	 */
+	private void showChangeLog() {
+		if (getApp().getModelConfigurator().getConnectionConfig().isDefined()
+				&& AVRSettings.isShowChangeLog(this)) {
+			Intent intent = new Intent(AVRRemote.this, AboutActivity.class);
+			intent.putExtra("toShow", "whatsnew");
+			startActivity(intent);
 		}
 	}
 
@@ -409,6 +444,7 @@ public final class AVRRemote extends TabActivity implements
 
 		outState.putInt(CURRENT_TAB, getTabHost().getCurrentTab());
 		outState.putBoolean(NOTIFICATION_PENDING, notificationRequestPending);
+		outState.putBoolean(CHANGELOG_PENDING, changeLogPending);
 	}
 
 	@Override
@@ -670,6 +706,8 @@ public final class AVRRemote extends TabActivity implements
 	private boolean showing;
 	/** Die Berechtigungskette aus onCreate laeuft noch, siehe dort. */
 	private boolean notificationRequestPending;
+	/** Changelog wartet auf das Ende dieser Kette, siehe onCreate. */
+	private boolean changeLogPending;
 	/** Hat in diesem Prozess schon ein onCreate gefragt ? Siehe dort. */
 	private static boolean permissionsRequestedInProcess;
 	private ViewList viewList;
@@ -680,5 +718,6 @@ public final class AVRRemote extends TabActivity implements
 	private ZoneState currentZoneState;
 	private static final String CURRENT_TAB = "CURRENT_TAB";
 	private static final String NOTIFICATION_PENDING = "NOTIFICATION_PENDING";
+	private static final String CHANGELOG_PENDING = "CHANGELOG_PENDING";
 
 }

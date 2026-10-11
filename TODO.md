@@ -149,14 +149,6 @@ What is left is the part no build can answer.
       routing table. Both answer themselves in the field: every feedback report carries the `IPv4`
       line, every log the startup line `LocalNetwork: interfaces …`. A report showing `eth0:…`
       settles whether such devices are out there at all.
-- [ ] **The changelog hides the permission dialog on the first start with a configuration.**
-      `AVRRemote.onCreate` requests `ACCESS_LOCAL_NETWORK` and a few lines later starts
-      `AboutActivity` for the changelog (`isShowChangeLog`), which lands on top of the system dialog.
-      The dialog only appears after "Schließen" — seen on a Pixel 8 on 2026-10-10. That is exactly
-      the start every user makes after updating from 1.6.1, whose permission is not granted yet. The
-      request is not lost, but the user reads release notes about a permission they have not been
-      asked for yet, and may not expect a dialog after closing them. Showing the changelog only when
-      `requestLocalNetworkPermission()` returned false, or from its result, would order the two.
 - [ ] **A grant starts the connector twice.** `onRequestPermissionsResult` calls
       `triggerReconnect()`, and the `onResume` that follows the system dialog calls
       `forceReconnect()` — two `start new connector` lines 5 ms apart in the log (Pixel 8,
