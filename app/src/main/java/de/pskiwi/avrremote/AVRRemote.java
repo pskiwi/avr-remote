@@ -381,6 +381,9 @@ public final class AVRRemote extends TabActivity implements
 		}
 		getApp().activityResumed(this);
 		getApp().getEnableManager().setClassListener(viewList);
+		// vor checkOnResume(): ein offener Assistenten-Dialog haelt den
+		// Verbindungs-Fortschritt zurueck, sonst laege die Liste ueber ihm
+		configurationAssistant.checkModel();
 		connectionProgressMonitor.checkOnResume();
 
 		updateDisplayListener();

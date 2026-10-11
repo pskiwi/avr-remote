@@ -95,26 +95,23 @@ What is left is the part no build can answer.
       in some state would see a healthy connection torn down and rebuilt about every 70 s — churn,
       not a hang. A log full of `no answer to the probe` from an otherwise working setup is the sign.
 
-- [ ] **Select the model from `description.xml` instead of asking the user.** The description is
-      now fetched and lands in the feedback report (`http/DeviceDescription`, see
-      [CONNECTION.md](CONNECTION.md)); what is not done is acting on it. `<modelName>` is on an
-      AVR-3310 the exact string `@array/modelNames` holds and `ModelConfigurator` resolves by
-      reflection, dashes and all — `DeviceDescriptionTest.modelNameMatchesTheModelList()` pins that.
-      `<manufacturer>` would separate Denon from Marantz. Today the user picks from a list of 60.
+- [ ] **The model suggestion is only confirmed on an AVR-3310.** Setup now scans first and then
+      proposes the model the receiver names in its UPnP description (`models/ModelSuggestion`,
+      called from `scan/AVRScanner`, confirmed by the user in `ConfigurationAssistant`). The match
+      ignores dashes, case, spaces and the `(experimental)` remark — nothing else, on purpose.
+      Whether other generations report `<modelName>` the way the list spells it is unknown: a log
+      line `no list entry for reported model [...]` from a supported receiver is the case to fold
+      into the matcher, not to guess at beforehand. The models from `avr-remote-specs` bring
+      `aliases` (`AVR-X2700H DAB`, `AVC-X3700H`) that belong in the match once they are added.
+      An existing configuration is never checked against the description — no hint when the
+      hourly fetch in `StatusAreaManager` reports a different model than the one selected.
 
-      **Wait for field reports before building it.** Whether `modelName` matches the list verbatim
-      on other generations is unknown — only an AVR-3310 was available — and so is whether port 8080
-      carries the description at all on older or newer models. Both now show up in every feedback
-      report as the `UPnP` line, so the data arrives by itself. A report reading `not available`
-      answers the port question; one whose `modelName` is absent from `@array/modelNames` answers
-      the other.
-
-      `<presentationURL>` is worth taking at the same time, because it settles a guess made
-      elsewhere: `menu/OptionsMenu.java:249` opens the receiver's web UI by probing the configured
-      page and treating **only** a 404 as proof that it is missing, then falling back to the bare
-      base URL — a heuristic whose confirmation is still outstanding with the reporter of the
-      AVR-1912. On the AVR-3310 `presentationURL` is exactly that bare base URL, which corroborates
-      the fallback for this model. Fetching it would replace the probe entirely.
+      `<presentationURL>` is worth taking as well, because it settles a guess made elsewhere:
+      `menu/OptionsMenu.java:249` opens the receiver's web UI by probing the configured page and
+      treating **only** a 404 as proof that it is missing, then falling back to the bare base URL —
+      a heuristic whose confirmation is still outstanding with the reporter of the AVR-1912. On the
+      AVR-3310 `presentationURL` is exactly that bare base URL, which corroborates the fallback for
+      this model. Fetching it would replace the probe entirely.
 - [ ] The `NOTIFY` branch is untested against a real device in another sense too: `SSDPDiscovery`
       only ever looks at replies to its own `M-SEARCH`. If a receiver turns out to answer nothing
       (no `MulticastLock` — see [CONNECTION.md](CONNECTION.md)), the sweep fallback hides it, and

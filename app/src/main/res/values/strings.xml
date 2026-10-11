@@ -97,6 +97,10 @@
 		Select your model  
 	</string>
 
+	<string name="SetupModelDetected">Your receiver reports itself as %1$s.</string>
+	<string name="SetupModelAccept">Use this model</string>
+	<string name="SetupModelOther">Other model</string>
+
 	<string name="SetupMessageIP">
 		To use this application, you have to connect your
 		receiver and phone to your local wireless access point and enable

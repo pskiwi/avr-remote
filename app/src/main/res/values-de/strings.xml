@@ -99,6 +99,10 @@
 		Modell-Auswahl
 	</string>
 
+	<string name="SetupModelDetected">Ihr Receiver meldet sich als %1$s.</string>
+	<string name="SetupModelAccept">Übernehmen</string>
+	<string name="SetupModelOther">Anderes Modell</string>
+
 	<string name="SetupMessageIP">
 		Um diese Anwendung zu verwenden, müssen Sie
 		Telefon

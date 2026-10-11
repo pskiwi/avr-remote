@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -37,7 +38,9 @@ import de.pskiwi.avrremote.AVRApplication;
 import de.pskiwi.avrremote.AVRSettings;
 import de.pskiwi.avrremote.EmulationDetector;
 import de.pskiwi.avrremote.R;
+import de.pskiwi.avrremote.http.DeviceDescription;
 import de.pskiwi.avrremote.log.Logger;
+import de.pskiwi.avrremote.models.ModelSuggestion;
 
 /** Lokales Netz nach möglichen AVRs durchsuchen */
 public final class AVRScanner {
@@ -68,11 +71,41 @@ public final class AVRScanner {
 
 	public final static class ScanResult {
 
-		public ScanResult(InetAddress address, FoundBy foundBy) {
+		/**
+		 * Mit Beschreibung steht vorn, was das Geraet ueber sich sagt - auch
+		 * wenn der Name in der Modell-Liste fehlt, ist er die beste Auskunft,
+		 * welcher Eintrag welcher ist. Ohne bleibt es beim Hostnamen; der ist,
+		 * was der Router daraus macht, und taugt nicht zum Abgleich.
+		 */
+		public ScanResult(InetAddress address, FoundBy foundBy,
+				DeviceDescription description, String suggestedModel) {
 			this.address = address;
-			this.info = address.getHostAddress() + " / "
-					+ address.getHostName() + "  (" + foundBy.getLabel() + ")";
 			this.ip = address.getHostAddress();
+			this.description = description;
+			this.suggestedModel = suggestedModel;
+			final String label = describe(description);
+			this.info = (label != null ? label + " \u2013 " + ip : ip + " / "
+					+ address.getHostName())
+					+ "  (" + foundBy.getLabel() + ")";
+		}
+
+		/** "Denon AVR-3310", oder null wenn das Geraet nichts gesagt hat. */
+		public static String describe(DeviceDescription description) {
+			if (description == null || description.getModelName() == null) {
+				return null;
+			}
+			final String manufacturer = description.getManufacturer();
+			return manufacturer != null ? manufacturer + " "
+					+ description.getModelName() : description.getModelName();
+		}
+
+		/** Der Eintrag aus {@code @array/modelNames}, oder null. */
+		public String getSuggestedModel() {
+			return suggestedModel;
+		}
+
+		public DeviceDescription getDescription() {
+			return description;
 		}
 
 		@Override
@@ -83,6 +116,19 @@ public final class AVRScanner {
 		final InetAddress address;
 		final String info;
 		final String ip;
+		private final DeviceDescription description;
+		private final String suggestedModel;
+	}
+
+	/**
+	 * Was nach der Auswahl im Suchlauf geschieht. Nur gerufen, wenn ein
+	 * Treffer gewaehlt wurde - also eine Adresse feststeht. Endet der Suchlauf
+	 * anders (Fehler, Abbruch, Permission-Frage, Activity weg), bleibt es
+	 * still; dann fehlt die Adresse, und die Einrichtung beginnt beim
+	 * naechsten Start von vorn.
+	 */
+	public interface ISelectionListener {
+		void selected(ScanResult result);
 	}
 
 	public interface IScanResultHandler {
@@ -93,11 +139,14 @@ public final class AVRScanner {
 
 	private final static class ScanThread extends Thread {
 
-		public ScanThread(List<InetAddress> addresses, FoundBy foundBy) {
+		public ScanThread(List<InetAddress> addresses, FoundBy foundBy,
+				Map<InetAddress, List<String>> locations, String[] modelNames) {
 			super("Scan-Thread [" + addresses.get(0).getHostAddress() + "+"
 					+ addresses.size() + "]");
 			this.addresses = addresses;
 			this.foundBy = foundBy;
+			this.locations = locations;
+			this.modelNames = modelNames;
 		}
 
 		@Override
@@ -105,7 +154,22 @@ public final class AVRScanner {
 			for (InetAddress ia : addresses) {
 				try {
 					if (AVRTargetTester.testAddress(ia, false)) {
-						result.add(new ScanResult(ia, foundBy));
+						// Erst eintragen, dann die Beschreibung holen: die
+						// kostet bis zu MAX_DESCRIPTION_URLS Abrufe, und wer
+						// bei Ablauf von JOIN_TIMEOUT noch darin steckt, darf
+						// den Treffer nicht verlieren - nur die Beschriftung.
+						final ScanResult plain = new ScanResult(ia, foundBy,
+								null, null);
+						result.add(plain);
+						final DeviceDescription description = readDescription(ia);
+						if (description != null) {
+							synchronized (result) {
+								result.set(result.indexOf(plain),
+										new ScanResult(ia, foundBy,
+												description,
+												suggest(description)));
+							}
+						}
 					}
 				} catch (Exception e) {
 					Logger.error("scan exception", e);
@@ -114,10 +178,58 @@ public final class AVRScanner {
 		}
 
 		/**
+		 * Erst die LOCATIONs aus SSDP - die sind autoritativ -, dann der feste
+		 * Port 8080, auf dem auch {@link DeviceDescription#read} sucht. Ein
+		 * Sweep-Treffer kennt nur den. Nur fuer bestaetigte Receiver, und
+		 * hoechstens MAX_DESCRIPTION_URLS je Geraet - ein Absender bestimmt
+		 * selbst, wie viele LOCATIONs er schickt.
+		 */
+		private DeviceDescription readDescription(InetAddress ia) {
+			final List<String> urls = new ArrayList<String>();
+			final List<String> fromSSDP = locations.get(ia);
+			if (fromSSDP != null) {
+				urls.addAll(fromSSDP);
+			}
+			final String fallback = DeviceDescription.defaultURL(ia
+					.getHostAddress());
+			// Der Rueckfall immer als letzter und immer dabei, auch wenn SSDP
+			// ihn schon irgendwo mitten in der Liste genannt hat
+			urls.remove(fallback);
+			if (urls.size() > MAX_DESCRIPTION_URLS - 1) {
+				urls.subList(MAX_DESCRIPTION_URLS - 1, urls.size()).clear();
+			}
+			urls.add(fallback);
+			for (String url : urls) {
+				final DeviceDescription description = DeviceDescription
+						.read(url);
+				if (description != null && description.getModelName() != null) {
+					return description;
+				}
+			}
+			return null;
+		}
+
+		private String suggest(DeviceDescription description) {
+			if (description == null) {
+				return null;
+			}
+			final String model = ModelSuggestion.match(
+					description.getModelName(), modelNames);
+			if (model == null) {
+				// Das Signal, auf das TODO.md wartet: ein Geraet, dessen
+				// Name in der Liste fehlt oder anders geschrieben ist.
+				Logger.info("no list entry for reported model ["
+						+ description.getModelName() + "]");
+			}
+			return model;
+		}
+
+		/**
 		 * Der Thread kann noch laufen: das {@code join(JOIN_TIMEOUT)} in
 		 * {@link AVRScanner#testAll} darf ablaufen, und in einem /24 hat jeder
 		 * Thread 16 Adressen zu je bis zu 2,25 s - Ping plus vier
-		 * Connect-Timeouts. Ohne die Sperre liest der Aufrufer dann eine Liste,
+		 * Connect-Timeouts -, ein bestaetigter Receiver dazu bis zu
+		 * MAX_DESCRIPTION_URLS Abrufe seiner Beschreibung. Ohne die Sperre liest der Aufrufer dann eine Liste,
 		 * in die nebenher geschrieben wird, und {@code addAll()} wirft eine
 		 * ConcurrentModificationException oder sieht einen halben Stand.
 		 */
@@ -133,6 +245,8 @@ public final class AVRScanner {
 				.synchronizedList(new LinkedList<ScanResult>());
 		private final List<InetAddress> addresses;
 		private final FoundBy foundBy;
+		private final Map<InetAddress, List<String>> locations;
+		private final String[] modelNames;
 
 	}
 
@@ -192,8 +306,11 @@ public final class AVRScanner {
 					// nur Netze ab /24. Die Antworten kommen von allem, was
 					// UPnP spricht, und laufen deshalb durch denselben Filter
 					// wie der Sweep.
+					final Map<InetAddress, List<String>> answered = SSDPDiscovery
+							.search();
 					final List<ScanResult> viaSSDP = testAll(
-							SSDPDiscovery.search(), FoundBy.SSDP);
+							new ArrayList<InetAddress>(answered.keySet()),
+							FoundBy.SSDP, answered);
 					if (!viaSSDP.isEmpty()) {
 						return viaSSDP;
 					}
@@ -265,15 +382,18 @@ public final class AVRScanner {
 	 * UPnP-Geraete auf mehr, als der Sweep insgesamt braucht.
 	 */
 	private List<ScanResult> testAll(List<InetAddress> addresses,
-			FoundBy foundBy) throws InterruptedException {
+			FoundBy foundBy, Map<InetAddress, List<String>> locations)
+			throws InterruptedException {
 		if (addresses.isEmpty()) {
 			return Collections.emptyList();
 		}
 		final int[][] ranges = splitRange(0, addresses.size(), SCAN_THREADS);
 		final ScanThread[] threads = new ScanThread[ranges.length];
+		final String[] modelNames = ctx.getResources().getStringArray(
+				R.array.modelNames);
 		for (int i = 0; i < ranges.length; i++) {
 			threads[i] = new ScanThread(addresses.subList(ranges[i][0],
-					ranges[i][1]), foundBy);
+					ranges[i][1]), foundBy, locations, modelNames);
 			threads[i].start();
 		}
 		// Erst auf alle warten, dann einsammeln. Zusammen in einer Schleife
@@ -311,7 +431,8 @@ public final class AVRScanner {
 			// Literal, also kein DNS - das hier kostet nichts.
 			addresses.add(Inet4Address.getByName(prefix + i));
 		}
-		return testAll(addresses, FoundBy.SWEEP);
+		return testAll(addresses, FoundBy.SWEEP,
+				Collections.<InetAddress, List<String>> emptyMap());
 	}
 
 	/**
@@ -354,6 +475,17 @@ public final class AVRScanner {
 
 	public static void scanIP(final Activity ctx, final AVRApplication app,
 			final Runnable runFinished, final int nr) {
+		scanIP(ctx, app, runFinished, nr, null);
+	}
+
+	/**
+	 * Wie oben; {@code listener} (darf null sein) kommt nach
+	 * {@code runFinished} dran, damit der Assistent seinen naechsten Dialog
+	 * aufmachen kann, wenn der Suchlauf sich schon abgemeldet hat.
+	 */
+	public static void scanIP(final Activity ctx, final AVRApplication app,
+			final Runnable runFinished, final int nr,
+			final ISelectionListener listener) {
 		try {
 			// Der Scan ist ueber das Menue und den Einrichtungs-Assistenten
 			// erreichbar, ohne dass AVRRemote.onCreate gelaufen waere.
@@ -398,18 +530,27 @@ public final class AVRScanner {
 										public void onClick(
 												DialogInterface dialog,
 												int which) {
+											ScanResult selected = null;
 											try {
 												if (which >= 0) {
-													String ip = result
-															.get(which).ip;
+													selected = result
+															.get(which);
 													Logger.info("selected ["
-															+ ip + "]");
+															+ selected.ip
+															+ "] suggested ["
+															+ selected
+																	.getSuggestedModel()
+															+ "]");
 													AVRSettings.setAVRIP(ctx,
-															ip, nr);
+															selected.ip, nr);
 													app.reconfigure();
 												}
 											} finally {
 												runFinished.run();
+											}
+											if (selected != null) {
+												reportSelection(listener,
+														selected);
 											}
 										}
 									}).show();
@@ -453,10 +594,18 @@ public final class AVRScanner {
 		}
 	}
 
+	private static void reportSelection(ISelectionListener listener,
+			ScanResult result) {
+		if (listener != null) {
+			listener.selected(result);
+		}
+	}
+
 	private final Activity ctx;
 
 	private final AVRApplication app;
 	private static final int JOIN_TIMEOUT = 10000;
+	private static final int MAX_DESCRIPTION_URLS = 3;
 	private static final int SCAN_THREADS = 16;
 
 }
