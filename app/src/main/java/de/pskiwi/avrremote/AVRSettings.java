@@ -114,19 +114,26 @@ public final class AVRSettings extends PreferenceActivity implements
 	 * Fragt POST_NOTIFICATIONS an, wenn die Benachrichtigung aktiviert ist und
 	 * die Permission noch fehlt. Ohne sie verwirft Android ab targetSdk 33 die
 	 * Benachrichtigung kommentarlos.
+	 *
+	 * @return true, wenn angefragt wurde - die Antwort kommt dann asynchron in
+	 *         onRequestPermissionsResult. Ob Android dabei wirklich einen
+	 *         Dialog zeigt, steht hier nicht fest, eine Antwort kommt aber so
+	 *         oder so.
 	 */
-	public static void requestNotificationPermission(Activity activity) {
+	public static boolean requestNotificationPermission(Activity activity) {
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-			return;
+			return false;
 		}
 		if (!isShowNotification(activity)) {
-			return;
+			return false;
 		}
 		if (activity.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
 			activity.requestPermissions(
 					new String[] { android.Manifest.permission.POST_NOTIFICATIONS },
 					REQUEST_POST_NOTIFICATIONS);
+			return true;
 		}
+		return false;
 	}
 
 	/**

@@ -112,7 +112,8 @@ public final class ActiveHandler {
 	 * bei schneller Rueckkehr - fuer einen WLAN-Wechsel, -Verlust oder ein
 	 * zurueckgekehrtes WLAN im Hintergrund und einen dort beendeten Reset: ihr
 	 * Socket haengt dann evtl. an einem verlorenen Netz, und isRunning() sieht
-	 * das nicht.
+	 * das nicht. Ebenso nach erteilter ACCESS_LOCAL_NETWORK: der Loop davor
+	 * waehlte ins Leere.
 	 * Main-Thread, wie contextResumed() und contextPaused().
 	 */
 	public void distrustConnection() {

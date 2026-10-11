@@ -279,6 +279,17 @@ plainly there. The connect is attempted regardless — the *"Auf jeden Fall vers
 `Reconnector.run()` covers that — so this is about displayed state and the backoff, not about
 refusing to connect. Still open, see [TODO.md](TODO.md).
 
+Repeated on 2026-10-11 with the same phone and receiver, and **not reproduced**. On USB the phone
+charges and Wi-Fi power save stays off: three rounds of three minutes with the screen off, and every
+ping arrived — 23–126 ms for the first one with the screen still off, 5–98 ms right after waking. On
+battery, one run survived in logcat (the other rolled out of the buffer): locked for a few minutes,
+unlocked, app opened, ping 33 ms and connected 1.2 s after `onResume`. So the August failure is real
+but not the common case, and nothing measured since justifies a longer timeout. Since then
+`testAddress()` logs the duration of every ping (`ping /… 33 ms`, `ping failed /… after 251 ms`),
+so a report from an affected device carries the number. Two things for whoever repeats this: measure
+on battery, and raise the logcat buffer first (`adb logcat -G 16M`), or the interesting run is gone
+by the time the phone is plugged back in.
+
 **The process can also simply be reclaimed**, and then the daemon thread dies with it. That is the
 Service item in [TODO.md](TODO.md). Worth stressing: the field report above was *not* this. The
 process had survived — `openend at` appears only at the app's own restart.
@@ -606,16 +617,19 @@ The binding is also what Android 17 requires. Local Network Protection is mandat
 is not scan-less, it is dead.
 
 The permission is declared in the manifest and requested by
-`AVRSettings.requestLocalNetworkPermission()`, from `AVRRemote.onCreate` (once per process: on a
-fresh start, and on a restore after the process died — a revoke in the settings kills it — but not on
+`AVRSettings.requestLocalNetworkPermission()`, from `AVRRemote.onCreate` and, since recents
+restores whichever of the two was on top, `OnScreenDisplayActivity.onCreate` (once per process, one
+flag shared by both: on a fresh start, and on a restore after the process died — a revoke in the settings kills it — but not on
 a rotation, which could otherwise fire a second request beside an open system dialog; a restore
 while a dialog of its own was open asks again, and Android answers one of the two empty — accepted,
 because treating the old request as still running could leave the process never asking) and again
 from `AVRScanner.scanIP()`, because the scan is reachable
 from the options menu and the setup assistant without `AVRRemote` having started. There is no
 rationale dialog of the app's own — the reasons are in the comment at the request. On a grant the
-connector is told to reconnect, from `AVRRemote` and `OnScreenDisplayActivity` alike, because the
-attempts made without it went nowhere; and if no address is configured yet, the grant came from the
+connection is marked as distrusted (`ActiveHandler.distrustConnection()`), from `AVRRemote` and
+`OnScreenDisplayActivity` alike, because the attempts made without it went nowhere — the result
+always arrives before `onResume`, whose `contextResumed()` then rebuilds it once; reconnecting from
+the result as well started two connectors 5 ms apart; and if no address is configured yet, the grant came from the
 setup's scan, so the assistant reopens its IP dialog.
 
 **LNP blocks silently.** Measured on a Pixel 8 with the restriction forced on: without the

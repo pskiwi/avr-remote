@@ -78,12 +78,6 @@ What is left is the part no build can answer.
       assistant offered the IP dialog — the Wi-Fi the receiver is in had not come back at all, so
       there was no better choice to make. The fallback half is not in any log yet:
       `lost, falling back to another` followed by timeouts would be the case.
-- [ ] **A restore into another activity does not ask for the permission.** `AVRRemote.onCreate`
-      asks once per process, so a revoke — which kills the process — is followed by a new request
-      when `AVRRemote` comes back. If `OnScreenDisplayActivity` was on top instead, the restore from
-      recents asks nothing until the user goes back to `AVRRemote`; until then every socket times
-      out without the assistant to explain it, since that lives in `AVRRemote`. Fixing it means
-      asking from the other activities as well, with the same per-process gate.
 - [ ] **Auto-revoke with a stale asked marker.** The marker is only cleared when
       `requestLocalNetworkPermission()` sees the permission granted. Refused once, granted later in
       the settings while the app keeps running, then left unused until the revoke — every process
@@ -149,21 +143,6 @@ What is left is the part no build can answer.
       routing table. Both answer themselves in the field: every feedback report carries the `IPv4`
       line, every log the startup line `LocalNetwork: interfaces …`. A report showing `eth0:…`
       settles whether such devices are out there at all.
-- [ ] **The changelog hides the permission dialog on the first start with a configuration.**
-      `AVRRemote.onCreate` requests `ACCESS_LOCAL_NETWORK` and a few lines later starts
-      `AboutActivity` for the changelog (`isShowChangeLog`), which lands on top of the system dialog.
-      The dialog only appears after "Schließen" — seen on a Pixel 8 on 2026-10-10. That is exactly
-      the start every user makes after updating from 1.6.1, whose permission is not granted yet. The
-      request is not lost, but the user reads release notes about a permission they have not been
-      asked for yet, and may not expect a dialog after closing them. Showing the changelog only when
-      `requestLocalNetworkPermission()` returned false, or from its result, would order the two.
-- [ ] **A grant starts the connector twice.** `onRequestPermissionsResult` calls
-      `triggerReconnect()`, and the `onResume` that follows the system dialog calls
-      `forceReconnect()` — two `start new connector` lines 5 ms apart in the log (Pixel 8,
-      2026-10-10). The generation counter detaches the first thread, so nothing is published twice,
-      but its connect attempt still goes out, and against a receiver that allows one telnet session
-      that is not free. Whether the first attempt can take the session from the second was not
-      visible in that log — the port was held by the killed process then anyway.
 - [ ] **The AVR-3310 holds its telnet session far longer than assumed.** Measured on 2026-10-10:
       after the process was killed by a permission revoke (the phone's side closed, nothing on port
       23 in `ss -tn`), port 23 answered `ECONNREFUSED` for more than 4.5 minutes; after a Wi-Fi
@@ -233,15 +212,15 @@ What is left is the part no build can answer.
       that. Weigh it against the cost: a permanent notification, a foreground-service type Play has
       to accept, and the receiver's single telnet session blocked for every other app and device
       the whole time. The reconnect it would save took about 1 s in the same measurement.
-- [ ] **`AVRTargetTester.PING_TIMEOUT` is 250 ms, which a phone waking from standby cannot meet.**
-      Wi-Fi power save puts the receiver out of reach for the first moments after the user picks the
-      phone up, so `checkAddress()` reports "not reachable" for a device that is plainly there — the
-      measurement and what it costs the user is in [CONNECTION.md](CONNECTION.md) → *What Doze does*.
-      This may well be part of what users report as "does not reconnect after standby". Worth
-      measuring before changing: the same constant serves the subnet sweep, and raising it there
-      costs scan time, so the two uses probably want separate values. The sweep matters less than it
-      did — it only runs when SSDP found nothing — but the constant is also on the path of every
-      SSDP candidate, since those go through `testAddress()` too. Separately: that ping is the one
+- [ ] **`AVRTargetTester.PING_TIMEOUT` (250 ms) may be too short for a phone waking from standby.**
+      Measured once in August 2026: right after waking, the ping failed entirely, so `checkAddress()`
+      reported "not reachable" for a receiver that was plainly there — see
+      [CONNECTION.md](CONNECTION.md) → *What Doze does*. A repeat on 2026-10-11 did **not** reproduce
+      it (33 ms on battery right after unlocking), so the value stays until a report shows the
+      failure. Every ping now logs its duration; `ping failed /… after 25x ms` lines right after an
+      `activity resumed` in a report from a working setup are the case. If it comes: the scan and
+      the connection path share the constant (SSDP candidates go through `testAddress()` too), so
+      raise it only for `ConnectionConfiguration.checkAddress()`. Separately: that ping is the one
       socket operation that cannot be bound to the Wi-Fi at all, so it may be measuring the wrong
       interface; see [CONNECTION.md](CONNECTION.md).
 

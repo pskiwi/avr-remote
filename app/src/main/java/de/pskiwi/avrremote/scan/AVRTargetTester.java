@@ -39,12 +39,19 @@ public final class AVRTargetTester {
 			// Mobilfunk ueber die falsche Schnittstelle gehen. Er ist nur ein
 			// schneller Negativfilter vor dem TCP-Test auf Port 80; scheitert er
 			// auf dem Geraet systematisch, ersatzlos streichen.
-			final boolean reachable = address
-					.isReachable(cfgTest ? PING_TIMEOUT * 2 : PING_TIMEOUT);
+			// Mit Dauer: ob PING_TIMEOUT nach dem Aufwachen zu knapp ist, laesst
+			// sich nur aus Berichten ablesen - am Ladekabel tritt der
+			// Stromsparmodus nicht auf, siehe CONNECTION.md
+			final int pingTimeout = cfgTest ? PING_TIMEOUT * 2 : PING_TIMEOUT;
+			final long start = System.nanoTime();
+			final boolean reachable = address.isReachable(pingTimeout);
+			final long pingMs = (System.nanoTime() - start) / 1000000;
 			if (!reachable) {
-				Logger.debug("ping failed " + address);
+				Logger.debug("ping failed " + address + " after " + pingMs
+						+ " ms (timeout " + pingTimeout + ")");
 				return false;
 			}
+			Logger.debug("ping " + address + " " + pingMs + " ms");
 			// HTTP
 			if (!testPort(address, 80)) {
 				Logger.debug("port 80 failed " + address);

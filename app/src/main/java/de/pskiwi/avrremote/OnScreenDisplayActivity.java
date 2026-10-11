@@ -120,6 +120,17 @@ public final class OnScreenDisplayActivity extends ListActivity {
 		screen.setActiveZoneState(zoneState);
 		setContentView(screen.getLayoutResource());
 		EdgeToEdge.apply(this);
+		// Ein Entzug in den Einstellungen beendet den Prozess, und liegt diese
+		// Activity oben, stellt der Weg zurueck ueber die zuletzt benutzten
+		// Apps sie wieder her statt AVRRemote - ohne die Frage liefe dann
+		// jeder Socket in den Timeout, und der Assistent, der das erklaert,
+		// lebt in AVRRemote. Dasselbe Merkmal wie dort, damit pro Prozess nur
+		// einmal gefragt wird und keine Drehung eine zweite Anfrage neben den
+		// offenen Dialog stellt. Die Antwort kommt in onRequestPermissionsResult.
+		if (!AVRRemote.permissionsRequestedInProcess) {
+			AVRRemote.permissionsRequestedInProcess = true;
+			AVRSettings.requestLocalNetworkPermission(this);
+		}
 
 		screen.extendView(this, new IStatusComponentHandler() {
 			public void addView(View v, AtomicBoolean enable) {
@@ -299,10 +310,11 @@ public final class OnScreenDisplayActivity extends ListActivity {
 		if (requestCode == AVRSettings.REQUEST_ACCESS_LOCAL_NETWORK) {
 			AVRSettings.localNetworkPermissionResult(this, grantResults);
 			// wie in AVRRemote: der laufende Loop hat ohne die Permission ins
-			// Leere gewaehlt, und sein Backoff steht womoeglich schon auf 16 s
+			// Leere gewaehlt, und sein Backoff steht womoeglich schon auf 16 s.
+			// Den Neuaufbau macht das folgende onResume, hier nur vormerken.
 			if (grantResults.length > 0
 					&& grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-				getApp().getConnector().triggerReconnect();
+				getApp().getActiveHandler().distrustConnection();
 			}
 		}
 	}
