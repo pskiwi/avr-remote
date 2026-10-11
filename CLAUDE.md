@@ -45,10 +45,12 @@ for `android-37` and fails with *"Failed to find target with hash string"*. AGP 
 up to compile SDK 36.1 and warns about 37.2 in every build, which is what
 `android.suppressUnsupportedCompileSdk` in `gradle.properties` silences.
 
-**There is almost no test coverage.** `src/test` holds sixteen JVM test classes on JUnit 4, the only
+**There is almost no test coverage.** `src/test` holds twenty JVM test classes on JUnit 4, the only
 dependency in the project — `http/HTTPSupportTest`, `http/Series08ParserTest`,
 `core/ThreadHandlerTest`, `core/ConnectorTest`, `core/InDataTest`, `core/display/NetDisplayTest`,
-`core/display/TunerDisplayTest`, `models/ModelConfiguratorTest`, `models/ModelSuggestionTest`, `ReceiverStatusTest`,
+`core/display/TunerDisplayTest`, `models/ModelConfiguratorTest`, `models/ModelSuggestionTest`,
+`models/ReleasedModelNamesTest`, `models/GeneratedModelTest`, `models/GeneratedAVR3310Test`,
+`models/GeneratedAVR990Test`, `ReceiverStatusTest`,
 `http/AVRXMLInfoParserTest`, `http/DeviceDescriptionTest`, `scan/ScanRangeTest`,
 `scan/SSDPDiscoveryTest`, `scan/LocalNetworkTest` and `log/LoggerTest` — and there is no `src/androidTest` at all. `./gradlew test` runs a few
 dozen cases and nothing else (twice, in fact: once per build variant), so do not report a change as
@@ -236,8 +238,8 @@ Consequences:
   is what turns that silent drift into a red build, in both directions; it drives the real lookup in
   `ModelConfigurator.createModel(String)`, split out of `update()` because there it sat behind a
   `Context`. Its own `expectedClassName` restates the dash and `(experimental)` stripping on purpose
-  — that second copy is what pins the naming convention. (Note `lists.xml` holds 130 `<item>`s
-  across 14 arrays; only the 60 in `modelNames` are receivers.)
+  — that second copy is what pins the naming convention. (Note `lists.xml` holds 158 `<item>`s
+  across 14 arrays; only the 88 in `modelNames` are receivers, `AVR-Generic` included.)
 - The stored preference is the whole list entry, remark included, and `ModelConfigurator.update()`
   rewrites it to the list's current spelling on every load (`currentListName`, matched like the
   setup suggestion). So dropping `(experimental)` from an entry later needs no migration.

@@ -332,6 +332,14 @@ document lists a feature for. None of it is tested on hardware; the documents ar
       whether `NETWORK` needs a model switch of its own.
 - [ ] **RDS station name** (`TFANNAME?`, 16) is not queried; the tuner display shows the frequency
       only.
+- [ ] **AVR-990: two zones or three?** The hand-written `AVR990` says 2, the protocol document lists
+      Zone 3 commands for it as for the AVR-3310, so the generated `AVR990G` says 3. Whoever picks
+      "AVR-990-G" gets a Zone 3 tab, and volume and mute go there too. `GeneratedAVR990Test` holds
+      the difference; a report from an AVR-990 settles which side to change.
+- [ ] **DRA-800H: bass and treble without tone control.** Its document lists `PSBAS`/`PSTRE` but
+      no `PSTONE CTRL`, so `DRA800H` offers the two levels without the `ToneControl` option. On
+      the receivers that have it, bass and treble only act while tone control is on; whether the
+      DRA-800H needs it at all is unknown. Check on a device before adding or removing anything.
 
 ## Large, no deadline
 

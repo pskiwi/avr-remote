@@ -36,7 +36,10 @@ import org.junit.Test;
  */
 public final class ReleasedModelNamesTest {
 
-	/** @array/modelNames, unverändert von v1.7.0 bis v1.8.0. */
+	/**
+	 * @array/modelNames ohne AVR-Generic, unverändert seit v1.7.0 - der
+	 * Stand vor den generierten Modellen.
+	 */
 	private static final String[] RELEASED = { "AV-7005", "AV-7701",
 			"AV-8801", "AVC-A1HDA", "AVP-A1HDCI", "AVR-100", "AVR-990",
 			"AVR-991", "AVR-1613", "AVR-1713", "AVR-1912", "AVR-1913",
@@ -57,6 +60,27 @@ public final class ReleasedModelNamesTest {
 		for (String name : RELEASED) {
 			assertNotEquals("\"" + name + "\" fällt auf AVRGeneric zurück",
 					AVRGeneric.class, ModelConfigurator.createModel(name)
+							.getClass());
+		}
+	}
+
+	/**
+	 * Vor der Modellsuche wird der gespeicherte Name an die heutige Liste
+	 * angeglichen ({@link ModelConfigurator#currentListName}), und dieser
+	 * Abgleich ist großzügiger als die Suche selbst: er übersieht auch
+	 * Leerzeichen und Groß/Klein. Ein künftiger Eintrag, der wie ein alter
+	 * Name aussieht, aber auf eine andere Klasse zeigt, würde Nutzer still
+	 * umstellen - der Test oben sähe es nicht.
+	 */
+	@Test
+	public void aligningAReleasedNameKeepsItsModel() throws Exception {
+		final String[] list = ModelConfiguratorTest.readModelNames().toArray(
+				new String[0]);
+		for (String name : RELEASED) {
+			assertEquals("\"" + name + "\" landet nach dem Angleichen woanders",
+					ModelConfigurator.createModel(name).getClass(),
+					ModelConfigurator.createModel(
+							ModelConfigurator.currentListName(name, list))
 							.getClass());
 		}
 	}
