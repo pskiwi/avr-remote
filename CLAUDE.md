@@ -221,6 +221,15 @@ default — the setup's UPnP suggestion matches it, not the variant (`ModelSugge
 confirmed on the receiver. Which document field answers which `IAVRModel` method is in
 `APP_MAPPING.md` there.
 
+**When a run adds or changes generated classes** (a new protocol document, a changed rule — the
+full procedure is "Adding a document" in avr-remote-specs' CLAUDE.md), the same commit also
+updates what this repository counts by hand: the expected number in
+`GeneratedModelTest.everyGeneratedModelHasInputsInEveryArea`, the generated-model list and the
+Denon count in README, and the class, `modelNames` and `<item>` counts below. New names go into
+`ReleasedModelNamesTest` only with the release that ships them (RELEASE.md step 3). A class the
+run reports as "edited by hand, left alone" has to have the new generation merged in by hand, or
+it keeps the old one.
+
 `ModelConfigurator.update()` resolves the model **by reflection** from the user's preference string:
 
 ```
