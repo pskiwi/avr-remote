@@ -46,7 +46,7 @@ public final class GeneratedModelTest {
 	@Test
 	public void everyGeneratedModelHasInputsInEveryArea() throws Exception {
 		final List<IAVRModel> models = generatedModels();
-		assertEquals(32, models.size());
+		assertEquals(39, models.size());
 		for (IAVRModel model : models) {
 			for (ModelArea area : ModelArea.values()) {
 				assertFalse(model.getName() + " hat keine Eingänge in " + area,

@@ -42,24 +42,30 @@
 		<item>AVR-A110 (experimental)</item>
 		<item>AVR-E300</item>
 		<item>AVR-E400</item>
+		<item>AVR-S640H (experimental)</item>
 		<item>AVR-S650H (experimental)</item>
+		<item>AVR-S740H (experimental)</item>
 		<item>AVR-S750H (experimental)</item>
+		<item>AVR-S940H (experimental)</item>
 		<item>AVR-S950H (experimental)</item>
 		<item>AVR-S960H (experimental)</item>
 		<item>AVR-S970H (experimental)</item>
 		<item>AVR-X1000</item>
 		<item>AVR-X1100W (experimental)</item>
 		<item>AVR-X1200W (experimental)</item>
+		<item>AVR-X1500H (experimental)</item>
 		<item>AVR-X1600H (experimental)</item>
 		<item>AVR-X2000</item>
 		<item>AVR-X2100W (experimental)</item>
 		<item>AVR-X2200W (experimental)</item>
+		<item>AVR-X2500H (experimental)</item>
 		<item>AVR-X2600H (experimental)</item>
 		<item>AVR-X2700H (experimental)</item>
 		<item>AVR-X2800H (experimental)</item>
 		<item>AVR-X3000</item>
 		<item>AVR-X3100W (experimental)</item>
 		<item>AVR-X3200W (experimental)</item>
+		<item>AVR-X3500H (experimental)</item>
 		<item>AVR-X3600H (experimental)</item>
 		<item>AVR-X3700H (experimental)</item>
 		<item>AVR-X3800H (experimental)</item>
@@ -70,6 +76,7 @@
 		<item>AVR-X4800H (experimental)</item>
 		<item>AVR-X5200W (experimental)</item>
 		<item>AVR-X6700H (experimental)</item>
+		<item>AVR-X7200W (experimental)</item>
 		<item>DN-500AV</item>
 		<item>DRA-800H (experimental)</item>
 		<item>NR-1504</item>
