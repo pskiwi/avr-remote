@@ -655,11 +655,11 @@ public final class ZoneState {
 				"Surround back", 38, 62, dB, 50), SBR(LevelGroup.Channel,
 				ChannelVolume.class, "SBR", "Surround back right", 38, 62, dB,
 				50), FHL(LevelGroup.Channel, ChannelVolume.class, "FHL",
-				"Front height left", 0, 99, dB, 50), FHR(LevelGroup.Channel,
-				ChannelVolume.class, "FHR", "Front height right", 0, 99, dB, 50), FWL(
+				"Front height left", 38, 62, dB, 50), FHR(LevelGroup.Channel,
+				ChannelVolume.class, "FHR", "Front height right", 38, 62, dB, 50), FWL(
 				LevelGroup.Channel, ChannelVolume.class, "FWL",
-				"Front wide left", 0, 99, dB, 50), FWR(LevelGroup.Channel,
-				ChannelVolume.class, "FWR", "Front wide right", 0, 99, dB, 50);
+				"Front wide left", 38, 62, dB, 50), FWR(LevelGroup.Channel,
+				ChannelVolume.class, "FWR", "Front wide right", 38, 62, dB, 50);
 
 		private LevelType(LevelGroup group,
 				Class<? extends AbstractLevel> levelClass, String key,
@@ -680,6 +680,11 @@ public final class ZoneState {
 
 		public int getMin() {
 			return min;
+		}
+
+		/** The value limited to this level's range, the only values ever sent. */
+		public int clamp(int value) {
+			return Math.max(min, Math.min(max, value));
 		}
 
 		public String getText() {
@@ -833,7 +838,15 @@ public final class ZoneState {
 			values.clear();
 		}
 
-		public boolean setLevel(LevelType ct, int value) {
+		public boolean setLevel(LevelType ct, int requested) {
+			// A linked channel follows its partner by a difference, and a stored
+			// value comes back from the receiver: neither is bounded by the
+			// slider, so the range is enforced here, before anything is sent.
+			final int value = ct.clamp(requested);
+			if (value != requested) {
+				Logger.info("setLevel [" + ct + "] " + requested
+						+ " out of range, limited to " + value);
+			}
 			Logger.info("setLevel [" + getValue(ct) + "/" + value + "]");
 			if (getValue(ct) != value) {
 				sender.send(getCommandPrefix()
