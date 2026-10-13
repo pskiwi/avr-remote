@@ -24,6 +24,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import de.pskiwi.avrremote.EnableManager;
 import de.pskiwi.avrremote.EnableManager.StatusFlag;
@@ -655,11 +657,11 @@ public final class ZoneState {
 				"Surround back", 38, 62, dB, 50), SBR(LevelGroup.Channel,
 				ChannelVolume.class, "SBR", "Surround back right", 38, 62, dB,
 				50), FHL(LevelGroup.Channel, ChannelVolume.class, "FHL",
-				"Front height left", 0, 99, dB, 50), FHR(LevelGroup.Channel,
-				ChannelVolume.class, "FHR", "Front height right", 0, 99, dB, 50), FWL(
+				"Front height left", 38, 62, dB, 50), FHR(LevelGroup.Channel,
+				ChannelVolume.class, "FHR", "Front height right", 38, 62, dB, 50), FWL(
 				LevelGroup.Channel, ChannelVolume.class, "FWL",
-				"Front wide left", 0, 99, dB, 50), FWR(LevelGroup.Channel,
-				ChannelVolume.class, "FWR", "Front wide right", 0, 99, dB, 50);
+				"Front wide left", 38, 62, dB, 50), FWR(LevelGroup.Channel,
+				ChannelVolume.class, "FWR", "Front wide right", 38, 62, dB, 50);
 
 		private LevelType(LevelGroup group,
 				Class<? extends AbstractLevel> levelClass, String key,
@@ -680,6 +682,76 @@ public final class ZoneState {
 
 		public int getMin() {
 			return min;
+		}
+
+		/** The value limited to this level's range, the only values ever sent. */
+		public int clamp(int value) {
+			// "CVSW 00" switches the subwoofer off ("00,38 to 62 ... 00=OFF" in
+			// every Denon chart); it is a value, not one below the range.
+			if (this == SW && value == 0) {
+				return 0;
+			}
+			return Math.max(min, Math.min(max, value));
+		}
+
+		/**
+		 * The command that sets this level: the prefix, the key where the
+		 * prefix does not name the level already ("CV" + "FHL"), and the value
+		 * limited to the range, padded to the width of the maximum.
+		 */
+		public String command(String prefix, boolean keyed, int requested) {
+			return prefix + (keyed ? key : "") + " " + digits(clamp(requested));
+		}
+
+		private String digits(int value) {
+			// Mit Nullen auffüllen, sonst nicht akzeptiert
+			String ret = "" + value;
+			if (max > 9 && ret.length() == 1) {
+				ret = "0" + ret;
+			}
+			if (max > 99 && ret.length() == 2) {
+				ret = "0" + ret;
+			}
+			return ret;
+		}
+
+		private static final Pattern CHANNEL_COMMAND = Pattern
+				.compile("CV([A-Z0-9]+) (\\d{1,3})");
+
+		/**
+		 * A recorded channel level command, limited to its range. Macros replay
+		 * what was sent, and one recorded while a range was wider still holds
+		 * the old value ("CVFHL 99"). Only channel levels are touched -- they are
+		 * what can overload a loudspeaker; tone, effect and delay commands, like
+		 * everything else, come back as recorded.
+		 */
+		public static String limit(String command) {
+			final Matcher m = CHANNEL_COMMAND.matcher(command);
+			if (!m.matches()) {
+				return command;
+			}
+			final LevelType type;
+			try {
+				type = LevelType.valueOf(m.group(1));
+			} catch (IllegalArgumentException x) {
+				return command;
+			}
+			if (type.group != LevelGroup.Channel) {
+				return command;
+			}
+			final String digits = m.group(2);
+			// A three-digit value of a two-digit level is a half step (545 is
+			// 54.5): above the maximum unless it is the maximum itself, .0.
+			final boolean half = type.max < 100 && digits.length() == 3;
+			final int whole = Integer.parseInt(half ? digits.substring(0, 2)
+					: digits);
+			final boolean over = whole > type.max
+					|| (half && whole == type.max && digits.charAt(2) != '0');
+			if (!over && type.clamp(whole) == whole) {
+				return command;
+			}
+			return "CV" + type.key + " "
+					+ type.digits(over ? type.max : type.clamp(whole));
 		}
 
 		public String getText() {
@@ -833,27 +905,22 @@ public final class ZoneState {
 			values.clear();
 		}
 
-		public boolean setLevel(LevelType ct, int value) {
+		public boolean setLevel(LevelType ct, int requested) {
+			// The slider is bounded, but a level preset is restored from the
+			// settings as it was saved -- under a wider range, possibly -- so the
+			// range is enforced here, before anything is sent.
+			final int value = ct.clamp(requested);
+			if (value != requested) {
+				Logger.info("setLevel [" + ct + "] " + requested
+						+ " out of range, limited to " + value);
+			}
 			Logger.info("setLevel [" + getValue(ct) + "/" + value + "]");
 			if (getValue(ct) != value) {
-				sender.send(getCommandPrefix()
-						+ (singleType != null ? "" : ct.getKey()) + " "
-						+ fillZeros(value, ct.getMax()));
+				sender.send(ct.command(getCommandPrefix(), singleType == null,
+						value));
 				return true;
 			}
 			return false;
-		}
-
-		private String fillZeros(int value, int max) {
-			// Mit Nullen auffüllen, sonst nicht akzeptiert
-			String ret = "" + value;
-			if (max > 9 && ret.length() == 1) {
-				ret = "0" + ret;
-			}
-			if (max > 99 && ret.length() == 2) {
-				ret = "0" + ret;
-			}
-			return ret;
 		}
 
 		public void update(LevelType ct) {
