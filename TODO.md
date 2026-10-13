@@ -107,6 +107,15 @@ What is left is the part no build can answer.
       a heuristic whose confirmation is still outstanding with the reporter of the AVR-1912. On the
       AVR-3310 `presentationURL` is exactly that bare base URL, which corroborates the fallback for
       this model. Fetching it would replace the probe entirely.
+- [ ] **Point a user once to a better-fitting model.** Until the generated models arrived, an owner
+      of, say, an AVR-X2700H could only pick a neighbour (`AVR-X2000`) or `AVR-Generic`, and that
+      choice is still stored. When the receiver's UPnP description (the `ModelSuggestion` match
+      above, or the hourly fetch in `StatusAreaManager`) names a list entry other than the selected
+      one, say so once and offer to switch — with the `(experimental)` remark visible, since the
+      generated classes are unconfirmed. Remember a dismissal per pair (selected, suggested), so
+      the hint neither nags nor stays silent after a later update adds yet another match. Depends
+      on the matcher above being right for the newer generations; until it is, the hint simply
+      never fires for them.
 - [ ] The `NOTIFY` branch is untested against a real device in another sense too: `SSDPDiscovery`
       only ever looks at replies to its own `M-SEARCH`. If a receiver turns out to answer nothing
       (no `MulticastLock` — see [CONNECTION.md](CONNECTION.md)), the sweep fallback hides it, and
@@ -350,6 +359,15 @@ counted). None of it is tested on hardware; the documents are all there is.
       `startActivityForResult` → Activity Result API, 12× `new Handler()` → `Handler(Looper)`.
       All deprecated, all still compiles. Worth doing only when the look is to change — at which
       point it is unavoidable, because the pre-Holo platform themes do not allow modern styling.
+- [ ] **A model list one can find a receiver in.** `@array/modelNames` is one flat
+      `ListPreference` (`res/xml/settings.xml:17`) of 99 entries — Denon, Marantz and the network
+      players interleaved, hand-written and generated mixed, `(experimental)` as plain text. Ideas:
+      grouped by brand (and perhaps by generation), a search field, the model the scan suggests
+      on top, `(experimental)` as a marker rather than part of the name. The stored value must stay
+      the list string it is today: `ModelConfigurator.update()` rewrites it to the current
+      spelling and `ReleasedModelNamesTest` holds every released name, so only the presentation
+      changes. Possible as a custom dialog now; easier once preferences move to
+      `androidx.preference` (item above).
 - [ ] **What is actually deprecated, by age.** Measured rather than guessed, in August 2026:
       `./gradlew compileDebugJavaWithJavac --rerun-tasks` with `-Xlint:deprecation` **and
       `-Xmaxwarns 5000`** — javac stops at 100 by default, which silently hides the tail (that is
