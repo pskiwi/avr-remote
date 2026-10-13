@@ -362,8 +362,10 @@ counted). None of it is tested on hardware; the documents are all there is.
 - [ ] **A model list one can find a receiver in.** `@array/modelNames` is one flat
       `ListPreference` (`res/xml/settings.xml:17`) of 99 entries — Denon, Marantz and the network
       players interleaved, hand-written and generated mixed, `(experimental)` as plain text. Ideas:
-      grouped by brand (and perhaps by generation), a search field, the model the scan suggests
-      on top, `(experimental)` as a marker rather than part of the name. The stored value must stay
+      grouped by brand (and perhaps by generation); a filter field that narrows the list with
+      every keystroke to the matching models only (ignoring dashes and case, as the suggestion
+      match does, so "x27" finds the AVR-X2700H); the model the scan suggests on top;
+      `(experimental)` as a marker rather than part of the name. The stored value must stay
       the list string it is today: `ModelConfigurator.update()` rewrites it to the current
       spelling and `ReleasedModelNamesTest` holds every released name, so only the presentation
       changes. Possible as a custom dialog now; easier once preferences move to
