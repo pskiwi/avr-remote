@@ -51,11 +51,42 @@ public class LevelTypeTest {
 
 	@Test
 	public void clampLimitsValuesOutsideTheRange() {
-		// Ein gekoppelter Kanal folgt seinem Partner um eine Differenz und
-		// kann so über den Rand laufen; gesendet wird höchstens der Rand.
+		// Ein Pegel-Preset wird so zurückgespielt, wie es gespeichert wurde -
+		// womöglich unter dem alten Bereich; gesendet wird höchstens der Rand.
 		assertEquals(62, LevelType.FHL.clamp(99));
 		assertEquals(38, LevelType.FWR.clamp(0));
 		assertEquals(56, LevelType.BAS.clamp(60));
 		assertEquals(200, LevelType.DEL.clamp(250));
+	}
+
+	@Test
+	public void theCommandSetLevelSendsIsLimitedAndPadded() {
+		// Genau dieser String geht in AbstractLevel.setLevel an den Receiver.
+		assertEquals("CVFHL 62", LevelType.FHL.command("CV", true, 99));
+		assertEquals("CVFHL 50", LevelType.FHL.command("CV", true, 50));
+		assertEquals("PSBAS 44", LevelType.BAS.command("PSBAS", false, 10));
+		assertEquals("PSLFE 05", LevelType.LFE.command("PSLFE", false, 5));
+		assertEquals("PSDELAY 007", LevelType.DEL.command("PSDELAY", false, 7));
+	}
+
+	@Test
+	public void aMacroRecordedUnderTheOldRangeIsLimited() {
+		// Ein Makro spielt die aufgezeichneten Befehle wörtlich ab.
+		assertEquals("CVFHL 62", LevelType.limit("CVFHL 99"));
+		assertEquals("CVFWR 38", LevelType.limit("CVFWR 00"));
+		assertEquals("PSDELAY 200", LevelType.limit("PSDELAY 250"));
+		assertEquals("PSBAS 60", LevelType.limit("PSBAS 70"));
+	}
+
+	@Test
+	public void aMacroInsideTheRangeIsSentAsRecorded() {
+		assertEquals("CVFHL 54", LevelType.limit("CVFHL 54"));
+		assertEquals("CVFHL 545", LevelType.limit("CVFHL 545"));
+		assertEquals("PSBAS 58", LevelType.limit("PSBAS 58"));
+		assertEquals("MVUP", LevelType.limit("MVUP"));
+		assertEquals("SIDVD", LevelType.limit("SIDVD"));
+		assertEquals("CVZRL", LevelType.limit("CVZRL"));
+		assertEquals("PSREFLEV 5", LevelType.limit("PSREFLEV 5"));
+		assertEquals("Z2CVFL 99", LevelType.limit("Z2CVFL 99"));
 	}
 }

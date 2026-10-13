@@ -37,7 +37,13 @@ public final class Macro {
 		}
 
 		public void run(ResilentConnector connector) {
-			connector.send(cmd);
+			// Recorded before a level range was narrowed, a macro would still
+			// send the old value; it gets the same limit as the level dialog.
+			final String limited = ZoneState.LevelType.limit(cmd);
+			if (!limited.equals(cmd)) {
+				Logger.info("macro [" + cmd + "] limited to [" + limited + "]");
+			}
+			connector.send(limited);
 		}
 
 		public void save(PrintWriter out) {

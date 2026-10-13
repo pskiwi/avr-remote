@@ -24,6 +24,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import de.pskiwi.avrremote.EnableManager;
 import de.pskiwi.avrremote.EnableManager.StatusFlag;
@@ -687,6 +689,84 @@ public final class ZoneState {
 			return Math.max(min, Math.min(max, value));
 		}
 
+		/**
+		 * The command that sets this level: the prefix, the key where the
+		 * prefix does not name the level already ("CV" + "FHL"), and the value
+		 * limited to the range, padded to the width of the maximum.
+		 */
+		public String command(String prefix, boolean keyed, int requested) {
+			return prefix + (keyed ? key : "") + " " + digits(clamp(requested));
+		}
+
+		private String digits(int value) {
+			// Mit Nullen auffüllen, sonst nicht akzeptiert
+			String ret = "" + value;
+			if (max > 9 && ret.length() == 1) {
+				ret = "0" + ret;
+			}
+			if (max > 99 && ret.length() == 2) {
+				ret = "0" + ret;
+			}
+			return ret;
+		}
+
+		private static final Pattern LEVEL_COMMAND = Pattern
+				.compile("(CV|PS)([A-Z0-9]+) (\\d+)");
+
+		/**
+		 * A recorded command, with a level value limited to its range. Macros
+		 * replay what was sent, and one recorded while a range was wider still
+		 * holds the old value ("CVFHL 99"). Anything that is not a level
+		 * command comes back unchanged. Bass and treble are limited to their
+		 * extended range, the wider of the two a model may have.
+		 */
+		public static String limit(String command) {
+			final Matcher m = LEVEL_COMMAND.matcher(command);
+			if (!m.matches()) {
+				return command;
+			}
+			final LevelType type = recorded(m.group(1), m.group(2));
+			if (type == null) {
+				return command;
+			}
+			final String digits = m.group(3);
+			// A three-digit value of a two-digit level is a half step (545).
+			final boolean half = type.max < 100 && digits.length() == 3;
+			final int value = Integer.parseInt(half ? digits.substring(0, 2)
+					: digits);
+			if (type.clamp(value) == value) {
+				return command;
+			}
+			// Rebuilt from the recorded name: "PSDELAY" stays "PSDELAY".
+			return m.group(1) + m.group(2) + " " + type.digits(type.clamp(value));
+		}
+
+		private static LevelType recorded(String prefix, String name) {
+			if (prefix.equals("CV")) {
+				try {
+					final LevelType type = LevelType.valueOf(name);
+					return type.group == LevelGroup.Channel ? type : null;
+				} catch (IllegalArgumentException x) {
+					return null;
+				}
+			}
+			if (name.equals("BAS")) {
+				return BAS_EXT;
+			}
+			if (name.equals("TRE")) {
+				return TRE_EXT;
+			}
+			if (name.equals("DEL") || name.equals("DELAY")) {
+				return DEL;
+			}
+			for (LevelType type : new LevelType[] { LFE, EFF, BAL }) {
+				if (name.equals(type.key)) {
+					return type;
+				}
+			}
+			return null;
+		}
+
 		public String getText() {
 			return text;
 		}
@@ -839,9 +919,9 @@ public final class ZoneState {
 		}
 
 		public boolean setLevel(LevelType ct, int requested) {
-			// A linked channel follows its partner by a difference, and a stored
-			// value comes back from the receiver: neither is bounded by the
-			// slider, so the range is enforced here, before anything is sent.
+			// The slider is bounded, but a level preset is restored from the
+			// settings as it was saved -- under a wider range, possibly -- so the
+			// range is enforced here, before anything is sent.
 			final int value = ct.clamp(requested);
 			if (value != requested) {
 				Logger.info("setLevel [" + ct + "] " + requested
@@ -849,24 +929,11 @@ public final class ZoneState {
 			}
 			Logger.info("setLevel [" + getValue(ct) + "/" + value + "]");
 			if (getValue(ct) != value) {
-				sender.send(getCommandPrefix()
-						+ (singleType != null ? "" : ct.getKey()) + " "
-						+ fillZeros(value, ct.getMax()));
+				sender.send(ct.command(getCommandPrefix(), singleType == null,
+						value));
 				return true;
 			}
 			return false;
-		}
-
-		private String fillZeros(int value, int max) {
-			// Mit Nullen auffüllen, sonst nicht akzeptiert
-			String ret = "" + value;
-			if (max > 9 && ret.length() == 1) {
-				ret = "0" + ret;
-			}
-			if (max > 99 && ret.length() == 2) {
-				ret = "0" + ret;
-			}
-			return ret;
 		}
 
 		public void update(LevelType ct) {
