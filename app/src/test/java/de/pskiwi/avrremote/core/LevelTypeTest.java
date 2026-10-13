@@ -70,23 +70,45 @@ public class LevelTypeTest {
 	}
 
 	@Test
+	public void subwooferOffIsAValueNotBelowTheRange() {
+		// "00,38 to 62 by ASCII , 50=0dB,00=OFF" - Abbrechen im Pegeldialog
+		// spielt den gemeldeten Wert zurück, "aus" muss "aus" bleiben.
+		assertEquals(0, LevelType.SW.clamp(0));
+		assertEquals("CVSW 00", LevelType.SW.command("CV", true, 0));
+		assertEquals(38, LevelType.SW.clamp(10));
+		assertEquals(38, LevelType.FHL.clamp(0));
+	}
+
+	@Test
 	public void aMacroRecordedUnderTheOldRangeIsLimited() {
 		// Ein Makro spielt die aufgezeichneten Befehle wörtlich ab.
 		assertEquals("CVFHL 62", LevelType.limit("CVFHL 99"));
 		assertEquals("CVFWR 38", LevelType.limit("CVFWR 00"));
-		assertEquals("PSDELAY 200", LevelType.limit("PSDELAY 250"));
-		assertEquals("PSBAS 60", LevelType.limit("PSBAS 70"));
+		assertEquals("CVFHL 62", LevelType.limit("CVFHL 625"));
+		assertEquals("CVFHL 62", LevelType.limit("CVFHL 995"));
 	}
 
 	@Test
 	public void aMacroInsideTheRangeIsSentAsRecorded() {
 		assertEquals("CVFHL 54", LevelType.limit("CVFHL 54"));
 		assertEquals("CVFHL 545", LevelType.limit("CVFHL 545"));
-		assertEquals("PSBAS 58", LevelType.limit("PSBAS 58"));
+		assertEquals("CVFHL 620", LevelType.limit("CVFHL 620"));
+		assertEquals("CVSW 00", LevelType.limit("CVSW 00"));
 		assertEquals("MVUP", LevelType.limit("MVUP"));
 		assertEquals("SIDVD", LevelType.limit("SIDVD"));
 		assertEquals("CVZRL", LevelType.limit("CVZRL"));
-		assertEquals("PSREFLEV 5", LevelType.limit("PSREFLEV 5"));
+		assertEquals("CVSW2 50", LevelType.limit("CVSW2 50"));
 		assertEquals("Z2CVFL 99", LevelType.limit("Z2CVFL 99"));
+	}
+
+	@Test
+	public void onlyChannelLevelsAreTouched() {
+		// Ton, Effekt und Delay können keinen Lautsprecher überlasten; PSDEL
+		// (0-300) und PSDELAY (0-200) sind zudem verschiedene Befehle.
+		assertEquals("PSBAS 70", LevelType.limit("PSBAS 70"));
+		assertEquals("PSDEL 250", LevelType.limit("PSDEL 250"));
+		assertEquals("PSREFLEV 5", LevelType.limit("PSREFLEV 5"));
+		// Unsinnig lange Werte passen nicht ins Muster und brechen kein Makro ab.
+		assertEquals("CVFHL 99999999999", LevelType.limit("CVFHL 99999999999"));
 	}
 }

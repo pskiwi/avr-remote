@@ -686,6 +686,11 @@ public final class ZoneState {
 
 		/** The value limited to this level's range, the only values ever sent. */
 		public int clamp(int value) {
+			// "CVSW 00" switches the subwoofer off ("00,38 to 62 ... 00=OFF" in
+			// every Denon chart); it is a value, not one below the range.
+			if (this == SW && value == 0) {
+				return 0;
+			}
 			return Math.max(min, Math.min(max, value));
 		}
 
@@ -710,61 +715,43 @@ public final class ZoneState {
 			return ret;
 		}
 
-		private static final Pattern LEVEL_COMMAND = Pattern
-				.compile("(CV|PS)([A-Z0-9]+) (\\d+)");
+		private static final Pattern CHANNEL_COMMAND = Pattern
+				.compile("CV([A-Z0-9]+) (\\d{1,3})");
 
 		/**
-		 * A recorded command, with a level value limited to its range. Macros
-		 * replay what was sent, and one recorded while a range was wider still
-		 * holds the old value ("CVFHL 99"). Anything that is not a level
-		 * command comes back unchanged. Bass and treble are limited to their
-		 * extended range, the wider of the two a model may have.
+		 * A recorded channel level command, limited to its range. Macros replay
+		 * what was sent, and one recorded while a range was wider still holds
+		 * the old value ("CVFHL 99"). Only channel levels are touched -- they are
+		 * what can overload a loudspeaker; tone, effect and delay commands, like
+		 * everything else, come back as recorded.
 		 */
 		public static String limit(String command) {
-			final Matcher m = LEVEL_COMMAND.matcher(command);
+			final Matcher m = CHANNEL_COMMAND.matcher(command);
 			if (!m.matches()) {
 				return command;
 			}
-			final LevelType type = recorded(m.group(1), m.group(2));
-			if (type == null) {
+			final LevelType type;
+			try {
+				type = LevelType.valueOf(m.group(1));
+			} catch (IllegalArgumentException x) {
 				return command;
 			}
-			final String digits = m.group(3);
-			// A three-digit value of a two-digit level is a half step (545).
+			if (type.group != LevelGroup.Channel) {
+				return command;
+			}
+			final String digits = m.group(2);
+			// A three-digit value of a two-digit level is a half step (545 is
+			// 54.5): above the maximum unless it is the maximum itself, .0.
 			final boolean half = type.max < 100 && digits.length() == 3;
-			final int value = Integer.parseInt(half ? digits.substring(0, 2)
+			final int whole = Integer.parseInt(half ? digits.substring(0, 2)
 					: digits);
-			if (type.clamp(value) == value) {
+			final boolean over = whole > type.max
+					|| (half && whole == type.max && digits.charAt(2) != '0');
+			if (!over && type.clamp(whole) == whole) {
 				return command;
 			}
-			// Rebuilt from the recorded name: "PSDELAY" stays "PSDELAY".
-			return m.group(1) + m.group(2) + " " + type.digits(type.clamp(value));
-		}
-
-		private static LevelType recorded(String prefix, String name) {
-			if (prefix.equals("CV")) {
-				try {
-					final LevelType type = LevelType.valueOf(name);
-					return type.group == LevelGroup.Channel ? type : null;
-				} catch (IllegalArgumentException x) {
-					return null;
-				}
-			}
-			if (name.equals("BAS")) {
-				return BAS_EXT;
-			}
-			if (name.equals("TRE")) {
-				return TRE_EXT;
-			}
-			if (name.equals("DEL") || name.equals("DELAY")) {
-				return DEL;
-			}
-			for (LevelType type : new LevelType[] { LFE, EFF, BAL }) {
-				if (name.equals(type.key)) {
-					return type;
-				}
-			}
-			return null;
+			return "CV" + type.key + " "
+					+ type.digits(over ? type.max : type.clamp(whole));
 		}
 
 		public String getText() {
