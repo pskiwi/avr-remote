@@ -34,18 +34,17 @@ public final class GeneratedAVR990Test {
 	private final IAVRModel generated = new AVR990G();
 
 	/**
-	 * Offen: das Dokument nennt Zone-3-Kommandos auch für den 990, die
-	 * handgeschriebene Klasse sagt 2 Zonen. Ohne Gerät ist nicht zu
-	 * entscheiden, wer recht hat - wer "AVR-990-G" wählt, bekommt einen
-	 * Zone-3-Reiter, und Lautstärke und Stummschaltung gehen auch dorthin.
+	 * Das Dokument nimmt den 990 aus allen Zone-3-Kommandos heraus ("Z3
+	 * COMMAND: Invalid at AVR-990"), also zwei Zonen wie in der
+	 * handgeschriebenen Klasse.
 	 */
 	@Test
-	public void zoneCountIsTheOpenDifference() {
+	public void zoneCountAgreesWithTheHandWrittenClass() {
 		assertEquals(2, hand.getZoneCount());
-		assertEquals(3, generated.getZoneCount());
+		assertEquals(2, generated.getZoneCount());
 	}
 
-	/** Darüber hinaus ist der generierte 990 der generierte 3310. */
+	/** Darüber hinaus ist der generierte 990 der generierte 3310, eine Zone weniger. */
 	@Test
 	public void generatedVariantMatchesTheGenerated3310() {
 		final IAVRModel g3310 = new AVR3310G();
@@ -58,7 +57,7 @@ public final class GeneratedAVR990Test {
 			assertArrayEquals(g3310.getVideoSelection(area).getValues(),
 					generated.getVideoSelection(area).getValues());
 		}
-		assertEquals(g3310.getZoneCount(), generated.getZoneCount());
+		assertEquals(g3310.getZoneCount() - 1, generated.getZoneCount());
 		assertEquals(g3310.getSupportedLevels(), generated.getSupportedLevels());
 		assertEquals(g3310.getSupportedOptions(),
 				generated.getSupportedOptions());
