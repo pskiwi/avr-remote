@@ -345,11 +345,23 @@ counted). None of it is tested on hardware; the documents are all there is.
 - [ ] **AVR-990: two zones or three?** The hand-written `AVR990` says 2, the protocol document lists
       Zone 3 commands for it as for the AVR-3310, so the generated `AVR990G` says 3. Whoever picks
       "AVR-990-G" gets a Zone 3 tab, and volume and mute go there too. `GeneratedAVR990Test` holds
-      the difference; a report from an AVR-990 settles which side to change.
+      the difference. The document itself answers it: it marks ten zone 2/3 rows
+      "---AVR990:Disable", which the specs extractor ignores — two zones, the hand-written side is
+      right. The fix belongs in avr-remote-specs (its TODO.md); after it, regenerate `AVR990G` and
+      update `GeneratedAVR990Test`.
 - [ ] **DRA-800H: bass and treble without tone control.** Its document lists `PSBAS`/`PSTRE` but
       no `PSTONE CTRL`, so `DRA800H` offers the two levels without the `ToneControl` option. On
       the receivers that have it, bass and treble only act while tone control is on; whether the
       DRA-800H needs it at all is unknown. Check on a device before adding or removing anything.
+- [ ] **Front height and wide levels stop at +12 dB — confirm on a device.** Since #62 the level
+      dialog, presets and replayed macros limit `CVFHL`/`FHR`/`FWL`/`FWR` to 38–62 like every other
+      channel (they went to 99 before). Unit-tested only; check on a receiver with height or wide
+      speakers that the slider ends at +12 dB and that a subwoofer switched off (`CVSW 00`) stays
+      off after Cancel in the level dialog.
+- [ ] **At the next release: the seven new models.** AVR-X7200W and the 2018 AVR-X3500H, X2500H,
+      X1500H, S940H, S740H, S640H (#61) go into `ReleasedModelNamesTest` with the release that
+      ships them (RELEASE.md step 3), and into the release notes together with the level limit
+      (#62).
 
 ## Large, no deadline
 
