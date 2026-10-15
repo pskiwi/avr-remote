@@ -4,7 +4,6 @@
 		<item>AVR-Generic</item>		
 		<!-- receivers, natural order; generate_java.py sorts its models in -->
 		<item>AV-7005</item>
-		<item>AV7005-G (experimental)</item>
 		<item>AV-7701</item>
 		<item>AV7701-G (experimental)</item>
 		<item>AV7702 (experimental)</item>
@@ -107,7 +106,6 @@
 		<item>SR5009 (experimental)</item>
 		<item>SR5010 (experimental)</item>
 		<item>SR-6005</item>
-		<item>SR6005-G (experimental)</item>
 		<item>SR-6006</item>
 		<item>SR6006-G (experimental)</item>
 		<item>SR-6007</item>
@@ -117,7 +115,6 @@
 		<item>SR6009 (experimental)</item>
 		<item>SR6010 (experimental)</item>
 		<item>SR-7005</item>
-		<item>SR7005-G (experimental)</item>
 		<item>SR-7007</item>
 		<item>SR7007-G (experimental)</item>
 		<item>SR-7008</item>

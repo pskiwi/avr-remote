@@ -361,7 +361,7 @@ counted). None of it is tested on hardware; the documents are all there is.
       X1500H, S940H, S740H, S640H (#61) go into `ReleasedModelNamesTest` with the release that
       ships them (RELEASE.md step 3), and into the release notes together with the level limit
       (#62). The same for the 29 Marantz names: AV7702, AV7702mkII, AV8802, NR1506, NR1605,
-      NR1606, SR5009, SR5010, SR6009, SR6010, SR7009, SR7010 and the seventeen `-G` variants.
+      NR1606, SR5009, SR5010, SR6009, SR6010, SR7009, SR7010 and the fourteen `-G` variants.
 
 ## Large, no deadline
 
@@ -372,7 +372,7 @@ counted). None of it is tested on hardware; the documents are all there is.
       All deprecated, all still compiles. Worth doing only when the look is to change — at which
       point it is unavoidable, because the pre-Holo platform themes do not allow modern styling.
 - [ ] **A model list one can find a receiver in.** `@array/modelNames` is one flat
-      `ListPreference` (`res/xml/settings.xml:17`) of 128 entries — Denon, Marantz and the network
+      `ListPreference` (`res/xml/settings.xml:17`) of 125 entries — Denon, Marantz and the network
       players interleaved, hand-written and generated mixed, `(experimental)` as plain text. Ideas:
       grouped by brand (and perhaps by generation); a filter field that narrows the list with
       every keystroke to the matching models only (ignoring dashes and case, as the suggestion
