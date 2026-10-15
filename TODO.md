@@ -352,16 +352,17 @@ counted). None of it is tested on hardware; the documents are all there is.
       speakers that the slider ends at +12 dB and that a subwoofer switched off (`CVSW 00`) stays
       off after Cancel in the level dialog.
 - [ ] **Smart Select on the Marantz receivers.** Marantz calls quick select Smart Select and its
-      document has only that: `MSSMART1`–`5`, `… MEMORY`, `Z2SMART`/`Z3SMART`, on the 2013–2015
-      models (12 of 29, exactly the twelve new generated ones); the older ones have neither, and
+      document has only that: `MSSMART1`–`5`, `… MEMORY`, `Z2SMART`/`Z3SMART`, on the 2014 and
+      2015 models (12 of 29, exactly the twelve new generated ones); the older ones have neither, and
       `AbstractMarantzAV` already says `hasQuick() == false`. `QuickMenu` always sends
       `<zone>QUICK<n>`, so the generated twelve say `false` too. Needs the quick prefix as a
       model method (`QUICK` / `SMART`), then `hasQuick` for the twelve, checked on a device.
-- [ ] **At the next release: the seven new models.** AVR-X7200W and the 2018 AVR-X3500H, X2500H,
-      X1500H, S940H, S740H, S640H (#61) go into `ReleasedModelNamesTest` with the release that
-      ships them (RELEASE.md step 3), and into the release notes together with the level limit
-      (#62). The same for the 29 Marantz names: AV7702, AV7702mkII, AV8802, NR1506, NR1605,
-      NR1606, SR5009, SR5010, SR6009, SR6010, SR7009, SR7010 and the fourteen `-G` variants.
+- [ ] **At the next release: the generated models into `ReleasedModelNamesTest`.** All 65 entries
+      `@array/modelNames` gained since v1.7.0 go into `RELEASED`, spelled as in the list,
+      `(experimental)` included, with the release that ships them (RELEASE.md step 3): the 37
+      generated Denon receivers (#59, #61) with AVR-3310-G and AVR-990-G, and from #66 the twelve
+      Marantz models AV7702, AV7702mkII, AV8802, NR1506, NR1605, NR1606, SR5009, SR5010, SR6009,
+      SR6010, SR7009, SR7010 with the fourteen Marantz `-G` variants.
 
 ## Large, no deadline
 
