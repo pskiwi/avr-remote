@@ -353,11 +353,10 @@ counted). None of it is tested on hardware; the documents are all there is.
       off after Cancel in the level dialog.
 - [ ] **Smart Select on the Marantz receivers.** Marantz calls quick select Smart Select and its
       document has only that: `MSSMART1`–`5`, `… MEMORY`, `Z2SMART`/`Z3SMART`, on the 2013–2015
-      models (12 of 29); the older ones have neither. `QuickMenu` always sends
-      `<zone>QUICK<n>`, so the generated Marantz classes say `hasQuick() == false` — while the
-      hand-written ones keep the `AbstractModel` default `true` and send a command their
-      document does not list. Needs the quick prefix as a model method (`QUICK` / `SMART`), then
-      `hasQuick` for the twelve and `false` for the older hand-written ones, checked on a device.
+      models (12 of 29, exactly the twelve new generated ones); the older ones have neither, and
+      `AbstractMarantzAV` already says `hasQuick() == false`. `QuickMenu` always sends
+      `<zone>QUICK<n>`, so the generated twelve say `false` too. Needs the quick prefix as a
+      model method (`QUICK` / `SMART`), then `hasQuick` for the twelve, checked on a device.
 - [ ] **At the next release: the seven new models.** AVR-X7200W and the 2018 AVR-X3500H, X2500H,
       X1500H, S940H, S740H, S640H (#61) go into `ReleasedModelNamesTest` with the release that
       ships them (RELEASE.md step 3), and into the release notes together with the level limit
