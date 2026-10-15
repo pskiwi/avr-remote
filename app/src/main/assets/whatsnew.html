@@ -10,28 +10,27 @@
 		</ul>
 		<b>1.8.0</b>
 		<ul>
-			<li><b>Easier setup:</b> the app now searches for your receiver first
-				and then suggests the model the receiver reports about itself. So
-				far this is confirmed on an AVR-3310 only - if the suggestion is
-				missing or wrong for your receiver, please send a report (pskiwi)</li>
-			<li>The search results show the receiver's own name instead of a
-				network host name (pskiwi)</li>
-			<li>If a receiver is configured but no model was ever chosen, the app
-				asks for it once per start (pskiwi)</li>
-			<li>In the background the app no longer keeps retrying the connection:
-				newer Android versions cut an app's network there after a few
-				seconds anyway. It reconnects when you come back (pskiwi)</li>
-			<li>Fixed: after switching between Wi-Fi networks the connection was
-				only re-established after a delay (pskiwi)</li>
-			<li>Fixed: the release notes could cover the question for local network
-				access on the first start after an update (pskiwi)</li>
-			<li>Fixed: after granting local network access the app connected twice,
-				which some receivers answer with a busy control port (pskiwi)</li>
-			<li>The display screen now asks for local network access too, when
-				Android restores it after the access was revoked (pskiwi)</li>
-			<li>Fixed: a progress dialog could stay on screen for good after
-				leaving the app during a receiver search, a reset or a query
+			<li><b>49 new receivers</b>, marked <i>(experimental)</i> until a
+				receiver confirms them: 37 from Denon, mostly 2014 to 2022 (among
+				them the AVR-X...W, AVR-X...H and AVR-S...H series, AVR-X7200W,
+				AVR-A1H, DRA-800H), and 12 from Marantz, 2014 and 2015 (AV7702,
+				AV7702mkII, AV8802, NR1506, NR1605, NR1606, SR5009, SR5010, SR6009,
+				SR6010, SR7009, SR7010). The AVR-3310, AVR-990 and most known
+				Marantz models also get a "-G" variant from the same documents; the
+				familiar entry stays the default. Please report how yours does
 				(pskiwi)</li>
+			<li><b>Easier setup:</b> the app searches for the receiver first and
+				suggests the model it reports - so far confirmed on an AVR-3310 only
+				(pskiwi)</li>
+			<li>Search results show the receiver's own name; a missing model is
+				asked for once per start (pskiwi)</li>
+			<li>No more connection attempts in the background; the app reconnects
+				when you come back (pskiwi)</li>
+			<li>Fixed: front height and wide levels went up to +49 dB, now +12 dB
+				like all channels; slow reconnect after a Wi-Fi switch; connecting
+				twice after granting local network access; the release notes
+				covering the access request; the display screen not asking for it
+				after a revoke; progress dialogs that stayed on screen (pskiwi)</li>
 		</ul>
 		<b>1.7.0</b>
 		<ul>
