@@ -37,8 +37,8 @@ import org.junit.Test;
 public final class ReleasedModelNamesTest {
 
 	/**
-	 * @array/modelNames ohne AVR-Generic, unverändert seit v1.7.0 - der
-	 * Stand vor den generierten Modellen.
+	 * @array/modelNames ohne AVR-Generic: bis "RCD-N7" der Stand von v1.7.0,
+	 * danach die generierten Modelle aus v1.8.0.
 	 */
 	private static final String[] RELEASED = { "AV-7005", "AV-7701",
 			"AV-8801", "AVC-A1HDA", "AVP-A1HDCI", "AVR-100", "AVR-990",
@@ -53,7 +53,39 @@ public final class ReleasedModelNamesTest {
 			"SR-6007", "SR-6008", "SR-7005", "SR-7007", "SR-7008",
 			"ASD-51 (experimental)", "DNP-720AE", "M-CR603 (experimental)",
 			"M-ER803 (experimental)", "NA-7004 (experimental)",
-			"RCD-N7 (experimental)" };
+			"RCD-N7 (experimental)", "AV7701-G (experimental)",
+			"AV7702 (experimental)", "AV7702mkII (experimental)",
+			"AV8801-G (experimental)", "AV8802 (experimental)",
+			"AVC-3310 (experimental)", "AVR-990-G (experimental)",
+			"AVR-3310-G (experimental)", "AVR-A1H (experimental)",
+			"AVR-A110 (experimental)", "AVR-S640H (experimental)",
+			"AVR-S650H (experimental)", "AVR-S740H (experimental)",
+			"AVR-S750H (experimental)", "AVR-S940H (experimental)",
+			"AVR-S950H (experimental)", "AVR-S960H (experimental)",
+			"AVR-S970H (experimental)", "AVR-X1100W (experimental)",
+			"AVR-X1200W (experimental)", "AVR-X1500H (experimental)",
+			"AVR-X1600H (experimental)", "AVR-X2100W (experimental)",
+			"AVR-X2200W (experimental)", "AVR-X2500H (experimental)",
+			"AVR-X2600H (experimental)", "AVR-X2700H (experimental)",
+			"AVR-X2800H (experimental)", "AVR-X3100W (experimental)",
+			"AVR-X3200W (experimental)", "AVR-X3500H (experimental)",
+			"AVR-X3600H (experimental)", "AVR-X3700H (experimental)",
+			"AVR-X3800H (experimental)", "AVR-X4100W (experimental)",
+			"AVR-X4200W (experimental)", "AVR-X4700H (experimental)",
+			"AVR-X4800H (experimental)", "AVR-X5200W (experimental)",
+			"AVR-X6700H (experimental)", "AVR-X7200W (experimental)",
+			"DRA-800H (experimental)", "NR1504-G (experimental)",
+			"NR1506 (experimental)", "NR1602-G (experimental)",
+			"NR1603-G (experimental)", "NR1604-G (experimental)",
+			"NR1605 (experimental)", "NR1606 (experimental)",
+			"S700W (experimental)", "S900W (experimental)",
+			"SR5006-G (experimental)", "SR5007-G (experimental)",
+			"SR5008-G (experimental)", "SR5009 (experimental)",
+			"SR5010 (experimental)", "SR6006-G (experimental)",
+			"SR6007-G (experimental)", "SR6008-G (experimental)",
+			"SR6009 (experimental)", "SR6010 (experimental)",
+			"SR7007-G (experimental)", "SR7008-G (experimental)",
+			"SR7009 (experimental)", "SR7010 (experimental)" };
 
 	@Test
 	public void everyReleasedNameStillHasItsModel() {
