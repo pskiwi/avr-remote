@@ -5,7 +5,12 @@
 		<!-- receivers, natural order; generate_java.py sorts its models in -->
 		<item>AV-7005</item>
 		<item>AV-7701</item>
+		<item>AV7701-G (experimental)</item>
+		<item>AV7702 (experimental)</item>
+		<item>AV7702mkII (experimental)</item>
 		<item>AV-8801</item>
+		<item>AV8801-G (experimental)</item>
+		<item>AV8802 (experimental)</item>
 		<item>AVC-3310 (experimental)</item>
 		<item>AVC-A1HDA</item>
 		<item>AVP-A1HDCI</item>
@@ -80,21 +85,42 @@
 		<item>DN-500AV</item>
 		<item>DRA-800H (experimental)</item>
 		<item>NR-1504</item>
+		<item>NR1504-G (experimental)</item>
+		<item>NR1506 (experimental)</item>
 		<item>NR-1602</item>
+		<item>NR1602-G (experimental)</item>
 		<item>NR-1603</item>
+		<item>NR1603-G (experimental)</item>
 		<item>NR-1604</item>
+		<item>NR1604-G (experimental)</item>
+		<item>NR1605 (experimental)</item>
+		<item>NR1606 (experimental)</item>
 		<item>S700W (experimental)</item>
 		<item>S900W (experimental)</item>
 		<item>SR-5006</item>
+		<item>SR5006-G (experimental)</item>
 		<item>SR-5007</item>
+		<item>SR5007-G (experimental)</item>
 		<item>SR-5008</item>
+		<item>SR5008-G (experimental)</item>
+		<item>SR5009 (experimental)</item>
+		<item>SR5010 (experimental)</item>
 		<item>SR-6005</item>
 		<item>SR-6006</item>
+		<item>SR6006-G (experimental)</item>
 		<item>SR-6007</item>
+		<item>SR6007-G (experimental)</item>
 		<item>SR-6008</item>
+		<item>SR6008-G (experimental)</item>
+		<item>SR6009 (experimental)</item>
+		<item>SR6010 (experimental)</item>
 		<item>SR-7005</item>
 		<item>SR-7007</item>
+		<item>SR7007-G (experimental)</item>
 		<item>SR-7008</item>
+		<item>SR7008-G (experimental)</item>
+		<item>SR7009 (experimental)</item>
+		<item>SR7010 (experimental)</item>
 		<!-- end of receivers -->
 		<item>ASD-51 (experimental)</item>
 		<item>DNP-720AE</item>

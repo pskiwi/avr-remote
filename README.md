@@ -35,10 +35,15 @@ alternative to the hand-written AVR-3310 and AVR-990.
 
 Network and media players: ASD-51 *(experimental)*, DNP-720AE, RCD-N7 *(experimental)*
 
-**Marantz (20)**
+**Marantz (32)**
 
 AV-7005, AV-7701, AV-8801, NR-1504, NR-1602, NR-1603, NR-1604, SR-5006, SR-5007, SR-5008, SR-6005,
 SR-6006, SR-6007, SR-6008, SR-7005, SR-7007, SR-7008
+
+Generated from Marantz's protocol document, all *(experimental)* until a receiver confirms them:
+AV7702, AV7702mkII, AV8802, NR1506, NR1605, NR1606, SR5009, SR5010, SR6009, SR6010, SR7009, SR7010.
+All of the above except AV-7005, SR-6005 and SR-7005 are generated the same way as well, as an
+alternative with `-G` after the name (SR6008-G next to SR-6008).
 
 Network and media players: M-CR603 *(experimental)*, M-ER803 *(experimental)*,
 NA-7004 *(experimental)*
