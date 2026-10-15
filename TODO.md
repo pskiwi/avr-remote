@@ -164,7 +164,7 @@ What is left is the part no build can answer.
 
 ## Structural
 
-- [ ] **Test coverage is fifteen JVM classes and no instrumentation tests.** The cheapest places to add
+- [ ] **Test coverage is twenty-one JVM classes and no instrumentation tests.** The cheapest places to add
       more are `models/` (pure capability logic, no Android types) and `core/ZoneState.java`
       (1237 lines). `core/display/` is now part done: `NetDisplayTest` covers the line reader and
       `TunerDisplayTest` the frequency conversion, but the rest of `TunerDisplay` (presets, HD Radio,
@@ -357,12 +357,6 @@ counted). None of it is tested on hardware; the documents are all there is.
       `AbstractMarantzAV` already says `hasQuick() == false`. `QuickMenu` always sends
       `<zone>QUICK<n>`, so the generated twelve say `false` too. Needs the quick prefix as a
       model method (`QUICK` / `SMART`), then `hasQuick` for the twelve, checked on a device.
-- [ ] **At the next release: the generated models into `ReleasedModelNamesTest`.** All 65 entries
-      `@array/modelNames` gained since v1.7.0 go into `RELEASED`, spelled as in the list,
-      `(experimental)` included, with the release that ships them (RELEASE.md step 3): the 37
-      generated Denon receivers (#59, #61) with AVR-3310-G and AVR-990-G, and from #66 the twelve
-      Marantz models AV7702, AV7702mkII, AV8802, NR1506, NR1605, NR1606, SR5009, SR5010, SR6009,
-      SR6010, SR7009, SR7010 with the fourteen Marantz `-G` variants.
 
 ## Large, no deadline
 

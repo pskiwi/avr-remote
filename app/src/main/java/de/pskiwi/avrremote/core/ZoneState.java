@@ -700,7 +700,16 @@ public final class ZoneState {
 		 * limited to the range, padded to the width of the maximum.
 		 */
 		public String command(String prefix, boolean keyed, int requested) {
-			return prefix + (keyed ? key : "") + " " + digits(clamp(requested));
+			return unlimitedCommand(prefix, keyed, clamp(requested));
+		}
+
+		/**
+		 * The same command without the limit, for a value the receiver itself
+		 * reported: it may lie outside the range fixed here ("PSDELAY 300",
+		 * "PSEFF 00"), and putting it back must not change it.
+		 */
+		public String unlimitedCommand(String prefix, boolean keyed, int value) {
+			return prefix + (keyed ? key : "") + " " + digits(value);
 		}
 
 		private String digits(int value) {
@@ -918,6 +927,22 @@ public final class ZoneState {
 			if (getValue(ct) != value) {
 				sender.send(ct.command(getCommandPrefix(), singleType == null,
 						value));
+				return true;
+			}
+			return false;
+		}
+
+		/**
+		 * Puts back a value this receiver reported (Cancel in the level
+		 * dialog), unlimited -- it is what the receiver had, whatever the range
+		 * fixed in LevelType says. A negative value was no number ("PSEFF OFF"
+		 * arrives as -1) and has no command to put it back.
+		 */
+		public boolean restoreLevel(LevelType ct, int reported) {
+			Logger.info("restoreLevel [" + getValue(ct) + "/" + reported + "]");
+			if (reported >= 0 && getValue(ct) != reported) {
+				sender.send(ct.unlimitedCommand(getCommandPrefix(),
+						singleType == null, reported));
 				return true;
 			}
 			return false;
