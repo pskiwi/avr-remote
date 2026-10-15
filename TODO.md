@@ -351,10 +351,18 @@ counted). None of it is tested on hardware; the documents are all there is.
       channel (they went to 99 before). Unit-tested only; check on a receiver with height or wide
       speakers that the slider ends at +12 dB and that a subwoofer switched off (`CVSW 00`) stays
       off after Cancel in the level dialog.
+- [ ] **Smart Select on the Marantz receivers.** Marantz calls quick select Smart Select and its
+      document has only that: `MSSMART1`–`5`, `… MEMORY`, `Z2SMART`/`Z3SMART`, on the 2013–2015
+      models (12 of 29); the older ones have neither. `QuickMenu` always sends
+      `<zone>QUICK<n>`, so the generated Marantz classes say `hasQuick() == false` — while the
+      hand-written ones keep the `AbstractModel` default `true` and send a command their
+      document does not list. Needs the quick prefix as a model method (`QUICK` / `SMART`), then
+      `hasQuick` for the twelve and `false` for the older hand-written ones, checked on a device.
 - [ ] **At the next release: the seven new models.** AVR-X7200W and the 2018 AVR-X3500H, X2500H,
       X1500H, S940H, S740H, S640H (#61) go into `ReleasedModelNamesTest` with the release that
       ships them (RELEASE.md step 3), and into the release notes together with the level limit
-      (#62).
+      (#62). The same for the 29 Marantz names: AV7702, AV7702mkII, AV8802, NR1506, NR1605,
+      NR1606, SR5009, SR5010, SR6009, SR6010, SR7009, SR7010 and the seventeen `-G` variants.
 
 ## Large, no deadline
 
@@ -365,7 +373,7 @@ counted). None of it is tested on hardware; the documents are all there is.
       All deprecated, all still compiles. Worth doing only when the look is to change — at which
       point it is unavoidable, because the pre-Holo platform themes do not allow modern styling.
 - [ ] **A model list one can find a receiver in.** `@array/modelNames` is one flat
-      `ListPreference` (`res/xml/settings.xml:17`) of 99 entries — Denon, Marantz and the network
+      `ListPreference` (`res/xml/settings.xml:17`) of 128 entries — Denon, Marantz and the network
       players interleaved, hand-written and generated mixed, `(experimental)` as plain text. Ideas:
       grouped by brand (and perhaps by generation); a filter field that narrows the list with
       every keystroke to the matching models only (ignoring dashes and case, as the suggestion

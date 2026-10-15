@@ -46,7 +46,7 @@ public final class GeneratedModelTest {
 	@Test
 	public void everyGeneratedModelHasInputsInEveryArea() throws Exception {
 		final List<IAVRModel> models = generatedModels();
-		assertEquals(39, models.size());
+		assertEquals(68, models.size());
 		for (IAVRModel model : models) {
 			for (ModelArea area : ModelArea.values()) {
 				assertFalse(model.getName() + " hat keine Eingänge in " + area,
@@ -64,7 +64,7 @@ public final class GeneratedModelTest {
 		}
 	}
 
-	/** Die einzige Model-Datei mit nur einer Zone; der Default sagt true. */
+	/** Eine Zone, wo der Default true sagt (so auch NR1506 und NR1504-G). */
 	@Test
 	public void s650hHasNoZones() {
 		final IAVRModel model = new AVRS650H();
@@ -89,6 +89,20 @@ public final class GeneratedModelTest {
 		// DAB-Dialekt der neuen Geräte spricht die App nicht, siehe
 		// APP_MAPPING.md in avr-remote-specs
 		assertFalse(model.supportsDAB());
+	}
+
+	/**
+	 * Das Marantz-Dokument beschreibt zwei Generationen in einem Block: die
+	 * älteren Geräte (SR6005 und Zeitgenossen) mit Presets A1-G8, ab 2012
+	 * 01-56. Stilles Ende bei 00, wie im Protokollblatt des Dokuments, nicht
+	 * bei 99, wie eine liegengebliebene Zeile seines MV-Blocks sagt.
+	 */
+	@Test
+	public void marantzTunerPresetsFollowTheGeneration() {
+		assertEquals("A", new SR6005G().getTunerPresetPrefix());
+		assertEquals("0", new SR7010().getTunerPresetPrefix());
+		assertFalse(new SR7010().needVolumeAdjust());
+		assertFalse(new SR6005G().needVolumeAdjust());
 	}
 
 	/** Ohne Raumkorrektur und ohne Dynamic EQ: der Stereo-Receiver. */
