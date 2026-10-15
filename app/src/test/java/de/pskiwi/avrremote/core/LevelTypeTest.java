@@ -70,6 +70,16 @@ public class LevelTypeTest {
 	}
 
 	@Test
+	public void aReportedValueGoesBackUnlimited() {
+		// Abbrechen im Pegeldialog spielt zurück, was der Receiver gemeldet hat -
+		// auch außerhalb des hier festen Bereichs (PSDELAY bis 300, PSEFF 00).
+		assertEquals("PSDELAY 250",
+				LevelType.DEL.unlimitedCommand("PSDELAY", false, 250));
+		assertEquals("PSEFF 00", LevelType.EFF.unlimitedCommand("PSEFF", false, 0));
+		assertEquals("CVFHL 50", LevelType.FHL.unlimitedCommand("CV", true, 50));
+	}
+
+	@Test
 	public void subwooferOffIsAValueNotBelowTheRange() {
 		// "00,38 to 62 by ASCII , 50=0dB,00=OFF" - Abbrechen im Pegeldialog
 		// spielt den gemeldeten Wert zurück, "aus" muss "aus" bleiben.

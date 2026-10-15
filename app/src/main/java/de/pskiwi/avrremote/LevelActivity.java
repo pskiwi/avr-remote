@@ -109,6 +109,12 @@ public final class LevelActivity extends Activity {
 			}
 		}
 
+		private void restore(final int reported) {
+			if (cv.restoreLevel(type, reported)) {
+				requestReceiverUpdate();
+			}
+		}
+
 		private void requestReceiverUpdate() {
 			handler.removeCallbacks(updateRunnable);
 			handler.postDelayed(updateRunnable, 1000);
@@ -239,7 +245,7 @@ public final class LevelActivity extends Activity {
 					final LevelType type = e.getKey();
 					final Level level = levelSeeker.get(type);
 					if (level != null) {
-						level.setValue(e.getValue().intValue());
+						level.restore(e.getValue().intValue());
 					}
 				}
 				finish();
